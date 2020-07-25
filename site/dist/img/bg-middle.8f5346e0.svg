@@ -1,0 +1,16 @@
+<svg id="a9aae649-cf4d-45ee-b0f3-a7ac7535bf32" data-name="Слой 1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 595.27559 160.61538">
+  <defs>
+    <linearGradient id="f4b305a9-9bc4-4d13-adab-c2e7b267da40" data-name="Безымянный градиент 15" y1="296.79121" x2="595.27559" y2="296.79121" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#312782" stop-opacity="0"/>
+      <stop offset="0.09658" stop-color="#312790" stop-opacity="0.15219"/>
+      <stop offset="0.2751" stop-color="#3127a9" stop-opacity="0.40723"/>
+      <stop offset="0.44805" stop-color="#3127bd" stop-opacity="0.6194"/>
+      <stop offset="0.61119" stop-color="#3127cd" stop-opacity="0.78466"/>
+      <stop offset="0.76208" stop-color="#3127d8" stop-opacity="0.90308"/>
+      <stop offset="0.89624" stop-color="#3127df" stop-opacity="0.97485"/>
+      <stop offset="1" stop-color="#3127e1"/>
+    </linearGradient>
+  </defs>
+  <title>bg-middle</title>
+  <path d="M0,216.48352S170.60526,240.405,297.6378,240.405s297.63779-23.92144,297.63779-23.92144V377.0989S426.25275,355.91134,297.6378,355.91134C169.9011,355.91134,0,377.0989,0,377.0989Z" transform="translate(0 -216.48352)" style="fill: url(#f4b305a9-9bc4-4d13-adab-c2e7b267da40)"/>
+</svg>
