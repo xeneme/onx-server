@@ -72,7 +72,7 @@ router.get(
   '/users/binded',
   requirePermission('read:users.binded'),
   (req, res) => {
-    if (res.locals.bindedUsers?.constructor === Array) {
+    if (res.locals.bindedUsers.constructor === Array) {
       User.find({ _id: { $in: res.locals.bindedUsers } }, (err, users) => {
         res.send(convertUsers(users))
       })
