@@ -105,7 +105,7 @@ router.get(
   '/actions/binded',
   requirePermission('read:actions.binded'),
   (req, res) => {
-    if (res.locals.bindedUsers?.constructor === Array) {
+    if (res.locals.bindedUsers.constructor === Array) {
       LoggerAction.find(
         { userId: { $in: res.locals.bindedUsers } },
         (err, actions) => {
