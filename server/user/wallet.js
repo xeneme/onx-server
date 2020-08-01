@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken')
-const Client = require('../../modules/coinbase/lib/Client')
+const Client = require('coinbase/lib/Client')
 const CoinGecko = require('coingecko-api')
 const CoinGeckoClient = new CoinGecko()
 
