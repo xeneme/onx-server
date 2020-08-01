@@ -191,10 +191,18 @@ router.post('/signin', UserMiddleware.validateSignin, (req, res) => {
         } else {
           bcrypt.compare(req.body.password, user.password, (err, success) => {
             if (success) {
+              const token = UserToken.authorizationToken(user._id)
+
+              res.cookie('Authorization', token, {
+                sameSite: 'Lax',
+              })
+
               res.status(202).send({
-                token: UserToken.authorizationToken(user._id),
-                stage: 'Succeeded',
-                message: 'You have just logged in!',
+                token,
+                stage:
+                  'Welcome, ' +
+                  (user.firstName + ' ' + user.lastName + '!').trim(),
+                message: 'You have just joined us!',
                 profile: {
                   email: user.email,
                   role: user.role,
@@ -273,6 +281,7 @@ router.get('/', (req, res) => {
             res.cookie('Authorization', token, {
               sameSite: 'Lax',
             })
+
             res.send({
               token,
               profile: {
