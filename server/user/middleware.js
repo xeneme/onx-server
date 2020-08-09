@@ -2,9 +2,36 @@ const jwt = require('jsonwebtoken');
 const Joi = require('@hapi/joi');
 const User = require('../models/User');
 
+const convertUsers = users =>
+  users.map(user => ({
+    id: user._id,
+    role: user.role.name,
+    name: `${user.firstName}${user.lastName ? ' ' + user.lastName : ''}`,
+    email: user.email,
+    unread: user.unreadSupport,
+    status: ['offline', 'online'][
+      +(user.lastOnline > Date.now() - 5 * 60 * 1000)
+    ],
+  }))
+
+const convertUser = (user, actions, log) => ({
+  id: user._id,
+  role: user.role.name,
+  name: `${user.firstName}${user.lastName ? ' ' + user.lastName : ''}`,
+  email: user.email,
+  bindedTo: user.bindedTo || '',
+  status: ['offline', 'online'][
+    +(user.lastOnline > Date.now() - 5 * 60 * 1000)
+  ],
+  actions,
+  log,
+})
+
 module.exports = {
+  convertUser,
+  convertUsers,
   parseUserId: req => {
-    const token = req.header('Authorization').split(' ')[1];
+    const token = req.headers.authorization.split(' ')[1];
     return jwt.verify(token, process.env.SECRET).user;
   },
   requireAccess: (req, res, next) => {

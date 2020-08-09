@@ -1,7 +1,7 @@
-const mongoose = require("mongoose")
-const nanoid = require("nanoid").nanoid
+const mongoose = require('mongoose')
+const nanoid = require('nanoid').nanoid
 
-const Role = require("../user/roles")
+const Role = require('../user/roles')
 
 const User = new mongoose.Schema({
   _id: { type: String, default: nanoid },
@@ -18,4 +18,4 @@ const User = new mongoose.Schema({
   lastName: String,
 })
 
-module.exports = mongoose.model("profiles", User)
+module.exports = mongoose.model('profiles', User)

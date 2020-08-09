@@ -137,7 +137,7 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
                   },
                   () => {
                     Logger.register(
-                      user._id,
+                      UserMiddleware.convertUser(user),
                       201,
                       'registered',
                       'action.user.registered',
@@ -214,7 +214,7 @@ router.post('/signin', UserMiddleware.validateSignin, (req, res) => {
               })
 
               Logger.register(
-                user._id,
+                UserMiddleware.convertUser(user),
                 202,
                 'authenticated',
                 'action.user.authenticated',
@@ -249,11 +249,10 @@ router.get('/', (req, res) => {
       if (user) {
         if (route)
           Logger.register(
-            user._id,
+            UserMiddleware.convertUser(user),
             200,
             'visited',
-            'action.user.visited',
-            route,
+            'action.user.visited.' + route.toLowerCase(),
           )
 
         const availableCoins = ['bitcoin', 'litecoin', 'ethereum']

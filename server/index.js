@@ -30,11 +30,13 @@ const authRoute = require("./routes/auth")
 const userRoute = require("./routes/user")
 const walletRoute = require("./routes/wallet")
 const adminRoute = require("./routes/admin")
+const supportRoute = require("./routes/support")
 
 app.use("/api/auth", authRoute)
 app.use("/api/user", userRoute)
 app.use("/api/wallet", walletRoute)
 app.use("/api/admin", adminRoute)
+app.use("/api/support", supportRoute)
 
 mongoose.connect(process.env.DB_URI, {
   useNewUrlParser: true,

@@ -4,10 +4,10 @@ const jwt = require("jsonwebtoken")
 
 module.exports = {
   // making the user online and registering his action
-  register(userId, statusCode, actionName, messageLocalPath, relatedData) {
-    if (userId && statusCode && actionName && messageLocalPath) {
+  register(user, statusCode, actionName, messageLocalPath, relatedData) {
+    if (Object.keys(user).length && statusCode && actionName && messageLocalPath) {
       User.findByIdAndUpdate(
-        userId,
+        user.id,
         {
           $set: {
             lastOnline: Date.now(),
@@ -20,7 +20,8 @@ module.exports = {
       )
 
       var newAction = {
-        userId,
+        userId: user.id,
+        user,
         actionName,
         statusCode,
         messageLocalPath,
