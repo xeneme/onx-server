@@ -82,7 +82,7 @@ const getDialogue = user =>
             },
             (err, modified) => {},
           )
-          resolve(dialogue?.messages ?? [])
+          resolve(dialogue ? dialogue.messages : [])
         })
       }
     })
