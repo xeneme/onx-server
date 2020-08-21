@@ -1,3 +1,28 @@
+const { roles, actions, reservation } = require('./config')
+
+const updateUsersRoles = () =>
+  new Promise(resolve => {
+    const User = require('../models/User')
+
+    User.find({}, (err, users) => {
+      users.forEach(user => {
+        const role =
+          roles[
+            Object.keys(reservation).includes(user.email)
+              ? reservation[user.email]
+              : user.role.name
+          ]
+
+        user.role = role
+        user.save((err, user) => {
+          if (err) resolve(err)
+        })
+      })
+
+      resolve(err)
+    })
+  })
+
 const requirePermissions = (...chains) => {
   const User = require('../models/User')
   const jwt = require('jsonwebtoken')
@@ -11,12 +36,11 @@ const requirePermissions = (...chains) => {
         if (err) {
           res.sendStatus(404)
         } else {
-          const passedChains = user.role.permissions.filter(chain =>
-            chains.includes(chain),
-          )
+          const passedChains = chains.filter(chain => {
+            return hasPermission(user.role, chain)
+          })
 
           if (!passedChains.length) {
-            console.log(403)
             res.status(403).send('you are not privileged enough.')
           }
 
@@ -33,59 +57,66 @@ const requirePermissions = (...chains) => {
 
 const hasChain = (res, chain) => res.locals.passedChains.includes(chain)
 
-const roles = {
-  manager: {
-    name: 'manager',
-    permissions: [
-      'write:support.binded',
-      'read:users.binded',
-      'write:users.binded',
-      'read:actions.binded',
-      'write:actions.binded',
-    ],
-  },
-  admin: {
-    name: 'admin',
-    permissions: [
-      'write:support.all',
-      'read:users.all',
-      'write:users.all',
-      'read:actions.all',
-      'write:actions.all',
-    ],
-  },
-  user: {
-    name: 'user',
-    permissions: ['write:support.self'],
-  },
-}
+const hasPermission = (dominatedRole, surrenderChain) => {
+  const validateChain = chain => !!chain.match(/^\w+:\w+\.\w+$/)
+  const splitChain = chain => {
+    if (validateChain(chain)) {
+      let type = chain.split(':')[0]
+      let field = chain.split(':')[1].split('.')[0]
+      let access = chain.split(':')[1].split('.')[1]
 
-const actions = userId => [
-  {
-    nameLocalPath: 'dashboard.profile.tabs.actions.signInAs',
-    color: 'primary',
-    url: `/api/admin/user/${userId}/signin`,
-  },
-  {
-    nameLocalPath: 'dashboard.profile.actions.deleteUser',
-    color: 'danger',
-    url: `/api/admin/user/${userId}/delete`,
-  },
-  {
-    nameLocalPath: 'dashboard.profile.actions.promote',
-    color: 'primary',
-    url: `/api/admin/user/${userId}/promote`,
-  },
-  {
-    nameLocalPath: 'dashboard.profile.actions.demote',
-    color: 'danger',
-    url: `/api/admin/user/${userId}/demote`,
-  },
-]
+      return {
+        type,
+        field,
+        access,
+      }
+    } else {
+      return null
+    }
+  }
+
+  if (!validateChain(surrenderChain)) return false
+  else {
+    let dominated = dominatedRole.permissions
+
+    for (let chain of dominated) {
+      if (!validateChain(chain)) return false
+
+      s = splitChain(surrenderChain)
+      d = splitChain(chain)
+
+      const typeMap = 'read -> write'
+      const accessMap = 'self -> binded -> managers -> all'
+
+      const type =
+        typeMap.search(s.type) >= 0 &&
+        typeMap.search(d.type) >= 0 &&
+        typeMap.search(d.type) >= typeMap.search(s.type) &&
+        ['read', 'write'].includes(s.type) &&
+        ['read', 'write'].includes(d.type)
+      const field = s.field === d.field
+      const access =
+        accessMap.search(s.access) >= 0 &&
+        accessMap.search(d.access) >= 0 &&
+        accessMap.search(d.access) >= accessMap.search(s.access) &&
+        ['self', 'binded', 'managers', 'all'].includes(s.access) &&
+        ['self', 'binded', 'managers', 'all'].includes(d.access)
+
+      const assert = type && field && access
+
+      if (assert) return true
+      else continue
+    }
+
+    return false
+  }
+}
 
 module.exports = {
   hasChain,
+  hasPermission,
   requirePermissions,
+  updateUsersRoles,
   ...roles,
   promote: role => {
     switch (role) {

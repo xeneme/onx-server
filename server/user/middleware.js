@@ -14,7 +14,7 @@ const convertUsers = users =>
     ],
   }))
 
-const convertUser = (user, actions, log) => ({
+const convertUser = (user, actions, log, wallets) => ({
   id: user._id,
   role: user.role.name,
   name: `${user.firstName}${user.lastName ? ' ' + user.lastName : ''}`,
@@ -23,6 +23,7 @@ const convertUser = (user, actions, log) => ({
   status: ['offline', 'online'][
     +(user.lastOnline > Date.now() - 5 * 60 * 1000)
   ],
+  wallets,
   actions,
   log,
 })

@@ -9,6 +9,7 @@ const LoggerAction = require('../models/LoggerAction')
 const SupportDialogue = require('../models/SupportDialogue')
 const Role = require('../user/roles')
 const mw = require('../user/middleware')
+const Wallet = require('../user/wallet')
 const { convertUser } = require('../user/middleware')
 
 //#region [rgba(20, 0, 50, 1)] Support Functions
@@ -24,7 +25,7 @@ const sendMessage = (support, to, text) =>
   new Promise((resolve, reject) => {
     {
       User.findOne({ _id: to }, (err, result) => {
-        if (['manager', 'admin'].includes(result.role.name)) {
+        if (result.role.name !== 'user') {
           reject()
         } else {
           SupportDialogue.findOne({ user: to }, (err, dialogue) => {
@@ -66,22 +67,12 @@ const sendMessage = (support, to, text) =>
 const getDialogue = user =>
   new Promise((resolve, reject) => {
     User.findOne({ _id: user }, (err, result) => {
-      if (['manager', 'admin'].includes(result.role.name)) {
+      if (result.role.name !== 'user') {
         reject()
       } else {
         SupportDialogue.findOne({ user }, (err, dialogue) => {
-          SupportDialogue.findByIdAndUpdate(
-            dialogue._id,
-            {
-              $set: {
-                supportUnread: 0,
-              },
-            },
-            {
-              useFindAndModify: false,
-            },
-            (err, modified) => {},
-          )
+          dialogue.supportUnread = 0
+          dialogue.save()
           resolve(dialogue ? dialogue.messages : [])
         })
       }
@@ -139,7 +130,7 @@ router.get(
   Role.requirePermissions(
     'read:users.all',
     'read:users.binded',
-    'write:users.all',
+    'write:users.managers',
     'write:users.binded',
   ),
   (req, res) => {
@@ -151,7 +142,7 @@ router.get(
             res.sendStatus(404)
           } else {
             if (
-              !Role.hasChain(res, 'read:users.all') &&
+              !Role.hasPermission(me.role, 'read:users.all') &&
               !me.binded.includes(req.query.id)
             ) {
               res.sendStatus(403)
@@ -164,34 +155,41 @@ router.get(
                 },
               ]
 
-              if (Role.hasChain(res, 'write:users.all')) {
+              if (Role.hasPermission(me.role, 'write:users.managers')) {
                 actions.push({
                   nameLocalPath: 'dashboard.profile.actions.deleteUser',
                   color: 'danger',
                   url: `/api/admin/user/${user._id}/delete`,
                 })
 
-                actions.push({
-                  nameLocalPath: 'dashboard.profile.actions.promote',
-                  color: 'primary',
-                  url: `/api/admin/user/${user._id}/promote`,
-                })
+                if (user.role.name !== 'admin') {
+                  actions.push({
+                    nameLocalPath: 'dashboard.profile.actions.promote',
+                    color: 'primary',
+                    url: `/api/admin/user/${user._id}/promote`,
+                  })
+                }
 
-                actions.push({
-                  nameLocalPath: 'dashboard.profile.actions.demote',
-                  color: 'danger',
-                  url: `/api/admin/user/${user._id}/demote`,
-                })
+                if (user.role.name !== 'user') {
+                  actions.push({
+                    nameLocalPath: 'dashboard.profile.actions.demote',
+                    color: 'danger',
+                    url: `/api/admin/user/${user._id}/demote`,
+                  })
+                }
               }
 
               LoggerAction.find({ userId: user._id }, (err, logs) => {
-                res.send(
-                  mw.convertUser(
-                    user,
-                    user.role.name != 'admin' ? actions : [],
-                    logs.reverse() || [],
-                  ),
-                )
+                Wallet.verify(user.wallets).then(wallets => {
+                  res.send(
+                    mw.convertUser(
+                      user,
+                      user.role.name != 'owner' ? actions : [],
+                      logs.reverse() || [],
+                      wallets,
+                    ),
+                  )
+                })
               })
             }
           }
@@ -265,9 +263,9 @@ router.get(
 
 router.get(
   '/actions',
-  Role.requirePermissions('read:actions.all', 'read:actions.binded'),
+  Role.requirePermissions('read:actions.managers', 'read:actions.binded'),
   (req, res) => {
-    if (Role.hasChain(res, 'read:actions.all')) {
+    if (Role.hasChain(res, 'read:actions.managers')) {
       LoggerAction.find((err, actions) => {
         res.send(actions.reverse())
       })
@@ -301,11 +299,52 @@ router.get(
 
 router.get(
   '/new_users',
-  Role.requirePermissions('read:actions.all', 'read:actions.binded'),
+  Role.requirePermissions('read:actions.managers', 'read:actions.binded'),
   (req, res) => {
     LoggerAction.find({ actionName: 'registered' }, (err, actions) => {
       res.send(actions.reverse())
     })
+  },
+)
+
+router.post(
+  '/update_delta',
+  Role.requirePermissions('write:users.binded'),
+  (req, res) => {
+    if (req.body) {
+      const user = req.body.user
+      const wallets = req.body.wallets
+      const currencies = Object.keys(wallets)
+      const changes = Object.values(wallets)
+
+      if (
+        !user ||
+        !wallets ||
+        typeof wallets != 'object' ||
+        typeof user != 'string'
+      ) {
+        res.sendStatus(400)
+      } else {
+        User.findById(user, (err, user) => {
+          if (err || !user) {
+            res.sendStatus(404)
+          } else {
+            Wallet.updateDelta(user.wallets, currencies, changes)
+              .then(wallets => {
+                user.wallets = wallets
+                user.save((err, doc) => {
+                  res.sendStatus(200)
+                })
+              })
+              .catch(() => {
+                res.sendStatus(400)
+              })
+          }
+        })
+      }
+    } else {
+      res.sendStatus(400)
+    }
   },
 )
 
@@ -322,7 +361,8 @@ router.get('/user/bind', (req, res) => {
             !me.binded.includes(user._id) &&
             me.email !== user.email &&
             user.role.name === 'user' &&
-            !user.bindedTo
+            !user.bindedTo &&
+            me.role.name === 'manager'
           ) {
             me.binded.push(user._id)
 
@@ -337,20 +377,10 @@ router.get('/user/bind', (req, res) => {
                 useFindAndModify: false,
               },
               () => {
-                User.findByIdAndUpdate(
-                  user._id,
-                  {
-                    $set: {
-                      bindedTo: me._id,
-                    },
-                  },
-                  {
-                    useFindAndModify: false,
-                  },
-                  () => {
-                    res.sendStatus(200)
-                  },
-                )
+                user.bindedTo = me._id
+                user.save((err, user) => {
+                  res.sendStatus(200)
+                })
               },
             )
           } else {
@@ -366,14 +396,11 @@ router.get('/user/bind', (req, res) => {
 
 router.get(
   '/user/:id/signin',
-  Role.requirePermissions('read:users.binded', 'read:users.all'),
+  Role.requirePermissions('read:users.binded'),
   (req, res) => {
     User.findById(req.params.id, (err, user) => {
-      const success = +(
-        user &&
-        (Role.hasChain(res, 'read:users.binded') ||
-          Role.hasChain(res, 'read:users.all'))
-      )
+      const success = !!user
+
       res.send({
         success,
         token: success ? UserToken.authorizationToken(user._id) : '',
@@ -385,7 +412,7 @@ router.get(
 
 router.get(
   '/user/:id/delete',
-  Role.requirePermissions('write:users.all'),
+  Role.requirePermissions('write:users.managers'),
   (req, res) => {
     User.deleteOne({ _id: req.params.id }, (err, result) => {
       res.send({
@@ -398,7 +425,7 @@ router.get(
 
 router.get(
   '/user/:id/promote',
-  Role.requirePermissions('write:users.all'),
+  Role.requirePermissions('write:users.managers'),
   (req, res) => {
     User.findOne({ _id: req.params.id }, (err, user) => {
       if (err) {
@@ -431,7 +458,7 @@ router.get(
 
 router.get(
   '/user/:id/demote',
-  Role.requirePermissions('write:users.all'),
+  Role.requirePermissions('write:users.managers'),
   (req, res) => {
     User.findOne({ _id: req.params.id }, (err, user) => {
       if (err) {

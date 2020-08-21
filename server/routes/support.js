@@ -21,7 +21,7 @@ const sendMessage = (from, text) =>
   new Promise((resolve, reject) => {
     {
       User.findOne({ _id: from }, (err, result) => {
-        if (['manager', 'admin'].includes(result.role.name)) {
+        if (result.role.name !== 'user') {
           reject()
         } else {
           SupportDialogue.findOne({ user: from }, (err, dialogue) => {
@@ -63,7 +63,7 @@ const sendMessage = (from, text) =>
 const getDialogue = user =>
   new Promise((resolve, reject) => {
     User.findOne({ _id: user }, (err, result) => {
-      if (['manager', 'admin'].includes(result.role.name)) {
+      if (result.role.name !== 'user') {
         reject()
       } else {
         SupportDialogue.findOne({ user }, (err, dialogue) => {

@@ -12,6 +12,8 @@ const UserWallet = require('../user/wallet')
 const UserToken = require('../user/token')
 const Logger = require('../user/logger')
 
+require('../user/updateProfiles')
+
 router.post('/update', UserMiddleware.requireAccess, (req, res) => {
   const userId = UserMiddleware.parseUserId(req)
 

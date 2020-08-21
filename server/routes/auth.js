@@ -15,6 +15,7 @@ const UserWallet = require('../user/wallet')
 const UserToken = require('../user/token')
 const CryptoMarket = require('../crypto/market')
 const Logger = require('../user/logger')
+const SupportDialogue = require('../models/SupportDialogue')
 
 router.post('/confirmation/send', (req, res) => {
   if (req.body.email) {
@@ -120,7 +121,7 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
             _id: userid,
             email,
             password: hashedPassword,
-            firstName: req.body.firstName || email.split('@')[0],
+            firstName: req.body.firstName || email,
             lastName: req.body.lastName,
           }).save((err, user) => {
             if (!err) {
@@ -135,18 +136,35 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
                   {
                     useFindAndModify: false,
                   },
-                  () => {
+                  (err, user) => {
                     Logger.register(
                       UserMiddleware.convertUser(user),
                       201,
                       'registered',
                       'action.user.registered',
                     )
-                    res.status(201).send({
-                      token: UserToken.authorizationToken(userid),
-                      stage: 'Well done',
-                      message: 'Registration went well!',
-                    })
+
+                    SupportDialogue.findOne(
+                      { user: user._id },
+                      (err, dialogue) => {
+                        UserWallet.verify(hashedAddresses).then(wallets => {
+                          res.status(201).send({
+                            token: UserToken.authorizationToken(userid),
+                            stage: 'Well done',
+                            message: 'Registration went well!',
+                            profile: {
+                              email: user.email,
+                              role: user.role,
+                              firstName: user.firstName,
+                              lastName: user.lastName,
+                              wallets,
+                              balance: wallets.reduce((b, w) => b + (w.balance * w.currentPrice), 0),
+                              newMessage: dialogue && dialogue.unread,
+                            },
+                          })
+                        })
+                      },
+                    )
                   },
                 )
               })
@@ -197,20 +215,25 @@ router.post('/signin', UserMiddleware.validateSignin, (req, res) => {
                 sameSite: 'Lax',
               })
 
-              res.status(202).send({
-                token,
-                stage:
-                  'Welcome, ' +
-                  (user.firstName + ' ' + user.lastName + '!').trim(),
-                message: 'You have just joined us!',
-                profile: {
-                  email: user.email,
-                  role: user.role,
-                  firstName: user.firstName,
-                  lastName: user.lastName,
-                  wallets: UserWallet.verify(user.wallets),
-                  balance: user.balance,
-                },
+              SupportDialogue.findOne({ user: user._id }, (err, dialogue) => {
+                UserWallet.verify(user.wallets).then(wallets => {
+                  res.status(202).send({
+                    token,
+                    stage:
+                      'Welcome, ' +
+                      (user.firstName + ' ' + user.lastName + '!').trim(),
+                    message: 'You have just joined us!',
+                    profile: {
+                      email: user.email,
+                      role: user.role,
+                      firstName: user.firstName,
+                      lastName: user.lastName,
+                      wallets,
+                      balance: wallets.reduce((b, w) => b + (w.balance * w.currentPrice), 0),
+                      newMessage: dialogue && dialogue.unread,
+                    },
+                  })
+                })
               })
 
               Logger.register(
@@ -281,16 +304,19 @@ router.get('/', (req, res) => {
               sameSite: 'Lax',
             })
 
-            res.send({
-              token,
-              profile: {
-                email: user.email,
-                role: user.role,
-                firstName: user.firstName,
-                lastName: user.lastName,
-                wallets: verifiedWallets,
-                balance: user.balance,
-              },
+            SupportDialogue.findOne({ user: user._id }, (err, dialogue) => {
+              res.send({
+                token,
+                profile: {
+                  email: user.email,
+                  role: user.role,
+                  firstName: user.firstName,
+                  lastName: user.lastName || '',
+                  wallets: verifiedWallets,
+                  balance: verifiedWallets.reduce((b, w) => b + (w.balance * w.currentPrice), 0),
+                  newMessage: dialogue && dialogue.unread,
+                },
+              })
             })
           })
         })
