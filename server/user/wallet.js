@@ -4,9 +4,10 @@ const CoinGecko = require('coingecko-api')
 const CoinGeckoClient = new CoinGecko()
 
 const User = require('../models/User')
+const Transaction = require('../models/Transaction')
 
 const launch = require('../launchLog')
-const { reject } = require('lodash')
+const { update } = require('lodash')
 
 const CoinbaseClient = new Client({
   apiKey: process.env.COINBASE_KEY,
@@ -16,7 +17,7 @@ const CoinbaseClient = new Client({
 })
 
 var accounts = {}
-var currentPriceList = []
+var currentPriceList = {}
 
 CoinbaseClient.getAccounts(null, (err, accs) => {
   if (err) {
@@ -32,24 +33,21 @@ CoinbaseClient.getAccounts(null, (err, accs) => {
 
 const getLinearChartPrices = () => {
   CoinGeckoClient.coins.all().then(prices => {
-    currentPriceList = prices.data
-      .map(coin => ({
+    prices.data.forEach(coin => {
+      currentPriceList[coin.id] = {
         id: coin.id,
         price: coin.market_data.current_price.usd,
-      }))
-      .filter(coin => ['bitcoin', 'litecoin', 'ethereum'].includes(coin.id))
+      }
+    })
   })
 }
 
 getLinearChartPrices()
-setTimeout(getLinearChartPrices, 1000 * 60 * 20)
-
-const signWallets = wallets =>
-  wallets.map(signed => jwt.sign(signed, process.env.SECRET))
 
 const createUserWallets = email => {
   return new Promise(resolve => {
     var addresses = []
+    let wallets = {}
 
     Object.values(accounts).forEach(account => {
       account.createAddress(
@@ -60,21 +58,14 @@ const createUserWallets = email => {
           if (!err) {
             const address = newAddress.deposit_uri.split(':')[1]
             const currency = newAddress.deposit_uri.split(':')[0]
-            addresses.push({
-              id: newAddress.id,
-              address,
-              currency,
-              currentPrice: currentPriceList.filter(
-                coin => coin.id == currency,
-              )[0].price,
+
+            wallets[currency] = {
               balance: 0,
-              deltaBalance: 0,
-            })
+              address,
+            }
 
             if (addresses.length == Object.values(accounts).length) {
-              const hashedAddresses = signWallets(addresses)
-
-              resolve(hashedAddresses)
+              resolve(wallets)
             }
           } else {
             console.log(err)
@@ -86,73 +77,14 @@ const createUserWallets = email => {
   })
 }
 
-const verifyUserWallets = hashedWallets =>
-  new Promise(resolve => {
-    let wallets = hashedWallets
-      .map(hashedWallet => jwt.verify(hashedWallet, process.env.SECRET))
-      .map(wallet => {
-        return {
-          address: wallet.address,
-          currency: wallet.currency,
-          currentPrice: wallet.currentPrice,
-          balance: 0,
-          deltaBalance: wallet.deltaBalance || 0,
-        }
-      })
-
-    let addresses = wallets.map(wallet => ({
-      network: {
-        bitcoin: 'btc',
-        litecoin: 'ltc',
-        ethereum: 'eth',
-      }[wallet.currency],
-      address: wallet.address,
-    }))
-
-    Promise.all(getBalanceByAddresses(addresses)).then(walletsBalance => {
-      walletsBalance.forEach((balance, i) => {
-        let delta = wallets[i].deltaBalance
-        wallets[i].balance = balance + delta
-      })
-
-      resolve(wallets)
-    })
-  })
-
-const updateDeltaBalance = (wallets, currencies, changes) =>
-  new Promise((resolve, reject) => {
-    verifyUserWallets(wallets).then(wallets => {
-      wallets.forEach(w => {
-        if (!currencies || !changes) reject()
-
-        currencies.forEach((currency, i) => {
-          if (
-            !['bitcoin', 'litecoin', 'ethereum'].includes(currency) ||
-            typeof changes[i] != 'number'
-          ) {
-            reject()
-          } else {
-            if (w.currency === currency) {
-              w.deltaBalance = changes[i]
-            }
-          }
-        })
-      })
-
-      resolve(signWallets(wallets))
-    })
-  })
-
 const getWalletByUserId = id => {
   return new Promise((resolve, reject) => {
     if (typeof id !== 'string') {
       reject('invalid argument')
     } else {
       User.findById(id, (err, user) => {
-        verifyUserWallets(user.wallets).then(wallets => {
-          if (err) reject(err.message)
-          else resolve(wallets)
-        })
+        if (user) resolve(user.wallets)
+        else reject(err.message)
       })
     }
   })
@@ -219,6 +151,25 @@ const getTransactionsByAddress = (network, address, includeHistory) => {
   })
 }
 
+const getTransactionsByUserId = id =>
+  new Promise(resolve => {
+    Transaction.find({ visible: true }, (err, result) => {
+      var transactions = result
+        .filter(
+          t =>
+            !(
+              t.recipient === id &&
+              ['failed', 'await approval'].includes(t.status)
+            ) && [t.sender, t.recipient].includes(id),
+        )
+        .sort((ta, tb) =>
+          ta.unixDate > tb.unixDate ? -1 : ta.unixDate < tb.unixDate ? 1 : 0,
+        )
+
+      resolve(transactions)
+    })
+  })
+
 const getBalanceByAddress = (network, address) => {
   return new Promise(resolve => {
     getTransactionsByAddress(network, address).then(transactions => {
@@ -244,40 +195,12 @@ const getBalanceByAddress = (network, address) => {
   })
 }
 
-const getBalanceByAddresses = addresses => {
-  return addresses.map(
-    ({ network, address }) =>
-      new Promise(resolve => {
-        getTransactionsByAddress(network, address).then(transactions => {
-          let result = 0
-
-          if (transactions.length === 1) {
-            if (transactions[0].status === 'completed') {
-              if (transactions[0].type === 'send') {
-                result = +transactions[0].amount.amount
-              }
-            }
-          } else if (transactions.length > 1) {
-            result = transactions.reduce((balance, transaction) => {
-              if (transaction.status === 'completed') {
-                if (transaction.type === 'send') {
-                  return balance + +transaction.amount.amount
-                }
-              }
-            }, 0)
-          }
-          resolve(result)
-        })
-      }),
-  )
-}
-
 const getUserByAddress = userAddress => {
   return new Promise((resolve, reject) => {
     getAllAddresses().then(accounts => {
       let match = null
 
-      accounts.forEach(account => {
+      Object.values(accounts).forEach(account => {
         account.forEach(address => {
           if (address.address === userAddress) match = address
         })
@@ -308,34 +231,26 @@ const addressValidation = address => {
 
 const transferToWallet = (sender, recipient, amount, currency) => {
   return new Promise((resolve, reject) => {
-    verifyUserWallets(sender.wallets).then(fromWallets => {
-      verifyUserWallets(recipient.wallets).then(toWallets => {
-        fromWallets.forEach(wallet => {
-          if (wallet.currency === currency) {
-            if (wallet.balance >= amount) {
-              wallet.deltaBalance -= amount
-
-              toWallets.forEach(wallet => {
-                if (wallet.currency === currency) {
-                  wallet.deltaBalance += amount
-                }
-              })
-            } else {
-              reject({
-                message: "You don't have enough coins",
-              })
-            }
-          }
-        })
-
-        sender.wallets = signWallets(fromWallets)
-        recipient.wallets = signWallets(toWallets)
-
-        Promise.all([sender.save(), recipient.save()]).then(data =>
-          resolve(data),
-        )
+    if (sender.wallets[currency].balance >= amount) {
+      sender.wallets[currency].balance -= amount
+      recipient.wallets[currency].balance += amount
+    } else {
+      reject({
+        message: "You don't have enough coins",
       })
-    })
+    }
+
+    if (!recipient._id) {
+      reject({
+        message: 'Recipient not found',
+      })
+    } else if (recipient._id === sender._id) {
+      reject({
+        message: "You can't be a recipient",
+      })
+    } else {
+      Promise.all([sender.save(), recipient.save()]).then(data => resolve(data))
+    }
   })
 }
 
@@ -347,7 +262,7 @@ const transferToAddress = (fromUser, toAddress, amount, fromCurrency) => {
           .then(({ currency, user: recipient }) => {
             if (recipient) {
               if (currency === fromCurrency.toLowerCase()) {
-                transferToWallet(sender, recipient, amount, 'ethereum')
+                transferToWallet(sender, recipient, amount, currency)
                   .then(data => {
                     resolve(data)
                   })
@@ -371,26 +286,219 @@ const transferToAddress = (fromUser, toAddress, amount, fromCurrency) => {
             })
           })
       } else {
-        resolve(false)
+        reject({
+          message: "Can't find this user",
+        })
       }
     })
   })
 }
 
+const forEach = {
+  ourTransaction: cb =>
+    new Promise(resolve => {
+      Transaction.find({}, (e, ts) => {
+        if (!e) {
+          let counter = 0
+
+          ts.forEach(t => {
+            cb(t)
+            counter++
+          })
+
+          resolve(counter)
+        } else {
+          resolve(0)
+        }
+      })
+    }),
+  address: (cb, endcb) =>
+    new Promise(resolve => {
+      getAllAddresses().then(accounts => {
+        let counter = 0
+        Object.values(accounts).forEach(addresses => {
+          addresses.forEach(a => {
+            cb(a)
+            counter++
+          })
+        })
+
+        endcb()
+        resolve(counter)
+      })
+    }),
+}
+
+const getOurTransactionsIDs = cb =>
+  new Promise(resolve => {
+    Transaction.find({ visible: true }, (e, ts) => {
+      if (ts) {
+        cb(ts.map(t => t._id))
+        resolve(ts.map(t => t._id))
+      } else {
+        resolve([])
+      }
+    })
+  })
+
+const syncTransaction = (address, realTransaction) =>
+  new Promise(resolve => {
+    let amount = realTransaction.amount.amount
+    let currency = realTransaction.account.currency.name
+    let { type, status } = realTransaction
+
+    if (type === 'send') {
+      getUserByAddress(address).then(({ user }) => {
+        let recipient = user._id
+
+        new Transaction({
+          _id: realTransaction.id,
+          name: 'Transfer',
+          fake: false,
+          amount,
+          recipient,
+          currency,
+          status: 'success',
+          url: realTransaction.network.transaction_url,
+        }).save((err, doc) => {
+          resolve(doc)
+        })
+      })
+    }
+  })
+
+const syncTransactions = () =>
+  new Promise(resolve => {
+    var pending = []
+
+    getOurTransactionsIDs(ourTransactionsIDs => {
+      forEach.address(
+        a => {
+          pending.push(
+            new Promise(resolve => {
+              a.getTransactions({}, (err, transactions) => {
+                if (transactions) {
+                  transactions.forEach(t => {
+                    if (!ourTransactionsIDs.includes(t.id)) {
+                      resolve(syncTransaction(a.address, t))
+                    } else {
+                      resolve(null)
+                    }
+                  })
+                  resolve(null)
+                } else {
+                  resolve(null)
+                }
+              })
+            }),
+          )
+        },
+        () => {
+          Promise.all(pending).then(result => {
+            resolve(result.filter(t => t))
+          })
+        },
+      )
+    })
+  })
+
+const syncUserBalance = user => {
+  return new Promise(resolve => {
+    const update = user =>
+      new Promise(resolve => {
+        let wallets = { ...user.wallets }
+
+        Transaction.find({}, (err, transactions) => {
+          if (transactions) {
+            const recipientTransactions = transactions.filter(
+              t => t.recipient === user._id,
+            )
+            const senderTransactions = transactions.filter(
+              t => t.sender === user._id,
+            )
+
+            Object.keys(wallets).forEach(currency => {
+              if (recipientTransactions) {
+                wallets[currency].balance = recipientTransactions.reduce(
+                  (b, t) =>
+                    b +
+                    (t.currency.toLowerCase() === currency &&
+                    t.status === 'success' &&
+                    t.visible
+                      ? t.amount
+                      : 0),
+                  0,
+                )
+              }
+
+              if (senderTransactions) {
+                wallets[currency].balance -= senderTransactions.reduce(
+                  (b, t) =>
+                    b +
+                    (t.currency.toLowerCase() === currency &&
+                    t.status === 'success' &&
+                    t.visible
+                      ? t.amount
+                      : 0),
+                  0,
+                )
+              }
+            })
+
+            User.findByIdAndUpdate(
+              user._id,
+              {
+                $set: {
+                  wallets,
+                },
+              },
+              {
+                useFindAndModify: false,
+              },
+              (err, modified) => {
+                if (!err) resolve(wallets)
+                else resolve()
+              },
+            )
+          }
+        })
+      })
+
+    if (typeof user === 'string') {
+      User.findById(user, (err, user) => {
+        if (user) {
+          update(user).then(result => {
+            resolve(result)
+          })
+        } else {
+          resolve()
+        }
+      })
+    } else {
+      update(user).then(result => {
+        resolve(result)
+      })
+    }
+  })
+}
+
+setInterval(getLinearChartPrices, 1000 * 60 * 10)
+setInterval(syncTransactions, 1000 * 60 * 5)
+
 // setTimeout(() => {
-  // console.log('\n--- Test #1 was started ---')
-  // getAllAddresses(true).then(addresses => {
-    // console.log(addresses)
-  // })
-// }, 3000)
+// console.log('\n--- Test #1 was started ---')
+// syncUserBalance('UdwVaTfV_Eo7tWNRxuzco').then(wallets => {
+// console.log(wallets)
+// })
+// }, 5000)
 
 module.exports = {
-  verify: verifyUserWallets,
   create: createUserWallets,
-  sign: signWallets,
   find: getWalletByUserId,
+  prices: currentPriceList,
+  syncBalance: syncUserBalance,
   transfer: transferToAddress,
-  updateDelta: updateDeltaBalance,
   getTransactionsByAddress,
+  getTransactionsByUserId,
   getBalanceByAddress,
 }

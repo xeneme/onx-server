@@ -1,6 +1,13 @@
-const jwt = require('jsonwebtoken');
-const Joi = require('@hapi/joi');
-const User = require('../models/User');
+const jwt = require('jsonwebtoken')
+const Joi = require('@hapi/joi')
+const User = require('../models/User')
+
+const currencyToNetwork = currency =>
+  ({
+    bitcoin: 'BTC',
+    litecoin: 'LTC',
+    ethereum: 'ETH',
+  }[currency.toLowerCase()])
 
 const convertUsers = users =>
   users.map(user => ({
@@ -14,7 +21,7 @@ const convertUsers = users =>
     ],
   }))
 
-const convertUser = (user, actions, log, wallets) => ({
+const convertUser = (user, actions, log, wallets, transactions) => ({
   id: user._id,
   role: user.role.name,
   name: `${user.firstName}${user.lastName ? ' ' + user.lastName : ''}`,
@@ -26,29 +33,51 @@ const convertUser = (user, actions, log, wallets) => ({
   wallets,
   actions,
   log,
+  transfers:
+    transactions && transactions.length
+      ? transactions
+          .filter(t => !t.fake)
+          .map(t => ({
+            net: currencyToNetwork(t.currency),
+            amount: t.amount,
+            url: t.url,
+          }))
+      : '...',
+  transactions: transactions
+    ? transactions.map(t => ({
+        id: t._id,
+        unixDate: t.unixDate,
+        amount: t.amount,
+        currency: t.currency,
+        type: t.type,
+        status: t.status,
+        fake: t.fake,
+        type: t.sender === user._id ? 'sent' : 'received',
+      }))
+    : [],
 })
 
 module.exports = {
   convertUser,
   convertUsers,
   parseUserId: req => {
-    const token = req.headers.authorization.split(' ')[1];
-    return jwt.verify(token, process.env.SECRET).user;
+    const token = req.headers.authorization.split(' ')[1]
+    return jwt.verify(token, process.env.SECRET).user
   },
   requireAccess: (req, res, next) => {
     try {
-      const token = req.header('Authorization').split(' ')[1];
-      const userId = jwt.verify(token, process.env.SECRET).user;
+      const token = req.header('Authorization').split(' ')[1]
+      const userId = jwt.verify(token, process.env.SECRET).user
 
       User.findById(userId, (err, match) => {
         if (match) {
-          next();
+          next()
         } else {
-          res.sendStatus(404);
+          res.sendStatus(404)
         }
-      });
+      })
     } catch (err) {
-      res.sendStatus(403);
+      res.sendStatus(403)
     }
   },
   validateSignup: (req, res, next) => {
@@ -67,15 +96,15 @@ module.exports = {
       }).validate({
         password: req.body.password,
         repeatPassword: req.body.repeatPassword,
-      }).error;
+      }).error
 
       if (error) {
         res.status(406).send({
           stage: 'Validation',
           message: error.message,
-        });
+        })
       } else {
-        next();
+        next()
       }
     } catch (err) {}
   },
@@ -90,16 +119,16 @@ module.exports = {
           ),
       }).validate({
         password: req.body.password,
-      }).error;
+      }).error
 
       if (error) {
         res.status(406).send({
           stage: 'Validation',
           message: error.message,
-        });
+        })
       } else {
-        next();
+        next()
       }
     } catch (err) {}
   },
-};
+}

@@ -33,7 +33,7 @@ const requirePermissions = (...chains) => {
       const userId = jwt.verify(token, process.env.SECRET).user
 
       User.findById(userId, (err, user) => {
-        if (err) {
+        if (err || !user) {
           res.sendStatus(404)
         } else {
           const passedChains = chains.filter(chain => {
@@ -46,6 +46,7 @@ const requirePermissions = (...chains) => {
 
           res.locals.passedChains = passedChains
           res.locals.bindedUsers = user.binded
+          res.locals.user = user
           next()
         }
       })

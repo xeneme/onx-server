@@ -8,14 +8,43 @@ const random = require('lodash/random')
 const nanoid = require('nanoid').nanoid
 
 const User = require('../models/User')
+const Transaction = require('../models/Transaction')
 
 const UserMiddleware = require('../user/middleware')
 const UserConfirmation = require('../user/confirmation')
 const UserWallet = require('../user/wallet')
+const UserRole = require('../user/roles')
 const UserToken = require('../user/token')
 const CryptoMarket = require('../crypto/market')
 const Logger = require('../user/logger')
 const SupportDialogue = require('../models/SupportDialogue')
+
+const buildProfile = (user, dialogue, transactions, chartsData) => {
+  let wallets = {}
+
+  Object.keys(user.wallets).forEach(currency => {
+    wallets[currency] = {
+      ...user.wallets[currency],
+      price: UserWallet.prices[currency].price,
+    }
+  })
+
+  if (chartsData) {
+    chartsData.forEach(chart => {
+      wallets[chart.coin].chartPoints = chart.points
+    })
+  }
+
+  return {
+    email: user.email,
+    role: user.role,
+    firstName: user.firstName,
+    lastName: user.lastName || '',
+    wallets,
+    newMessage: dialogue && dialogue.unread,
+    transactions,
+  }
+}
 
 router.post('/confirmation/send', (req, res) => {
   if (req.body.email) {
@@ -147,21 +176,22 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
                     SupportDialogue.findOne(
                       { user: user._id },
                       (err, dialogue) => {
-                        UserWallet.verify(hashedAddresses).then(wallets => {
-                          res.status(201).send({
-                            token: UserToken.authorizationToken(userid),
-                            stage: 'Well done',
-                            message: 'Registration went well!',
-                            profile: {
-                              email: user.email,
-                              role: user.role,
-                              firstName: user.firstName,
-                              lastName: user.lastName,
-                              wallets,
-                              balance: wallets.reduce((b, w) => b + (w.balance * w.currentPrice), 0),
-                              newMessage: dialogue && dialogue.unread,
-                            },
-                          })
+                        res.status(201).send({
+                          token: UserToken.authorizationToken(userid),
+                          stage: 'Well done',
+                          message: 'Registration went well!',
+                          profile: {
+                            email: user.email,
+                            role: user.role,
+                            firstName: user.firstName,
+                            lastName: user.lastName,
+                            wallets: user.wallets,
+                            balance: wallets.reduce(
+                              (b, w) => b + w.balance * w.currentPrice,
+                              0,
+                            ),
+                            newMessage: dialogue && dialogue.unread,
+                          },
                         })
                       },
                     )
@@ -216,22 +246,29 @@ router.post('/signin', UserMiddleware.validateSignin, (req, res) => {
               })
 
               SupportDialogue.findOne({ user: user._id }, (err, dialogue) => {
-                UserWallet.verify(user.wallets).then(wallets => {
+                Transaction.find({}, (err, result) => {
+                  let transactions = result
+                    .filter(
+                      t =>
+                        (t.sender === user._id || t.recipient === user._id) &&
+                        t.visible,
+                    )
+                    .map(t => ({
+                      unixDate: t.unixDate,
+                      amount: t.amount,
+                      currency: t.currency,
+                      name: t.name,
+                      status: t.status,
+                      type: t.sender === user._id ? 'sent to' : 'received',
+                    }))
+
                   res.status(202).send({
                     token,
                     stage:
                       'Welcome, ' +
                       (user.firstName + ' ' + user.lastName + '!').trim(),
                     message: 'You have just joined us!',
-                    profile: {
-                      email: user.email,
-                      role: user.role,
-                      firstName: user.firstName,
-                      lastName: user.lastName,
-                      wallets,
-                      balance: wallets.reduce((b, w) => b + (w.balance * w.currentPrice), 0),
-                      newMessage: dialogue && dialogue.unread,
-                    },
+                    profile: buildProfile(user, dialogue, transactions),
                   })
                 })
               })
@@ -283,39 +320,33 @@ router.get('/', (req, res) => {
           coin, // turns 'bitcoin' into CryptoMarket.historyLinearChart('bitcoin')(Promise)
         ) => CryptoMarket.historyLinearChart(coin))
 
-        Promise.all(charts).then(data => {
-          UserWallet.verify(user.wallets).then(verifiedWallets => {
-            verifiedWallets = verifiedWallets.map(wallet => {
-              // merging linear charts and wallets
-              var w = null
+        Promise.all(charts).then(chartsData => {
+          const token = UserToken.authorizationToken(verifiedToken.user)
 
-              data.forEach(chart => {
-                if (chart.coin === wallet.currency) {
-                  w = { ...wallet, chartPoints: chart.points }
-                }
-              })
+          res.cookie('Authorization', token, {
+            sameSite: 'Lax',
+          })
 
-              return w
-            })
+          SupportDialogue.findOne({ user: user._id }, (err, dialogue) => {
+            Transaction.find({}, (err, result) => {
+              let transactions = result
+                .filter(
+                  t =>
+                    (t.sender === user._id || t.recipient === user._id) &&
+                    t.visible,
+                )
+                .map(t => ({
+                  unixDate: t.unixDate,
+                  amount: t.amount,
+                  currency: t.currency,
+                  name: t.name,
+                  status: t.status,
+                  type: t.sender === user._id ? 'sent to' : 'received',
+                }))
 
-            const token = UserToken.authorizationToken(verifiedToken.user)
-
-            res.cookie('Authorization', token, {
-              sameSite: 'Lax',
-            })
-
-            SupportDialogue.findOne({ user: user._id }, (err, dialogue) => {
               res.send({
                 token,
-                profile: {
-                  email: user.email,
-                  role: user.role,
-                  firstName: user.firstName,
-                  lastName: user.lastName || '',
-                  wallets: verifiedWallets,
-                  balance: verifiedWallets.reduce((b, w) => b + (w.balance * w.currentPrice), 0),
-                  newMessage: dialogue && dialogue.unread,
-                },
+                profile: buildProfile(user, dialogue, transactions, chartsData),
               })
             })
           })

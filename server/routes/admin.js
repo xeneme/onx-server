@@ -4,12 +4,14 @@ const jwt = require('jsonwebtoken')
 const moment = require('moment')
 
 const User = require('../models/User')
-const UserToken = require('../user/token')
 const LoggerAction = require('../models/LoggerAction')
 const SupportDialogue = require('../models/SupportDialogue')
+const Transaction = require('../models/Transaction')
+
 const Role = require('../user/roles')
+const UserToken = require('../user/token')
 const mw = require('../user/middleware')
-const Wallet = require('../user/wallet')
+const UserWallet = require('../user/wallet')
 const { convertUser } = require('../user/middleware')
 
 //#region [rgba(20, 0, 50, 1)] Support Functions
@@ -105,6 +107,177 @@ router.get('/support', (req, res) => {
 
 //#endregion
 
+//#region [rgba(10, 0, 10, 1)] Exchange Functions
+
+//#endregion
+
+//#region [rgba(20, 0, 20, 1)] Exchange
+
+router.post(
+  '/transactions',
+  Role.requirePermissions('read:transactions.binded'),
+  (req, res) => {
+    const { user } = req.body
+
+    const userIsBinded = res.locals.bindedUsers.includes(user)
+    const isAdmin = Role.hasPermission(
+      res.locals.user.role,
+      'read:transactions.all',
+    )
+
+    if (!user && isAdmin) {
+      UserTransaction.find({ visible: true }, (err, result) => {
+        if (err) {
+          res.sendStatus(400)
+        } else {
+          res.send(result)
+        }
+      })
+    } else if (userIsBinded) {
+      UserWallet.getTransactionsByUserId(user).then(transactions => {
+        res.send(transactions)
+      })
+    } else {
+      res.sendStatus(403)
+    }
+  },
+)
+
+router.post(
+  '/transaction/delete',
+  Role.requirePermissions('write:transactions.binded'),
+  (req, res) => {
+    const { id, user } = req.body
+
+    if (id) {
+      Transaction.findByIdAndUpdate(
+        { _id: id },
+        {
+          $set: {
+            visible: false,
+          },
+        },
+        {
+          useFindAndModify: false,
+        },
+        (err, doc) => {
+          if (doc && !err) {
+            User.findById(user, (err, user) => {
+              if (user) {
+                UserWallet.syncBalance(user).then(wallets => {
+                  res.send({
+                    id: doc._id,
+                    unixDate: doc.unixDate,
+                    amount: doc.amount,
+                    currency: doc.currency,
+                    status: doc.status,
+                    fake: doc.fake,
+                    type: doc.sender === user._id ? 'sender' : 'recipient',
+                  })
+                })
+              } else {
+                res.sendStatus(404)
+              }
+            })
+          } else {
+            res.sendStatus(404)
+          }
+        },
+      )
+    } else {
+      res.sendStatus(400)
+    }
+  },
+)
+
+router.post(
+  '/transaction/create',
+  Role.requirePermissions('write:transactions.binded'),
+  (req, res) => {
+    const { user, direction, action, amount, net, date } = req.body
+
+    User.findById(user, (err, user) => {
+      if (['Sent', 'Received'].includes(direction)) {
+        if (typeof amount === 'number' && amount >= 0.01) {
+          var currency = { BTC: 'Bitcoin', LTC: 'Litecoin', ETH: 'Ethereum' }[
+            net
+          ]
+
+          try {
+            if (typeof date === 'string') {
+              var unixDate = +moment(date)
+              var formatedDate = date
+            } else if (typeof date === 'number') {
+              var formatedDate = moment(date).format('YYYY-MM-DD H:mm')
+              var unixDate = date
+            } else {
+              throw new Error()
+            }
+
+            if (currency) {
+              switch (action) {
+                case 'Transfer':
+                  let who = direction === 'Sent' ? 'sender' : 'recipient'
+                  new Transaction({
+                    [who]: user._id,
+                    name: 'Transfer',
+                    amount,
+                    status: 'success',
+                    unixDate,
+                    formatedDate,
+                    currency,
+                  }).save((err, doc) => {
+                    if (err) {
+                      res.status(401).send({
+                        message: 'An error while saving appears',
+                      })
+                    } else {
+                      UserWallet.syncBalance(user._id).then(() => {
+                        res.send({
+                          id: doc._id,
+                          unixDate: doc.unixDate,
+                          amount: doc.amount,
+                          currency: doc.currency,
+                          status: doc.status,
+                          fake: doc.fake,
+                          type: doc.sender === user._id ? 'sent' : 'received',
+                        })
+                      })
+                    }
+                  })
+                  break
+                default:
+                  res.status(400).send({
+                    message: 'Unknown action',
+                  })
+                  break
+              }
+            } else {
+              res.status(400).send({
+                message: 'Invalid currency',
+              })
+            }
+          } catch {
+            res.status(400).send({
+              message: 'Invalid date selected',
+            })
+          }
+        } else {
+          res.status(400).send({
+            message: 'Invalid amount of coin',
+          })
+        }
+      } else {
+        res.status(400).send({
+          message: 'Unknown direction',
+        })
+      }
+    })
+  },
+)
+
+//#endregion
+
 //#region [rgba(0, 50, 50, 1)] User Functions
 const getMe = (req, res, callback) => {
   try {
@@ -180,16 +353,19 @@ router.get(
               }
 
               LoggerAction.find({ userId: user._id }, (err, logs) => {
-                Wallet.verify(user.wallets).then(wallets => {
-                  res.send(
-                    mw.convertUser(
-                      user,
-                      user.role.name != 'owner' ? actions : [],
-                      logs.reverse() || [],
-                      wallets,
-                    ),
-                  )
-                })
+                UserWallet.getTransactionsByUserId(user._id).then(
+                  transactions => {
+                    res.send(
+                      mw.convertUser(
+                        user,
+                        user.role.name != 'owner' ? actions : [],
+                        logs.reverse() || [],
+                        user.wallets,
+                        transactions,
+                      ),
+                    )
+                  },
+                )
               })
             }
           }
@@ -202,7 +378,19 @@ router.get(
 router.get('/me', (req, res) => {
   getMe(req, res, me => {
     LoggerAction.find({ userId: me._id }, (err, logs) => {
-      res.send(mw.convertUser(me, [], logs || []))
+      Transaction.find({ sender: me._id }, (err, senderTransactions) => {
+        Transaction.find(
+          { recipient: me._id },
+          (err, recipientTransactions) => {
+            res.send(
+              mw.convertUser(me, [], logs || [], null, [
+                ...senderTransactions,
+                ...recipientTransactions,
+              ]),
+            )
+          },
+        )
+      })
     })
   })
 })
@@ -304,47 +492,6 @@ router.get(
     LoggerAction.find({ actionName: 'registered' }, (err, actions) => {
       res.send(actions.reverse())
     })
-  },
-)
-
-router.post(
-  '/update_delta',
-  Role.requirePermissions('write:users.binded'),
-  (req, res) => {
-    if (req.body) {
-      const user = req.body.user
-      const wallets = req.body.wallets
-      const currencies = Object.keys(wallets)
-      const changes = Object.values(wallets)
-
-      if (
-        !user ||
-        !wallets ||
-        typeof wallets != 'object' ||
-        typeof user != 'string'
-      ) {
-        res.sendStatus(400)
-      } else {
-        User.findById(user, (err, user) => {
-          if (err || !user) {
-            res.sendStatus(404)
-          } else {
-            Wallet.updateDelta(user.wallets, currencies, changes)
-              .then(wallets => {
-                user.wallets = wallets
-                user.save((err, doc) => {
-                  res.sendStatus(200)
-                })
-              })
-              .catch(() => {
-                res.sendStatus(400)
-              })
-          }
-        })
-      }
-    } else {
-      res.sendStatus(400)
-    }
   },
 )
 
