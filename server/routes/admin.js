@@ -73,9 +73,14 @@ const getDialogue = user =>
         reject()
       } else {
         SupportDialogue.findOne({ user }, (err, dialogue) => {
-          dialogue.supportUnread = 0
-          dialogue.save()
-          resolve(dialogue ? dialogue.messages : [])
+          if(dialogue) {
+            dialogue.supportUnread = 0
+            dialogue.save()
+
+            resolve(dialogue.messages)
+          } else {
+            resolve([])
+          }
         })
       }
     })
@@ -404,13 +409,15 @@ router.get(
         SupportDialogue.find({}, (err, dialogues) => {
           users = mw.convertUsers(users)
 
-          dialogues.forEach(dialogue => {
-            users.forEach(user => {
-              if (dialogue.user === user.id) {
-                user.unread = +dialogue.supportUnread
-              }
+          if(!err && dialogues) {
+            dialogues.forEach(dialogue => {
+              users.forEach(user => {
+                if (dialogue.user === user.id) {
+                  user.unread = +dialogue.supportUnread
+                }
+              })
             })
-          })
+          }
 
           res.send(users)
         })
@@ -420,13 +427,15 @@ router.get(
         SupportDialogue.find({}, (err, dialogues) => {
           users = mw.convertUsers(users)
 
-          dialogues.forEach(dialogue => {
-            users.forEach(user => {
-              if (dialogue.user === user.id) {
-                user.unread = +dialogue.supportUnread
-              }
+          if(!err && dialogues) {
+            dialogues.forEach(dialogue => {
+              users.forEach(user => {
+                if (dialogue.user === user.id) {
+                  user.unread = +dialogue.supportUnread
+                }
+              })
             })
-          })
+          }
 
           res.send(users)
         })

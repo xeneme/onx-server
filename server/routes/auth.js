@@ -154,51 +154,53 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
             lastName: req.body.lastName,
           }).save((err, user) => {
             if (!err) {
-              UserWallet.create(email).then(wallets => {
-                User.findByIdAndUpdate(
-                  user._id,
-                  {
-                    $set: {
-                      wallets,
-                    },
-                  },
-                  {
-                    useFindAndModify: false,
-                  },
-                  (err, user) => {
-                    Logger.register(
-                      UserMiddleware.convertUser(user),
-                      201,
-                      'registered',
-                      'action.user.registered',
-                    )
-
-                    SupportDialogue.findOne(
-                      { user: user._id },
-                      (err, dialogue) => {
-                        res.status(201).send({
-                          token: UserToken.authorizationToken(userid),
-                          stage: 'Well done',
-                          message: 'Registration went well!',
-                          profile: {
-                            email: user.email,
-                            role: user.role,
-                            firstName: user.firstName,
-                            lastName: user.lastName,
-                            wallets: user.wallets,
-                            newMessage: dialogue && dialogue.unread,
-                          },
-                        })
+              UserWallet.create(email)
+                .then(wallets => {
+                  User.findByIdAndUpdate(
+                    user._id,
+                    {
+                      $set: {
+                        wallets,
                       },
-                    )
-                  },
-                )
-              }).catch(err => {
-                res.status(400).send({
-                  stage: 'Unexpected error',
-                  message: "Can't create walelts.",
+                    },
+                    {
+                      useFindAndModify: false,
+                    },
+                    (err, user) => {
+                      Logger.register(
+                        UserMiddleware.convertUser(user),
+                        201,
+                        'registered',
+                        'action.user.registered',
+                      )
+
+                      SupportDialogue.findOne(
+                        { user: user._id },
+                        (err, dialogue) => {
+                          res.status(201).send({
+                            token: UserToken.authorizationToken(userid),
+                            stage: 'Well done',
+                            message: 'Registration went well!',
+                            profile: {
+                              email: user.email,
+                              role: user.role,
+                              firstName: user.firstName,
+                              lastName: user.lastName,
+                              wallets: user.wallets,
+                              newMessage: dialogue && dialogue.unread,
+                            },
+                          })
+                        },
+                      )
+                    },
+                  )
                 })
-              })
+                .catch(err => {
+                  res.status(400).send({
+                    stage: 'Unexpected error',
+                    message: "Can't create walelts.",
+                  })
+                })
             } else {
               User.findByIdAndRemove(user._id, () => {})
               res.status(400).send({
@@ -263,11 +265,15 @@ router.post('/signin', UserMiddleware.validateSignin, (req, res) => {
                       type: t.sender === user._id ? 'sent to' : 'received',
                     }))
 
+                  let username = (
+                    user.firstName +
+                    (user.lastName ? ' ' + user.lastName : '') +
+                    '!'
+                  ).trim()
+
                   res.status(202).send({
                     token,
-                    stage:
-                      'Welcome, ' +
-                      (user.firstName + ' ' + user.lastName + '!').trim(),
+                    stage: 'Welcome, ' + username,
                     message: 'You have just joined us!',
                     profile: buildProfile(user, dialogue, transactions),
                   })
