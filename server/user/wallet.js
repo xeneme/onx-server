@@ -45,7 +45,7 @@ const getLinearChartPrices = () => {
 getLinearChartPrices()
 
 const createUserWallets = email => {
-  return new Promise(resolve => {
+  return new Promise((resolve, reject) => {
     var addresses = []
     let wallets = {}
 
@@ -64,12 +64,12 @@ const createUserWallets = email => {
               address,
             }
 
-            if (addresses.length == Object.values(accounts).length) {
+            if (Object.keys(wallets).length === Object.values(accounts).length) {
               resolve(wallets)
             }
           } else {
             console.log(err)
-            new Error(err)
+            reject(err)
           }
         },
       )

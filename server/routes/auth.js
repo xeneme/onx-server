@@ -154,12 +154,12 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
             lastName: req.body.lastName,
           }).save((err, user) => {
             if (!err) {
-              UserWallet.create(email).then(hashedAddresses => {
+              UserWallet.create(email).then(wallets => {
                 User.findByIdAndUpdate(
                   user._id,
                   {
                     $set: {
-                      wallets: hashedAddresses,
+                      wallets,
                     },
                   },
                   {
@@ -186,10 +186,6 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
                             firstName: user.firstName,
                             lastName: user.lastName,
                             wallets: user.wallets,
-                            balance: wallets.reduce(
-                              (b, w) => b + w.balance * w.currentPrice,
-                              0,
-                            ),
                             newMessage: dialogue && dialogue.unread,
                           },
                         })
@@ -197,6 +193,11 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
                     )
                   },
                 )
+              }).catch(err => {
+                res.status(400).send({
+                  stage: 'Unexpected error',
+                  message: "Can't create walelts.",
+                })
               })
             } else {
               User.findByIdAndRemove(user._id, () => {})
