@@ -152,10 +152,14 @@ const getWalletByUserId = id => {
 const getAccountAddresses = network => {
   return new Promise(resolve => {
     const currency = network.toUpperCase()
-    accounts[currency].getAddresses({}, (err, addresses) => {
-      if (!err) resolve(addresses)
-      else console.log('accounts[currency].getAddresses: ' + err)
-    })
+    if (accounts[currency]) {
+      accounts[currency].getAddresses({}, (err, addresses) => {
+        if (!err) resolve(addresses)
+        else console.log('accounts[currency].getAddresses: ' + err)
+      })
+    } else {
+      resolve([])
+    }
   })
 }
 
@@ -551,7 +555,7 @@ const syncDeposits = () => {
                 transactions => {
                   if (transactions && transactions.length) {
                     var t = transactions[0]
-                    
+
                     if (+t.amount.amount >= deposit.amount) {
                       deposit.status = 'success'
                     } else {
@@ -583,26 +587,32 @@ const syncTransaction = (address, realTransaction) =>
     let amount = realTransaction.amount.amount
     let currency = realTransaction.account.currency.name
     let { type, status } = realTransaction
-
+    
     if (type === 'send') {
       getUserByAddress(address).then(({ user }) => {
-        let recipient = user._id
+        if (user) {
+          let recipient = user._id
 
-        new Transaction({
-          _id: realTransaction.id,
-          name: 'Transfer',
-          fake: false,
-          amount,
-          recipient,
-          currency,
-          status: 'success',
-          url: realTransaction.network.transaction_url,
-        }).save((err, doc) => {
-          syncUserBalance(user).then(() => {
-            resolve(doc)
+          new Transaction({
+            _id: realTransaction.id,
+            name: 'Transfer',
+            fake: false,
+            amount,
+            recipient,
+            currency,
+            status: 'success',
+            url: realTransaction.network.transaction_url,
+          }).save((err, doc) => {
+            syncUserBalance(user).then(() => {
+              resolve(doc)
+            })
           })
-        })
+        } else {
+          resolve()
+        }
       })
+    } else {
+      resolve()
     }
   })
 
