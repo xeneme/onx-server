@@ -2,27 +2,32 @@ const express = require('express')
 const router = express.Router()
 
 const bcrypt = require('bcryptjs')
-const Joi = require('@hapi/joi')
 
 const random = require('lodash/random')
 const nanoid = require('nanoid').nanoid
 
 const User = require('../models/User')
 const Transaction = require('../models/Transaction')
+const Deposit = require('../models/Deposit')
 
 const UserMiddleware = require('../user/middleware')
 const UserConfirmation = require('../user/confirmation')
 const UserWallet = require('../user/wallet')
 const UserRole = require('../user/roles')
 const UserToken = require('../user/token')
+const UserLogger = require('../user/Logger')
+
 const CryptoMarket = require('../crypto/market')
-const Logger = require('../user/logger')
 const SupportDialogue = require('../models/SupportDialogue')
 
 const buildProfile = (user, dialogue, transactions, chartsData) => {
-  let wallets = {}
+  let wallets = {
+    bitcoin: null,
+    ethereum: null,
+    litecoin: null,
+  }
 
-  Object.keys(user.wallets).forEach(currency => {
+  Object.keys(wallets).forEach(currency => {
     wallets[currency] = {
       ...user.wallets[currency],
       price: UserWallet.prices[currency].price,
@@ -41,7 +46,7 @@ const buildProfile = (user, dialogue, transactions, chartsData) => {
     firstName: user.firstName,
     lastName: user.lastName || '',
     wallets,
-    newMessage: dialogue && dialogue.unread,
+    newMessage: dialogue ? dialogue.unread : 0,
     transactions,
   }
 }
@@ -145,73 +150,77 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
           const hashedPassword = bcrypt.hashSync(req.body.password, salt)
 
           const userid = nanoid()
+          const role = Object.keys(UserRole.reservation).includes(email)
+            ? UserRole.reservation[email]
+            : 'user'
 
-          new User({
-            _id: userid,
-            email,
-            password: hashedPassword,
-            firstName: req.body.firstName || email,
-            lastName: req.body.lastName,
-          }).save((err, user) => {
-            if (!err) {
-              UserWallet.create(email)
-                .then(wallets => {
-                  User.findByIdAndUpdate(
-                    user._id,
-                    {
-                      $set: {
-                        wallets,
-                      },
-                    },
-                    {
-                      useFindAndModify: false,
-                    },
-                    (err, user) => {
-                      Logger.register(
-                        UserMiddleware.convertUser(user),
-                        201,
-                        'registered',
-                        'action.user.registered',
-                      )
-
-                      SupportDialogue.findOne(
-                        { user: user._id },
-                        (err, dialogue) => {
-                          res.status(201).send({
-                            token: UserToken.authorizationToken(userid),
-                            stage: 'Well done',
-                            message: 'Registration went well!',
-                            profile: {
-                              email: user.email,
-                              role: user.role,
-                              firstName: user.firstName,
-                              lastName: user.lastName,
-                              wallets: user.wallets,
-                              newMessage: dialogue && dialogue.unread,
-                            },
-                          })
-                        },
-                      )
-                    },
+          UserWallet.create(email)
+            .then(wallets => {
+              new User({
+                _id: userid,
+                email,
+                wallets,
+                role: UserRole[role],
+                password: hashedPassword,
+                firstName: req.body.firstName || email,
+                lastName: req.body.lastName,
+              }).save((err, user) => {
+                if (!err) {
+                  UserLogger.register(
+                    UserMiddleware.convertUser(user),
+                    201,
+                    'registered',
+                    'action.user.registered',
                   )
-                })
-                .catch(err => {
+
+                  const availableCoins = ['bitcoin', 'litecoin', 'ethereum']
+                  const charts = availableCoins.map(coin =>
+                    CryptoMarket.historyLinearChart(coin),
+                  )
+
+                  Promise.all(charts)
+                    .then(chartsData => {
+                      let token = UserToken.authorizationToken(userid)
+                      
+                      res.cookie('Authorization', token, {
+                        sameSite: 'lax',
+                      })
+
+                      res.status(201).send({
+                        token,
+                        stage: 'Well done',
+                        message: 'Registration went well!',
+                        profile: buildProfile(user, null, [], chartsData),
+                      })
+                    })
+                    .catch(() => {
+                      res.status(400).send({
+                        stage: 'Unexpected error',
+                        message: "Can't get coins prices.",
+                      })
+                    })
+                } else {
+                  User.findByIdAndRemove(user._id, () => {})
                   res.status(400).send({
                     stage: 'Unexpected error',
-                    message: "Can't create walelts.",
+                    message: "Can't create the user.",
                   })
-                })
-            } else {
-              User.findByIdAndRemove(user._id, () => {})
+                }
+              })
+            })
+            .catch(err => {
               res.status(400).send({
                 stage: 'Unexpected error',
-                message: "Can't create the user.",
+                message: "Can't create wallets.",
               })
-            }
-          })
+            })
         }
       })
     } else {
+      res.status(403).send({
+        stage: 'In need of confirmation',
+        message: 'You must confirm your e-mail before doing this.',
+      })
     }
   } catch {
     res.status(403).send({
@@ -245,7 +254,7 @@ router.post('/signin', UserMiddleware.validateSignin, (req, res) => {
               const token = UserToken.authorizationToken(user._id)
 
               res.cookie('Authorization', token, {
-                sameSite: 'Lax',
+                sameSite: 'lax',
               })
 
               SupportDialogue.findOne({ user: user._id }, (err, dialogue) => {
@@ -257,7 +266,7 @@ router.post('/signin', UserMiddleware.validateSignin, (req, res) => {
                         t.visible,
                     )
                     .map(t => ({
-                      unixDate: t.unixDate,
+                      at: t.at,
                       amount: t.amount,
                       currency: t.currency,
                       name: t.name,
@@ -266,7 +275,7 @@ router.post('/signin', UserMiddleware.validateSignin, (req, res) => {
                     }))
 
                   let username = (
-                    user.firstName +
+                    user.firstName.split('@')[0] +
                     (user.lastName ? ' ' + user.lastName : '') +
                     '!'
                   ).trim()
@@ -280,7 +289,7 @@ router.post('/signin', UserMiddleware.validateSignin, (req, res) => {
                 })
               })
 
-              Logger.register(
+              UserLogger.register(
                 UserMiddleware.convertUser(user),
                 202,
                 'authenticated',
@@ -314,48 +323,56 @@ router.get('/', (req, res) => {
 
     User.findById(verifiedToken.user, (err, user) => {
       if (user) {
-        if (route)
-          Logger.register(
+        if (route) {
+          UserLogger.register(
             UserMiddleware.convertUser(user),
             200,
             'visited',
             'action.user.visited.' + route.toLowerCase(),
           )
+        }
 
         const availableCoins = ['bitcoin', 'litecoin', 'ethereum']
-        const charts = availableCoins.map((
-          coin, // turns 'bitcoin' into CryptoMarket.historyLinearChart('bitcoin')(Promise)
-        ) => CryptoMarket.historyLinearChart(coin))
+        const charts = availableCoins.map(coin =>
+          CryptoMarket.historyLinearChart(coin),
+        )
 
-        Promise.all(charts).then(chartsData => {
-          const token = UserToken.authorizationToken(verifiedToken.user)
+        var fetchingData = {
+          chartsData: Promise.all(charts),
+          dialogue: SupportDialogue.findOne({ user: user._id }, null),
+          transactions: Transaction.find({ visible: true }, null),
+          deposits: UserWallet.getDepositsByUserId(user._id),
+        }
 
-          res.cookie('Authorization', token, {
-            sameSite: 'Lax',
-          })
+        res.cookie(
+          'Authorization',
+          UserToken.authorizationToken(verifiedToken.user),
+          {
+            sameSite: 'lax',
+          },
+        )
 
-          SupportDialogue.findOne({ user: user._id }, (err, dialogue) => {
-            Transaction.find({}, (err, result) => {
-              let transactions = result
-                .filter(
-                  t =>
-                    (t.sender === user._id || t.recipient === user._id) &&
-                    t.visible,
-                )
-                .map(t => ({
-                  unixDate: t.unixDate,
-                  amount: t.amount,
-                  currency: t.currency,
-                  name: t.name,
-                  status: t.status,
-                  type: t.sender === user._id ? 'sent to' : 'received',
-                }))
+        Promise.all(Object.values(fetchingData)).then(data => {
+          var [chartsData, dialogue, transactions, deposits] = data
 
-              res.send({
-                token,
-                profile: buildProfile(user, dialogue, transactions, chartsData),
-              })
-            })
+          transactions = transactions
+            .filter(t => t.sender === user._id || t.recipient === user._id)
+            .map(t => ({
+              at: t.at,
+              amount: t.amount,
+              currency: t.currency,
+              name: t.name,
+              status: t.status,
+              type: t.sender === user._id ? 'sent to' : 'received',
+            }))
+          transactions = [...transactions, ...deposits]
+
+          const token = UserToken.authorizationToken(user._id)
+          const profile = buildProfile(user, dialogue, transactions, chartsData)
+
+          res.send({
+            token,
+            profile,
           })
         })
       } else {
@@ -366,7 +383,10 @@ router.get('/', (req, res) => {
       }
     })
   } catch {
-    res.sendStatus(403)
+    res.status(403).send({
+      stage: 'Autorization failed',
+      message: 'You are not logged in.',
+    })
   }
 })
 

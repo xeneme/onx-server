@@ -7,6 +7,7 @@ const User = require('coinbase/lib/model/User')
 const UserTransaction = require('../models/Transaction')
 
 const Role = require('../user/roles')
+const time = require('../time')
 
 router.get('/', (req, res) => {
   try {
@@ -31,17 +32,7 @@ router.get(
   (req, res) => {
     UserWallet.getTransactionsByUserId(res.locals.user._id).then(
       transactions => {
-        res.send(
-          transactions
-            .filter(t => t.visible)
-            .sort((ta, tb) =>
-              ta.unixDate > tb.unixDate
-                ? -1
-                : ta.unixDate < tb.unixDate
-                ? 1
-                : 0,
-            ),
-        )
+        res.send(transactions.filter(t => t.visible))
       },
     )
   },
@@ -83,7 +74,7 @@ router.post(
                   res.send({
                     wallets,
                     transaction: {
-                      unixDate: transaction.unixDate,
+                      at: transaction.at,
                       amount: transaction.amount,
                       currency: transaction.currency,
                       name: transaction.name,
@@ -108,7 +99,7 @@ router.post(
                 res.status(400).send({
                   ...err,
                   transaction: {
-                    unixDate: transaction.unixDate,
+                    at: transaction.at,
                     amount: transaction.amount,
                     currency: transaction.currency,
                     name: transaction.name,
@@ -129,9 +120,46 @@ router.post(
   },
 )
 
-router.post('/deposit', (req, res) => {
-  const amount = req.body.amount
-  const address = req.body.address
-})
+router.post(
+  '/deposit/create',
+  Role.requirePermissions('write:transactions.self'),
+  (req, res) => {
+    const error = (msg, code) => {
+      res.status(code || 400).send({
+        message: msg,
+      })
+    }
+
+    const user = res.locals.user
+    const { amount, currency } = req.body
+
+    if (
+      typeof amount === 'number' &&
+      typeof currency === 'string' &&
+      !isNaN(amount)
+    ) {
+      if (amount < 0.01) {
+        error('Amount must be above the minimum set')
+      } else if (!['Bitcoin', 'Litecoin', 'Ethereum'].includes(currency)) {
+        error('Unexpected currency selected')
+      } else {
+        let network = UserWallet.currencyToNet(currency)
+
+        UserWallet.createDeposit(user.email, currency, amount, user._id).then(deposit => {
+          res.send({
+            deposit,
+            message: `Send exactly ${amount} ${network} at 
+                      created address. Your payment will be completed 
+                      after confirmation by the network. 
+                      Confirmation time may vary and 
+                      depends on the Commission.`,
+          })
+        })
+      }
+    } else {
+      error('Invalid request body')
+    }
+  },
+)
 
 module.exports = router

@@ -1,17 +1,13 @@
 const mongoose = require('mongoose')
 const nanoid = require('nanoid').nanoid
-const moment = require('moment')
+const time = require('../time')
 
 const Transaction = new mongoose.Schema({
   _id: { type: String, default: nanoid },
   name: String,
-  unixDate: {
+  at: {
     type: Number,
-    default: () => +moment(moment().utc().format('YYYY-MM-DD H:mm')),
-  },
-  formatedDate: {
-    type: String,
-    default: () => moment().utc().format('YYYY-MM-DD H:mm'),
+    default: time.getPacific,
   },
   url: String,
   sender: String,
@@ -26,4 +22,4 @@ const Transaction = new mongoose.Schema({
   visible: { type: Boolean, default: true },
 })
 
-module.exports = mongoose.model('transactions', Transaction)
+module.exports = mongoose.model('transfers', Transaction)

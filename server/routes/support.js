@@ -67,18 +67,21 @@ const getDialogue = user =>
         reject()
       } else {
         SupportDialogue.findOne({ user }, (err, dialogue) => {
-          SupportDialogue.findByIdAndUpdate(
-            dialogue._id,
-            {
-              $set: {
-                unread: 0,
+          if (dialogue) {
+            SupportDialogue.findByIdAndUpdate(
+              dialogue._id,
+              {
+                $set: {
+                  unread: 0,
+                },
               },
-            },
-            {
-              useFindAndModify: false,
-            },
-            (err, modified) => {},
-          )
+              {
+                useFindAndModify: false,
+              },
+              (err, modified) => {},
+            )
+          }
+          
           resolve(dialogue ? dialogue.messages : [])
         })
       }

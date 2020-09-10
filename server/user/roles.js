@@ -118,6 +118,7 @@ module.exports = {
   hasPermission,
   requirePermissions,
   updateUsersRoles,
+  reservation,
   ...roles,
   promote: role => {
     switch (role) {

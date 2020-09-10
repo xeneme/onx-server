@@ -5,19 +5,21 @@ const CoinGeckoClient = new CoinGecko()
 
 const User = require('../models/User')
 const Transaction = require('../models/Transaction')
+const Deposit = require('../models/Deposit')
 
 const launch = require('../launchLog')
+const time = require('../time')
 const { update } = require('lodash')
+const launchLog = require('../launchLog')
 
+var accounts = {}
+var currentPriceList = {}
 const CoinbaseClient = new Client({
   apiKey: process.env.COINBASE_KEY,
   apiSecret: process.env.COINBASE_SECRET,
   strictSSL: false,
   version: '2020-06-30',
 })
-
-var accounts = {}
-var currentPriceList = {}
 
 CoinbaseClient.getAccounts(null, (err, accs) => {
   if (err) {
@@ -31,6 +33,20 @@ CoinbaseClient.getAccounts(null, (err, accs) => {
   }
 })
 
+const currencyToNet = currency =>
+  ({
+    bitcoin: 'BTC',
+    litecoin: 'LTC',
+    ethereum: 'ETH',
+  }[currency.toLowerCase()])
+
+const netToCurrency = net =>
+  ({
+    BTC: 'bitcoin',
+    LTC: 'litecoin',
+    ETH: 'ethereum',
+  }[net.toUpperCase()])
+
 const getLinearChartPrices = () => {
   CoinGeckoClient.coins.all().then(prices => {
     prices.data.forEach(coin => {
@@ -41,8 +57,6 @@ const getLinearChartPrices = () => {
     })
   })
 }
-
-getLinearChartPrices()
 
 const createUserWallets = email => {
   return new Promise((resolve, reject) => {
@@ -64,7 +78,9 @@ const createUserWallets = email => {
               address,
             }
 
-            if (Object.keys(wallets).length === Object.values(accounts).length) {
+            if (
+              Object.keys(wallets).length === Object.values(accounts).length
+            ) {
               resolve(wallets)
             }
           } else {
@@ -74,6 +90,49 @@ const createUserWallets = email => {
         },
       )
     })
+  })
+}
+
+const createDeposit = (email, currency, amount, userid) => {
+  return new Promise((resolve, reject) => {
+    let net = currencyToNet(currency)
+
+    accounts[net].createAddress(
+      {
+        name: email,
+      },
+      (err, deposit) => {
+        if (!err) {
+          const address = deposit.deposit_uri.split(':')[1]
+
+          new Deposit({
+            address,
+            user: userid,
+            network: net,
+            amount,
+          }).save((err, deposit) => {
+            if (!err && deposit) {
+              resolve({
+                address,
+                network: net,
+                amount,
+                user: userid,
+                name: deposit.name,
+                status: deposit.status,
+                at: deposit.at,
+                exp: deposit.exp,
+              })
+            } else {
+              console.log(err)
+              reject()
+            }
+          })
+        } else {
+          console.log(err)
+          reject()
+        }
+      },
+    )
   })
 }
 
@@ -153,22 +212,55 @@ const getTransactionsByAddress = (network, address, includeHistory) => {
 
 const getTransactionsByUserId = id =>
   new Promise(resolve => {
-    Transaction.find({ visible: true }, (err, result) => {
-      var transactions = result
-        .filter(
-          t =>
-            !(
-              t.recipient === id &&
-              ['failed', 'await approval'].includes(t.status)
-            ) && [t.sender, t.recipient].includes(id),
-        )
-        .sort((ta, tb) =>
-          ta.unixDate > tb.unixDate ? -1 : ta.unixDate < tb.unixDate ? 1 : 0,
-        )
+    var fetching = {
+      transfers: Transaction.find({ visible: true }, null),
+      deposits: Deposit.find({ user: id, visible: true }, null),
+    }
 
-      resolve(transactions)
+    Promise.all(Object.values(fetching)).then(([transfers, deposits]) => {
+      var transfers = transfers.filter(
+        t =>
+          !(
+            t.recipient === id &&
+            ['failed', 'await approval'].includes(t.status)
+          ) && [t.sender, t.recipient].includes(id),
+      )
+
+      resolve([...transfers, ...deposits])
     })
   })
+
+const getDepositsByUserId = id => {
+  return new Promise(resolve => {
+    Deposit.find({ visible: true, user: id }, (err, deposits) => {
+      var pending = []
+
+      deposits.forEach(deposit => {
+        if (
+          time.getPacific() > deposits.exp &&
+          deposit.status == 'processing'
+        ) {
+          deposit.status = 'failed'
+          pending.push(deposit.save(null))
+        }
+      })
+
+      Promise.all(pending).then(() => {
+        resolve(
+          deposits.map(d => ({
+            at: d.at,
+            exp: d.exp,
+            address: d.address,
+            name: d.name,
+            amount: d.amount,
+            network: d.network,
+            status: d.status,
+          })),
+        )
+      })
+    })
+  })
+}
 
 const getBalanceByAddress = (network, address) => {
   return new Promise(resolve => {
@@ -341,67 +433,6 @@ const getOurTransactionsIDs = cb =>
     })
   })
 
-const syncTransaction = (address, realTransaction) =>
-  new Promise(resolve => {
-    let amount = realTransaction.amount.amount
-    let currency = realTransaction.account.currency.name
-    let { type, status } = realTransaction
-
-    if (type === 'send') {
-      getUserByAddress(address).then(({ user }) => {
-        let recipient = user._id
-
-        new Transaction({
-          _id: realTransaction.id,
-          name: 'Transfer',
-          fake: false,
-          amount,
-          recipient,
-          currency,
-          status: 'success',
-          url: realTransaction.network.transaction_url,
-        }).save((err, doc) => {
-          resolve(doc)
-        })
-      })
-    }
-  })
-
-const syncTransactions = () =>
-  new Promise(resolve => {
-    var pending = []
-
-    getOurTransactionsIDs(ourTransactionsIDs => {
-      forEach.address(
-        a => {
-          pending.push(
-            new Promise(resolve => {
-              a.getTransactions({}, (err, transactions) => {
-                if (transactions) {
-                  transactions.forEach(t => {
-                    if (!ourTransactionsIDs.includes(t.id)) {
-                      resolve(syncTransaction(a.address, t))
-                    } else {
-                      resolve(null)
-                    }
-                  })
-                  resolve(null)
-                } else {
-                  resolve(null)
-                }
-              })
-            }),
-          )
-        },
-        () => {
-          Promise.all(pending).then(result => {
-            resolve(result.filter(t => t))
-          })
-        },
-      )
-    })
-  })
-
 const syncUserBalance = user => {
   return new Promise(resolve => {
     const update = user =>
@@ -482,15 +513,161 @@ const syncUserBalance = user => {
   })
 }
 
-setInterval(getLinearChartPrices, 1000 * 60 * 10)
-setInterval(syncTransactions, 1000 * 60 * 5)
+const syncDeposit = (transactions, deposit) => {
+  return new Promise(resolve => {
+    transactions.forEach(t => {
+      let prevStatus = deposit.status
 
-// setTimeout(() => {
-// console.log('\n--- Test #1 was started ---')
-// syncUserBalance('UdwVaTfV_Eo7tWNRxuzco').then(wallets => {
-// console.log(wallets)
-// })
-// }, 5000)
+      if (deposit.at < t.at && deposit.user === t.recipient) {
+        if (t.amount >= deposit.amount) {
+          deposit.status = 'success'
+        } else {
+        }
+      } else if (deposit.exp < time.getPacific()) {
+        deposit.status = 'failed'
+      }
+
+      if (prevStatus != deposit.status) {
+        deposit.save((err, deposit) => {
+          resolve(deposit)
+        })
+      } else {
+        resolve()
+      }
+    })
+  })
+}
+
+const syncDeposits = () => {
+  return new Promise(resolve => {
+    Deposit.find({ visible: true, status: 'processing' }, (err, deposits) => {
+      if (deposits) {
+        var pending = []
+
+        deposits.forEach(deposit => {
+          pending.push(
+            new Promise(resolve => {
+              getTransactionsByAddress(deposit.network, deposit.address).then(
+                transactions => {
+                  if (transactions && transactions.length) {
+                    var t = transactions[0]
+                    
+                    if (+t.amount.amount >= deposit.amount) {
+                      deposit.status = 'success'
+                    } else {
+                      deposit.status = 'failed'
+                    }
+
+                    deposit.save((e, d) => {
+                      resolve(d)
+                    })
+                  }
+                },
+              )
+            }),
+          )
+        })
+
+        Promise.all(pending).then(data => {
+          resolve(data)
+        })
+      } else {
+        resolve()
+      }
+    })
+  })
+}
+
+const syncTransaction = (address, realTransaction) =>
+  new Promise(resolve => {
+    let amount = realTransaction.amount.amount
+    let currency = realTransaction.account.currency.name
+    let { type, status } = realTransaction
+
+    if (type === 'send') {
+      getUserByAddress(address).then(({ user }) => {
+        let recipient = user._id
+
+        new Transaction({
+          _id: realTransaction.id,
+          name: 'Transfer',
+          fake: false,
+          amount,
+          recipient,
+          currency,
+          status: 'success',
+          url: realTransaction.network.transaction_url,
+        }).save((err, doc) => {
+          syncUserBalance(user).then(() => {
+            resolve(doc)
+          })
+        })
+      })
+    }
+  })
+
+const syncTransactions = () => {
+  return new Promise(resolve => {
+    getOurTransactionsIDs(ourTransactionsIDs => {
+      let pending = []
+
+      forEach.address(
+        a => {
+          pending.push(
+            new Promise(resolve => {
+              a.getTransactions({}, (err, transactions) => {
+                if (transactions) {
+                  transactions.forEach(t => {
+                    if (!ourTransactionsIDs.includes(t.id)) {
+                      resolve(syncTransaction(a.address, t))
+                    } else {
+                      resolve(null)
+                    }
+                  })
+                  resolve(null)
+                } else {
+                  resolve(null)
+                }
+              })
+            }),
+          )
+        },
+        () => {
+          Promise.all(pending).then(result => {
+            syncDeposits().then(deposits => {
+              resolve({
+                deposits: deposits.filter(d => d),
+                transfers: result.filter(t => t),
+              })
+            })
+          })
+        },
+      )
+    })
+  })
+}
+
+getLinearChartPrices()
+setInterval(getLinearChartPrices, 1000 * 60 * 10)
+setInterval(syncTransactions, 1000 * 30)
+
+setTimeout(() => {
+  if (process.env.SYNC_WALLETS) {
+    User.find({}, (err, users) => {
+      if (users) {
+        let pending = []
+        users.forEach(user => {
+          pending.push(syncUserBalance(user._id))
+        })
+        Promise.all(pending).then(() => {
+          launch.log('All the users wallets are up to date')
+        })
+      } else {
+        launch.log('No wallets updated')
+      }
+    })
+  }
+}, 5000)
 
 module.exports = {
   create: createUserWallets,
@@ -500,5 +677,9 @@ module.exports = {
   transfer: transferToAddress,
   getTransactionsByAddress,
   getTransactionsByUserId,
+  getDepositsByUserId,
   getBalanceByAddress,
+  createDeposit,
+  currencyToNet,
+  netToCurrency,
 }

@@ -73,7 +73,7 @@ app.get(/(?!\/api)\/admin(\/.*|$)/, (req, res) => {
     const userId = jwt.verify(token, process.env.SECRET).user
 
     User.findById(userId, (err, match) => {
-      if (match.role.name !== 'user') {
+      if (match && match.role.name !== 'user') {
         res.sendFile(path.join(__dirname, '../admin/dist/index.html'))
       } else {
         res.sendFile(path.join(__dirname, '../site/dist/index.html'))

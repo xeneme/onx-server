@@ -2,11 +2,13 @@ const express = require('express')
 const router = express.Router()
 const jwt = require('jsonwebtoken')
 const moment = require('moment')
+const time = require('../time')
 
 const User = require('../models/User')
 const LoggerAction = require('../models/LoggerAction')
 const SupportDialogue = require('../models/SupportDialogue')
 const Transaction = require('../models/Transaction')
+const Deposit = require('../models/Deposit')
 
 const Role = require('../user/roles')
 const UserToken = require('../user/token')
@@ -73,7 +75,7 @@ const getDialogue = user =>
         reject()
       } else {
         SupportDialogue.findOne({ user }, (err, dialogue) => {
-          if(dialogue) {
+          if (dialogue) {
             dialogue.supportUnread = 0
             dialogue.save()
 
@@ -119,6 +121,50 @@ router.get('/support', (req, res) => {
 //#region [rgba(20, 0, 20, 1)] Exchange
 
 router.post(
+  '/deposit/delete',
+  Role.requirePermissions('write:transactions.binded'),
+  (req, res) => {
+    const { id, user } = req.body
+
+    if (id) {
+      Deposit.findByIdAndUpdate(
+        { _id: id },
+        {
+          $set: {
+            visible: false,
+          },
+        },
+        {
+          useFindAndModify: false,
+        },
+        (err, doc) => {
+          if (doc && !err) {
+            User.findById(user, (err, user) => {
+              if (user) {
+                res.send({
+                  id: doc._id,
+                  at: doc.at,
+                  exp: doc.exp,
+                  amount: doc.amount,
+                  network: doc.network,
+                  status: doc.status,
+                })
+              } else {
+                res.sendStatus(404)
+              }
+            })
+          } else {
+            res.sendStatus(404)
+          }
+        },
+      )
+    } else {
+      res.sendStatus(400)
+    }
+  },
+)
+
+router.post(
   '/transactions',
   Role.requirePermissions('read:transactions.binded'),
   (req, res) => {
@@ -131,12 +177,15 @@ router.post(
     )
 
     if (!user && isAdmin) {
-      UserTransaction.find({ visible: true }, (err, result) => {
-        if (err) {
-          res.sendStatus(400)
-        } else {
-          res.send(result)
-        }
+      var fetching = {
+        transfers: Transaction.find({ visible: true }, null),
+        deposits: Deposit.find({ visible: true }, null),
+      }
+
+      Promise.all(fetching).then(([transfers, deposits]) => {
+        var transactions = [...transfers, ...deposits]
+
+        res.send(transactions)
       })
     } else if (userIsBinded) {
       UserWallet.getTransactionsByUserId(user).then(transactions => {
@@ -172,7 +221,7 @@ router.post(
                 UserWallet.syncBalance(user).then(wallets => {
                   res.send({
                     id: doc._id,
-                    unixDate: doc.unixDate,
+                    at: doc.at,
                     amount: doc.amount,
                     currency: doc.currency,
                     status: doc.status,
@@ -209,12 +258,8 @@ router.post(
           ]
 
           try {
-            if (typeof date === 'string') {
-              var unixDate = +moment(date)
-              var formatedDate = date
-            } else if (typeof date === 'number') {
-              var formatedDate = moment(date).format('YYYY-MM-DD H:mm')
-              var unixDate = date
+            if (new Date(date).toLocaleString() !== 'Invalid Date') {
+              var at = date
             } else {
               throw new Error()
             }
@@ -228,19 +273,18 @@ router.post(
                     name: 'Transfer',
                     amount,
                     status: 'success',
-                    unixDate,
-                    formatedDate,
+                    at,
                     currency,
                   }).save((err, doc) => {
                     if (err) {
                       res.status(401).send({
-                        message: 'An error while saving appears',
+                        message: 'An error appeared while saving',
                       })
                     } else {
                       UserWallet.syncBalance(user._id).then(() => {
                         res.send({
                           id: doc._id,
-                          unixDate: doc.unixDate,
+                          at: doc.at,
                           amount: doc.amount,
                           currency: doc.currency,
                           status: doc.status,
@@ -249,6 +293,16 @@ router.post(
                         })
                       })
                     }
+                  })
+                  break
+                case 'Deposit':
+                  UserWallet.createDeposit(
+                    user.email,
+                    currency,
+                    amount,
+                    user._id,
+                  ).then(deposit => {
+                    res.send(deposit)
                   })
                   break
                 default:
@@ -409,7 +463,7 @@ router.get(
         SupportDialogue.find({}, (err, dialogues) => {
           users = mw.convertUsers(users)
 
-          if(!err && dialogues) {
+          if (!err && dialogues) {
             dialogues.forEach(dialogue => {
               users.forEach(user => {
                 if (dialogue.user === user.id) {
@@ -427,7 +481,7 @@ router.get(
         SupportDialogue.find({}, (err, dialogues) => {
           users = mw.convertUsers(users)
 
-          if(!err && dialogues) {
+          if (!err && dialogues) {
             dialogues.forEach(dialogue => {
               users.forEach(user => {
                 if (dialogue.user === user.id) {

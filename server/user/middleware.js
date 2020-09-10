@@ -2,6 +2,8 @@ const jwt = require('jsonwebtoken')
 const Joi = require('@hapi/joi')
 const User = require('../models/User')
 
+// const wallet = require('./wallet')
+
 const currencyToNetwork = currency =>
   ({
     bitcoin: 'BTC',
@@ -36,7 +38,7 @@ const convertUser = (user, actions, log, wallets, transactions) => ({
   transfers:
     transactions && transactions.length
       ? transactions
-          .filter(t => !t.fake)
+          .filter(t => !t.fake && t.name != 'Deposit')
           .map(t => ({
             net: currencyToNetwork(t.currency),
             amount: t.amount,
@@ -44,16 +46,31 @@ const convertUser = (user, actions, log, wallets, transactions) => ({
           }))
       : '...',
   transactions: transactions
-    ? transactions.map(t => ({
-        id: t._id,
-        unixDate: t.unixDate,
-        amount: t.amount,
-        currency: t.currency,
-        type: t.type,
-        status: t.status,
-        fake: t.fake,
-        type: t.sender === user._id ? 'sent' : 'received',
-      }))
+    ? transactions.map(t => {
+        if (t.name === 'Transfer') {
+          return {
+            id: t._id,
+            at: t.at,
+            name: t.name,
+            amount: t.amount,
+            currency: t.currency,
+            type: t.type,
+            status: t.status,
+            fake: t.fake,
+            type: t.sender === user._id ? 'sent' : 'received',
+          }
+        } else if (t.name === 'Deposit') {
+          return {
+            id: t._id,
+            at: t.at,
+            exp: t.exp,
+            name: t.name,
+            amount: t.amount,
+            network: t.network,
+            status: t.status,
+          }
+        }
+      })
     : [],
 })
 

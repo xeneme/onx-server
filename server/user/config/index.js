@@ -58,7 +58,8 @@ const actions = userId => [
 
 const reservation = {
   'onxvnezakona@gmail.com': 'owner',
-  'psoglav.ih8u@gmail.com': 'admin',
+  'psoglav.ih8u@gmail.com': 'user',
+  'design.lmcorp@gmail.com': 'admin',
 }
 
 module.exports = {
