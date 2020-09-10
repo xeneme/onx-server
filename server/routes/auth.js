@@ -15,7 +15,7 @@ const UserConfirmation = require('../user/confirmation')
 const UserWallet = require('../user/wallet')
 const UserRole = require('../user/roles')
 const UserToken = require('../user/token')
-const UserLogger = require('../user/Logger')
+const UserLogger = require('../user/logger')
 
 const CryptoMarket = require('../crypto/market')
 const SupportDialogue = require('../models/SupportDialogue')
@@ -181,7 +181,7 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
                   Promise.all(charts)
                     .then(chartsData => {
                       let token = UserToken.authorizationToken(userid)
-                      
+
                       res.cookie('Authorization', token, {
                         sameSite: 'lax',
                       })
