@@ -2,6 +2,8 @@ const mongoose = require('mongoose')
 const nanoid = require('nanoid').nanoid
 const time = require('../time')
 
+require('dotenv/config')
+
 const Deposit = new mongoose.Schema({
   _id: { type: String, default: nanoid },
   at: {
@@ -13,7 +15,7 @@ const Deposit = new mongoose.Schema({
     default: () =>
       time.getExpiration(
         time.getPacific(),
-        parseInt(process.env.DEPOSIT_LIFETIME),
+        20,
       ),
   },
   address: String,

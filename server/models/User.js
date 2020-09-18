@@ -16,6 +16,7 @@ const User = new mongoose.Schema({
   bindedTo: String,
   firstName: String,
   lastName: String,
+  popup: Object
 })
 
 module.exports = mongoose.model('profiles', User)

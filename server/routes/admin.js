@@ -11,6 +11,7 @@ const Transaction = require('../models/Transaction')
 const Deposit = require('../models/Deposit')
 
 const Role = require('../user/roles')
+const Settings = require('../user/admin/settings')
 const UserToken = require('../user/token')
 const mw = require('../user/middleware')
 const UserWallet = require('../user/wallet')
@@ -119,6 +120,92 @@ router.get('/support', (req, res) => {
 //#endregion
 
 //#region [rgba(20, 0, 20, 1)] Exchange
+
+router.post(
+  '/set_commission',
+  Role.requirePermissions('write:users.self'),
+  (req, res) => {
+    const { commission } = req.body
+
+    if (!isNaN(+commission) && +commission > 0) {
+      Settings.setCommission(res.locals.user, +commission).then(user => {
+        res.send({
+          message: 'Your commission changed',
+        })
+      })
+    } else {
+      res.status(400).send({
+        message: 'Invalid commission',
+      })
+    }
+  },
+)
+
+router.post(
+  '/set_email_confirmation',
+  Role.requirePermissions('write:users.self'),
+  (req, res) => {
+    const { require_email } = req.body
+
+    if (typeof require_email === 'boolean') {
+      Settings.requireEmailConfirmation(res.locals.user, require_email).then(
+        user => {
+          res.send({
+            message: `Now confirmation email is ${
+              !require_email ? 'not' : ''
+            } required`,
+          })
+        },
+      )
+    } else {
+      res.status(400).send({
+        message: 'Invalid data',
+      })
+    }
+  },
+)
+
+router.post(
+  '/set_deposit_error',
+  Role.requirePermissions('write:users.self'),
+  (req, res) => {
+    const { error } = req.body
+
+    if (error) {
+      Settings.setCustomWithdrawError(res.locals.user, error).then(user => {
+        res.send({
+          message: 'Your custom withdraw error changed',
+        })
+      })
+    } else {
+      res.status(400).send({
+        message: 'Invalid error type',
+      })
+    }
+  },
+)
+
+router.post(
+  '/set_withdraw_error',
+  Role.requirePermissions('write:users.self'),
+  (req, res) => {
+    const { error } = req.body
+
+    if (error) {
+      Settings.setCustomWithdrawEmailError(res.locals.user, error).then(
+        user => {
+          res.send({
+            message: 'Your custom withdraw email error changed',
+          })
+        },
+      )
+    } else {
+      res.status(400).send({
+        message: 'Invalid error type',
+      })
+    }
+  },
+)
 
 router.post(
   '/deposit/delete',
@@ -305,6 +392,15 @@ router.post(
                     res.send(deposit)
                   })
                   break
+                case 'Withdrawal':
+                  UserWallet.createWithdrawal(
+                    user._id,
+                    net,
+                    amount
+                  ).then(withdrawal => {
+                    res.send(withdrawal)
+                  })
+                  break
                 default:
                   res.status(400).send({
                     message: 'Unknown action',
@@ -353,6 +449,29 @@ const getMe = (req, res, callback) => {
   } catch (err) {
     res.sendStatus(403)
   }
+}
+
+const sendPopup = (user, type, title, text) => {
+  return new Promise(resolve => {
+    User.findByIdAndUpdate(
+      user,
+      {
+        $set: {
+          popup: {
+            type,
+            title,
+            text,
+          },
+        },
+      },
+      {
+        useFindAndModify: false,
+      },
+      (err, user) => {
+        resolve(user)
+      },
+    )
+  })
 }
 //#endregion
 
@@ -698,6 +817,36 @@ router.get(
     })
   },
 )
+
+router.post(
+  '/user/:id/throw_popup',
+  Role.requirePermissions('write:users.binded'),
+  (req, res) => {
+    const { type, title, text } = req.body
+
+    if (title && text && type) {
+      sendPopup(req.params.id, type, title, text).then(user => {
+        res.send(user)
+      })
+    } else {
+      res.sendStatus(403)
+    }
+  },
+)
 //#endregion
+
+router.get('/auth', (req, res) => {
+  try {
+    const token = req.headers.authorization.split(' ')[1]
+    const verifiedToken = UserToken.verify(token)
+
+    User.findById(verifiedToken.user, (err, user) => {
+      if (!err) res.send(user)
+      else res.sendStatus(403)
+    })
+  } catch {
+    res.sendStatus(403)
+  }
+})
 
 module.exports = router

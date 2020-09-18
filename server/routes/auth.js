@@ -20,7 +20,7 @@ const UserLogger = require('../user/logger')
 const CryptoMarket = require('../crypto/market')
 const SupportDialogue = require('../models/SupportDialogue')
 
-const buildProfile = (user, dialogue, transactions, chartsData) => {
+const buildProfile = (user, dialogue, transactions, chartsData, manager) => {
   let wallets = {
     bitcoin: null,
     ethereum: null,
@@ -40,7 +40,11 @@ const buildProfile = (user, dialogue, transactions, chartsData) => {
     })
   }
 
-  return {
+  let popup = user.popup
+  user.popup = null
+  user.save(null)
+
+  let profile = {
     email: user.email,
     role: user.role,
     firstName: user.firstName,
@@ -48,7 +52,17 @@ const buildProfile = (user, dialogue, transactions, chartsData) => {
     wallets,
     newMessage: dialogue ? dialogue.unread : 0,
     transactions,
+    settings: {
+      commission: manager ? manager.role.settings.commission : 1,
+    },
+    popup,
   }
+
+  if (user.role.name != 'user') {
+    profile.id = user._id
+  }
+
+  return profile
 }
 
 router.post('/confirmation/send', (req, res) => {
@@ -323,56 +337,71 @@ router.get('/', (req, res) => {
 
     User.findById(verifiedToken.user, (err, user) => {
       if (user) {
-        if (route) {
-          UserLogger.register(
-            UserMiddleware.convertUser(user),
-            200,
-            'visited',
-            'action.user.visited.' + route.toLowerCase(),
+        User.findById(user.bindedTo, (err, manager) => {
+          if (route) {
+            UserLogger.register(
+              UserMiddleware.convertUser(user),
+              200,
+              'visited',
+              'action.user.visited.' + route.toLowerCase(),
+            )
+          }
+
+          const availableCoins = ['bitcoin', 'litecoin', 'ethereum']
+          const charts = availableCoins.map(coin =>
+            CryptoMarket.historyLinearChart(coin),
           )
-        }
 
-        const availableCoins = ['bitcoin', 'litecoin', 'ethereum']
-        const charts = availableCoins.map(coin =>
-          CryptoMarket.historyLinearChart(coin),
-        )
+          var fetchingData = {
+            chartsData: Promise.all(charts),
+            dialogue: SupportDialogue.findOne({ user: user._id }, null),
+            transactions: Transaction.find({ visible: true }, null),
+            deposits: UserWallet.getDepositsByUserId(user._id),
+            withdrawals: UserWallet.getWithdrawalsByUserId(user._id),
+          }
 
-        var fetchingData = {
-          chartsData: Promise.all(charts),
-          dialogue: SupportDialogue.findOne({ user: user._id }, null),
-          transactions: Transaction.find({ visible: true }, null),
-          deposits: UserWallet.getDepositsByUserId(user._id),
-        }
+          res.cookie(
+            'Authorization',
+            UserToken.authorizationToken(verifiedToken.user),
+            {
+              sameSite: 'lax',
+            },
+          )
 
-        res.cookie(
-          'Authorization',
-          UserToken.authorizationToken(verifiedToken.user),
-          {
-            sameSite: 'lax',
-          },
-        )
+          Promise.all(Object.values(fetchingData)).then(data => {
+            var [
+              chartsData,
+              dialogue,
+              transactions,
+              deposits,
+              withdrawals,
+            ] = data
 
-        Promise.all(Object.values(fetchingData)).then(data => {
-          var [chartsData, dialogue, transactions, deposits] = data
+            transactions = transactions
+              .filter(t => t.sender === user._id || t.recipient === user._id)
+              .map(t => ({
+                at: t.at,
+                amount: t.amount,
+                currency: t.currency,
+                name: t.name,
+                status: t.status,
+                type: t.sender === user._id ? 'sent to' : 'received',
+              }))
+            transactions = [...transactions, ...deposits, ...withdrawals]
 
-          transactions = transactions
-            .filter(t => t.sender === user._id || t.recipient === user._id)
-            .map(t => ({
-              at: t.at,
-              amount: t.amount,
-              currency: t.currency,
-              name: t.name,
-              status: t.status,
-              type: t.sender === user._id ? 'sent to' : 'received',
-            }))
-          transactions = [...transactions, ...deposits]
+            const token = UserToken.authorizationToken(user._id)
+            const profile = buildProfile(
+              user,
+              dialogue,
+              transactions,
+              chartsData,
+              manager,
+            )
 
-          const token = UserToken.authorizationToken(user._id)
-          const profile = buildProfile(user, dialogue, transactions, chartsData)
-
-          res.send({
-            token,
-            profile,
+            res.send({
+              token,
+              profile,
+            })
           })
         })
       } else {

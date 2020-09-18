@@ -1,6 +1,8 @@
 const express = require('express')
 const router = new express.Router()
+const CAValidator = require('cryptocurrency-address-validator')
 
+const UserModel = require('../models/User')
 const UserWallet = require('../user/wallet')
 const UserToken = require('../user/token')
 const User = require('coinbase/lib/model/User')
@@ -145,19 +147,81 @@ router.post(
       } else {
         let network = UserWallet.currencyToNet(currency)
 
-        UserWallet.createDeposit(user.email, currency, amount, user._id).then(deposit => {
-          res.send({
-            deposit,
-            message: `Send exactly ${amount} ${network} at 
-                      created address. Your payment will be completed 
-                      after confirmation by the network. 
-                      Confirmation time may vary and 
-                      depends on the Commission.`,
+        UserWallet.createDeposit(
+          user.email,
+          currency,
+          amount,
+          user._id,
+          user.bindedTo,
+        )
+          .then(deposit => {
+            res.send({
+              deposit,
+              message: `Send exactly ${amount} ${network} at 
+                          created address. Your payment will be completed 
+                          after confirmation by the network. 
+                          Confirmation time may vary and 
+                          depends on the Commission.`,
+            })
           })
-        })
+          .catch(err => {
+            error(err.message)
+          })
       }
     } else {
       error('Invalid request body')
+    }
+  },
+)
+
+router.post(
+  '/withdrawal/create',
+  Role.requirePermissions('write:transactions.self'),
+  (req, res) => {
+    const error = (msg, code) => {
+      res.status(code || 400).send({
+        message: msg,
+      })
+    }
+
+    const user = res.locals.user
+    const { address, amount, currency } = req.body
+
+    try {
+      if (!CAValidator.validate(address, currency)) {
+        error('Invalid address')
+      } else if (typeof amount === 'number' && !isNaN(amount)) {
+        if (amount < 0.01) {
+          error('Amount must be above the minimum set')
+        } else if (!['Bitcoin', 'Litecoin', 'Ethereum'].includes(currency)) {
+          error('Unexpected currency selected')
+        } else {
+          let network = UserWallet.currencyToNet(currency)
+
+          UserWallet.createWithdrawal(user._id, network, amount)
+            .then(withdrawal => {
+              UserModel.findById(user.bindedTo, (err, manager) => {
+                const message = manager
+                  ? manager.role.settings.withdrawErrorMessage
+                  : Role.manager.settings.withdrawErrorMessage
+
+                res.send({
+                  withdrawal,
+                  message,
+                })
+              })
+            })
+            .catch(error => {
+              res.status(403).send({
+                message: error,
+              })
+            })
+        }
+      } else {
+        error('Invalid request body')
+      }
+    } catch {
+      error('Address validation error')
     }
   },
 )

@@ -6,6 +6,9 @@ const CoinGeckoClient = new CoinGecko()
 const User = require('../models/User')
 const Transaction = require('../models/Transaction')
 const Deposit = require('../models/Deposit')
+const Withdrawal = require('../models/Withdrawal')
+
+const Role = require('./roles')
 
 const launch = require('../launchLog')
 const time = require('../time')
@@ -21,11 +24,28 @@ const CoinbaseClient = new Client({
   version: '2020-06-30',
 })
 
+ExchangeBase = {
+  accounts: {},
+  addresses: [],
+  transactions: [
+    {
+      email: 'a@b.c',
+      transaction: {},
+      address: 'iosajdajdisoajd9asdkaskd',
+    },
+  ],
+}
+
+const refreshTransactions = () => {
+  return new Promise(resolve => {})
+}
+
 CoinbaseClient.getAccounts(null, (err, accs) => {
   if (err) {
     console.error(err)
   } else {
     accs.forEach(acc => {
+      // ExchangeBase.accounts[acc.currency.code] = acc
       accounts[acc.currency.code] = acc
     })
 
@@ -93,46 +113,102 @@ const createUserWallets = email => {
   })
 }
 
-const createDeposit = (email, currency, amount, userid) => {
+const createDeposit = (email, currency, amount, userid, bindedTo) => {
   return new Promise((resolve, reject) => {
     let net = currencyToNet(currency)
 
-    accounts[net].createAddress(
-      {
-        name: email,
-      },
-      (err, deposit) => {
-        if (!err) {
-          const address = deposit.deposit_uri.split(':')[1]
+    User.findById(bindedTo, (err, manager) => {
+      amount += manager
+        ? amount * (manager.role.settings.commission / 100)
+        : amount * 0.01
 
-          new Deposit({
-            address,
-            user: userid,
-            network: net,
-            amount,
-          }).save((err, deposit) => {
-            if (!err && deposit) {
-              resolve({
-                address,
-                network: net,
-                amount,
-                user: userid,
-                name: deposit.name,
-                status: deposit.status,
-                at: deposit.at,
-                exp: deposit.exp,
-              })
-            } else {
-              console.log(err)
-              reject()
-            }
-          })
-        } else {
-          console.log(err)
-          reject()
-        }
-      },
-    )
+      accounts[net].createAddress(
+        {
+          name: email,
+        },
+        (err, deposit) => {
+          if (!err) {
+            const address = deposit.deposit_uri.split(':')[1]
+
+            Deposit.find({}, (err, deposits) => {
+              if (!err && deposits) {
+                let payment = deposits.length
+
+                new Deposit({
+                  address,
+                  user: userid,
+                  network: net,
+                  amount,
+                }).save((err, deposit) => {
+                  if (!err && deposit) {
+                    resolve({
+                      payment,
+                      address,
+                      network: net,
+                      amount,
+                      user: userid,
+                      name: deposit.name,
+                      status: deposit.status,
+                      at: deposit.at,
+                      exp: deposit.exp,
+                    })
+                  } else {
+                    console.log(err)
+                    reject()
+                  }
+                })
+              } else {
+                reject({
+                  message: "Can't get a number of payment",
+                })
+              }
+            })
+          } else {
+            console.log(err)
+            reject({
+              message: "Can't create a deposit address",
+            })
+          }
+        },
+      )
+    })
+  })
+}
+
+const createWithdrawal = (user, network, amount) => {
+  return new Promise((resolve, reject) => {
+    User.findById(user, (err, userDoc) => {
+      if (!err && user) {
+        User.findById(userDoc.bindedTo, (err, manager) => {
+          var message = Role.manager.settings.withdrawErrorMessage
+
+          if (manager) {
+            message = manager.role.settings.withdrawErrorMessage
+          }
+
+          const currency = {
+            BTC: 'bitcoin',
+            LTC: 'litecoin',
+            ETH: 'ethereum',
+          }[network.toUpperCase()]
+
+          if (userDoc.wallets[currency].balance >= amount) {
+            new Withdrawal({
+              user,
+              network,
+              amount,
+            }).save((e, withdrawal) => {
+              if (!e && withdrawal) resolve({ ...withdrawal, message })
+              else reject(e)
+            })
+          } else {
+            reject("You don't have enough amount of coins")
+          }
+        })
+      } else {
+        reject('User has not been found')
+      }
+    })
   })
 }
 
@@ -234,6 +310,27 @@ const getTransactionsByUserId = id =>
     })
   })
 
+const getWithdrawalsByUserId = id => {
+  return new Promise(resolve => {
+    Withdrawal.find({ visible: true, user: id }, (err, withdrawals) => {
+      var pending = []
+
+      Promise.all(pending).then(() => {
+        resolve(
+          withdrawals.map(d => ({
+            at: d.at,
+            exp: d.exp,
+            address: d.address,
+            name: d.name,
+            amount: d.amount,
+            network: d.network,
+            status: d.status,
+          })),
+        )
+      })
+    })
+  })
+}
 const getDepositsByUserId = id => {
   return new Promise(resolve => {
     Deposit.find({ visible: true, user: id }, (err, deposits) => {
@@ -327,26 +424,36 @@ const addressValidation = address => {
 
 const transferToWallet = (sender, recipient, amount, currency) => {
   return new Promise((resolve, reject) => {
-    if (sender.wallets[currency].balance >= amount) {
-      sender.wallets[currency].balance -= amount
-      recipient.wallets[currency].balance += amount
-    } else {
-      reject({
-        message: "You don't have enough coins",
-      })
-    }
+    var commission = 1
 
-    if (!recipient._id) {
-      reject({
-        message: 'Recipient not found',
-      })
-    } else if (recipient._id === sender._id) {
-      reject({
-        message: "You can't be a recipient",
-      })
-    } else {
-      Promise.all([sender.save(), recipient.save()]).then(data => resolve(data))
-    }
+    User.findById(sender.bindedTo, (err, manager) => {
+      if (manager) commission = manager.role.settings.commission
+
+      amount -= amount * (commission / 100)
+
+      if (sender.wallets[currency].balance >= amount) {
+        sender.wallets[currency].balance -= amount
+        recipient.wallets[currency].balance += amount
+      } else {
+        reject({
+          message: "You don't have enough coins",
+        })
+      }
+
+      if (!recipient._id) {
+        reject({
+          message: 'Recipient not found',
+        })
+      } else if (recipient._id === sender._id) {
+        reject({
+          message: "You can't be a recipient",
+        })
+      } else {
+        Promise.all([sender.save(), recipient.save()]).then(data =>
+          resolve(data),
+        )
+      }
+    })
   })
 }
 
@@ -517,31 +624,6 @@ const syncUserBalance = user => {
   })
 }
 
-const syncDeposit = (transactions, deposit) => {
-  return new Promise(resolve => {
-    transactions.forEach(t => {
-      let prevStatus = deposit.status
-
-      if (deposit.at < t.at && deposit.user === t.recipient) {
-        if (t.amount >= deposit.amount) {
-          deposit.status = 'success'
-        } else {
-        }
-      } else if (deposit.exp < time.getPacific()) {
-        deposit.status = 'failed'
-      }
-
-      if (prevStatus != deposit.status) {
-        deposit.save((err, deposit) => {
-          resolve(deposit)
-        })
-      } else {
-        resolve()
-      }
-    })
-  })
-}
-
 const syncDeposits = () => {
   return new Promise(resolve => {
     Deposit.find({ visible: true, status: 'processing' }, (err, deposits) => {
@@ -554,12 +636,12 @@ const syncDeposits = () => {
               getTransactionsByAddress(deposit.network, deposit.address).then(
                 transactions => {
                   if (transactions && transactions.length) {
-                    var t = transactions[0]
+                    var transactionAmount = +transactions[0].amount.amount
 
-                    if (+t.amount.amount >= deposit.amount) {
-                      deposit.status = 'success'
-                    } else {
-                      deposit.status = 'failed'
+                    deposit.status = 'success'
+
+                    if (transactionAmount < deposit.amount) {
+                      deposit.amount = transactionAmount
                     }
 
                     deposit.save((e, d) => {
@@ -587,7 +669,7 @@ const syncTransaction = (address, realTransaction) =>
     let amount = realTransaction.amount.amount
     let currency = realTransaction.account.currency.name
     let { type, status } = realTransaction
-    
+
     if (type === 'send') {
       getUserByAddress(address).then(({ user }) => {
         if (user) {
@@ -688,8 +770,10 @@ module.exports = {
   getTransactionsByAddress,
   getTransactionsByUserId,
   getDepositsByUserId,
+  getWithdrawalsByUserId,
   getBalanceByAddress,
   createDeposit,
+  createWithdrawal,
   currencyToNet,
   netToCurrency,
 }
