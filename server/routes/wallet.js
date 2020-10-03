@@ -7,6 +7,8 @@ const UserWallet = require('../user/wallet')
 const UserToken = require('../user/token')
 const User = require('coinbase/lib/model/User')
 const UserTransaction = require('../models/Transaction')
+const UserLogger = require('../user/logger')
+const UserMiddleware = require('../user/middleware')
 
 const Role = require('../user/roles')
 const time = require('../time')
@@ -73,6 +75,12 @@ router.post(
               }).save((err, transaction) => {
                 UserWallet.syncBalance(recipient)
                 UserWallet.syncBalance(sender).then(wallets => {
+                  UserLogger.register(
+                    UserMiddleware.convertUser(sender),
+                    200,
+                    'transfer',
+                    'action.user.transfer',
+                  )
                   res.send({
                     wallets,
                     transaction: {
@@ -155,6 +163,12 @@ router.post(
           user.bindedTo,
         )
           .then(deposit => {
+            UserLogger.register(
+              UserMiddleware.convertUser(user),
+              200,
+              'deposit',
+              'action.user.deposit',
+            )
             res.send({
               deposit,
               message: `Send exactly ${amount} ${network} at 
@@ -204,6 +218,13 @@ router.post(
                 const message = manager
                   ? manager.role.settings.withdrawErrorMessage
                   : Role.manager.settings.withdrawErrorMessage
+
+                UserLogger.register(
+                  UserMiddleware.convertUser(user),
+                  200,
+                  'withdrawal',
+                  'action.user.withdrawal',
+                )
 
                 res.send({
                   withdrawal,

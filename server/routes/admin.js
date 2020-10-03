@@ -732,6 +732,7 @@ router.get(
 
       res.send({
         success,
+        admin: success ? UserToken.authorizationToken(res.locals.user._id) : '',
         token: success ? UserToken.authorizationToken(user._id) : '',
         action: 'sign in as',
       })

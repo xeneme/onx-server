@@ -118,10 +118,6 @@ const createDeposit = (email, currency, amount, userid, bindedTo) => {
     let net = currencyToNet(currency)
 
     User.findById(bindedTo, (err, manager) => {
-      amount += manager
-        ? amount * (manager.role.settings.commission / 100)
-        : amount * 0.01
-
       accounts[net].createAddress(
         {
           name: email,
@@ -247,26 +243,38 @@ const getAllAddresses = onlyAddresses => {
       ethereum: [],
     }
 
-    Promise.all([
-      getAccountAddresses('btc'),
-      getAccountAddresses('ltc'),
-      getAccountAddresses('eth'),
-    ])
-      .then(accounts => {
-        if (onlyAddresses) {
-          accounts.forEach(addresses => {
-            addresses.forEach(address => {
-              result[address.uri_scheme].push({
-                address: address.address,
-                user: address.name,
-              })
-            })
-          })
+    getAccountAddresses('btc')
+      .then(btc => {
+        getAccountAddresses('ltc')
+          .then(ltc => {
+            getAccountAddresses('eth')
+              .then(eth => {
+                const accounts = [btc, ltc, eth]
 
-          resolve(result)
-        } else {
-          resolve(accounts)
-        }
+                if (onlyAddresses) {
+                  accounts.forEach(addresses => {
+                    addresses.forEach(address => {
+                      result[address.uri_scheme].push({
+                        address: address.address,
+                        user: address.name,
+                      })
+                    })
+                  })
+
+                  resolve(result)
+                } else {
+                  resolve(accounts)
+                }
+              })
+              .catch(err => {
+                reject(err)
+                console.log(err)
+              })
+          })
+          .catch(err => {
+            reject(err)
+            console.log(err)
+          })
       })
       .catch(err => {
         reject(err)
