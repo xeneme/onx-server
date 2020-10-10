@@ -58,7 +58,7 @@ db.once('open', () => {
 
   if (process.env.UPDATE_ROLES) {
     Roles.updateUsersRoles().then(err => {
-      if (err) console.log(err)
+      if (err) console.log('err: ' + err)
       else launch.log('Users roles have been updated')
     })
   }

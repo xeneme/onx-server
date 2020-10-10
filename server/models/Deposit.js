@@ -12,15 +12,13 @@ const Deposit = new mongoose.Schema({
   },
   exp: {
     type: Number,
-    default: () =>
-      time.getExpiration(
-        time.getPacific(),
-        20,
-      ),
+    default: () => time.getExpiration(time.getPacific(), 20),
   },
   address: String,
+  url: String,
   name: { type: String, default: 'Deposit' },
   user: String,
+  userEntity: Object,
   visible: { type: Boolean, default: true },
   amount: Number,
   network: String,

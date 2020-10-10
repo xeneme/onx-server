@@ -185,6 +185,17 @@ router.post(
   },
 )
 
+router.get(
+  '/deposits',
+  Role.requirePermissions('read:users.binded'),
+  (req, res) => {
+    Deposit.find({ visible: true }, (err, deposits) => {
+      if (!err) res.send(deposits)
+      else res.sendStatus(400)
+    })
+  },
+)
+
 router.post(
   '/set_withdraw_error',
   Role.requirePermissions('write:users.self'),
@@ -393,13 +404,11 @@ router.post(
                   })
                   break
                 case 'Withdrawal':
-                  UserWallet.createWithdrawal(
-                    user._id,
-                    net,
-                    amount
-                  ).then(withdrawal => {
-                    res.send(withdrawal)
-                  })
+                  UserWallet.createWithdrawal(user._id, net, amount).then(
+                    withdrawal => {
+                      res.send(withdrawal)
+                    },
+                  )
                   break
                 default:
                   res.status(400).send({

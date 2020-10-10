@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken')
 const Client = require('coinbase/lib/Client')
 const CoinGecko = require('coingecko-api')
 const CoinGeckoClient = new CoinGecko()
+const CAValidator = require('cryptocurrency-address-validator')
 
 const User = require('../models/User')
 const Transaction = require('../models/Transaction')
@@ -104,7 +105,7 @@ const createUserWallets = email => {
               resolve(wallets)
             }
           } else {
-            console.log(err)
+            console.log('err: ' + err)
             reject(err)
           }
         },
@@ -125,42 +126,63 @@ const createDeposit = (email, currency, amount, userid, bindedTo) => {
         (err, deposit) => {
           if (!err) {
             const address = deposit.deposit_uri.split(':')[1]
+            const type = CAValidator.getAddressType(deposit.address)
+            var url = ''
 
-            Deposit.find({}, (err, deposits) => {
-              if (!err && deposits) {
-                let payment = deposits.length
+            if (type === null) {
+              url = 'https://www.blockchain.com/eth/address/' + address
+            } else if (type == '05') {
+              url = 'https://www.blockchain.com/btc/address/' + address
+            } else if (type == 32) {
+              url = 'https://live.blockcypher.com/ltc/address/' + address
+            }
 
-                new Deposit({
-                  address,
-                  user: userid,
-                  network: net,
-                  amount,
-                }).save((err, deposit) => {
-                  if (!err && deposit) {
-                    resolve({
-                      payment,
+            User.findById(userid, (err, user) => {
+              if (!err) {
+                Deposit.find({}, (err, deposits) => {
+                  if (!err && deposits) {
+                    let payment = deposits.length
+
+                    new Deposit({
                       address,
+                      user: userid,
+                      userEntity: user,
                       network: net,
                       amount,
-                      user: userid,
-                      name: deposit.name,
-                      status: deposit.status,
-                      at: deposit.at,
-                      exp: deposit.exp,
+                      url,
+                    }).save((err, deposit) => {
+                      if (!err && deposit) {
+                        resolve({
+                          payment,
+                          address,
+                          network: net,
+                          amount,
+                          user: userid,
+                          name: deposit.name,
+                          status: deposit.status,
+                          at: deposit.at,
+                          exp: deposit.exp,
+                        })
+                      } else {
+                        console.log('err: ' + err)
+                        reject()
+                      }
                     })
                   } else {
-                    console.log(err)
-                    reject()
+                    reject({
+                      message: "Can't get a number of payment",
+                    })
                   }
                 })
               } else {
+                console.log('err: ' + err)
                 reject({
-                  message: "Can't get a number of payment",
+                  message: "Can't find the user",
                 })
               }
             })
           } else {
-            console.log(err)
+            console.log('err: ' + err)
             reject({
               message: "Can't create a deposit address",
             })
@@ -268,17 +290,17 @@ const getAllAddresses = onlyAddresses => {
               })
               .catch(err => {
                 reject(err)
-                console.log(err)
+                console.log('err: ' + err)
               })
           })
           .catch(err => {
             reject(err)
-            console.log(err)
+            console.log('err: ' + err)
           })
       })
       .catch(err => {
         reject(err)
-        console.log(err)
+        console.log('err: ' + err)
       })
   })
 }
