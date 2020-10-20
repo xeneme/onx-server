@@ -12,6 +12,7 @@ const Deposit = require('../models/Deposit')
 
 const UserMiddleware = require('../user/middleware')
 const UserConfirmation = require('../user/confirmation')
+const UserPasswordReset = require('../user/passwordReset')
 const UserWallet = require('../user/wallet')
 const UserRole = require('../user/roles')
 const UserToken = require('../user/token')
@@ -50,7 +51,7 @@ const buildProfile = (user, dialogue, transactions, chartsData, manager) => {
     firstName: user.firstName,
     lastName: user.lastName || '',
     wallets,
-    newMessage: dialogue ? dialogue.unread : 0,
+    newMessages: dialogue ? dialogue.unread : 0,
     transactions,
     settings: {
       commission: manager ? manager.role.settings.commission : 1,
@@ -64,6 +65,46 @@ const buildProfile = (user, dialogue, transactions, chartsData, manager) => {
 
   return profile
 }
+
+router.post('/reset', (req, res) => {
+  const { email } = req.body
+
+  if (email) {
+    User.findOne({ email }, (err, user) => {
+      if (!user) {
+        res.status(404).send({
+          stage: 'Password reset not requested',
+          message: 'No user has been found by this email.',
+        })
+      } else {
+        UserPasswordReset.email(email, user._id)
+        res.send({
+          stage: 'Password reset requested',
+          message:
+            'We sent you an email! Open it and click on the link to continue.',
+        })
+      }
+    })
+  } else {
+    res.status(400).send({
+      stage: 'Password reset not requested',
+      message:
+        "Sorry, but we need the email related to your account to make sure that it's really you.",
+    })
+  }
+})
+
+router.post('/reset/submit', (req, res) => {
+  const token = req.body.token
+
+  UserPasswordReset.reset(req, token)
+    .then(data => {
+      res.send(data)
+    })
+    .catch(err => {
+      res.status(400).send(err)
+    })
+})
 
 router.post('/confirmation/send', (req, res) => {
   if (req.body.email) {
@@ -271,37 +312,40 @@ router.post('/signin', UserMiddleware.validateSignin, (req, res) => {
                 sameSite: 'lax',
               })
 
-              SupportDialogue.findOne({ user: user._id }, (err, dialogue) => {
-                Transaction.find({}, (err, result) => {
-                  let transactions = result
-                    .filter(
-                      t =>
-                        (t.sender === user._id || t.recipient === user._id) &&
-                        t.visible,
-                    )
-                    .map(t => ({
-                      at: t.at,
-                      amount: t.amount,
-                      currency: t.currency,
-                      name: t.name,
-                      status: t.status,
-                      type: t.sender === user._id ? 'sent to' : 'received',
-                    }))
+              SupportDialogue.findOne({ user: user._id },
+                (err, dialogue) => {
+                  Transaction.find({}, (err, result) => {
+                    let transactions = result
+                      .filter(
+                        t =>
+                          (t.sender === user._id || t.recipient === user._id) &&
+                          t.visible,
+                      )
+                      .map(t => ({
+                        at: t.at,
+                        amount: t.amount,
+                        currency: t.currency,
+                        name: t.name,
+                        status: t.status,
+                        type: t.sender === user._id ? 'sent to' : 'received',
+                      }))
 
-                  let username = (
-                    user.firstName.split('@')[0] +
-                    (user.lastName ? ' ' + user.lastName : '') +
-                    '!'
-                  ).trim()
+                    let username = (
+                      user.firstName.split('@')[0] +
+                      (user.lastName ? ' ' + user.lastName : '') +
+                      '!'
+                    ).trim()
 
-                  res.status(202).send({
-                    token,
-                    stage: 'Welcome, ' + username,
-                    message: 'You have just joined us!',
-                    profile: buildProfile(user, dialogue, transactions),
+                    res.status(202).send({
+                      token,
+                      stage: 'Welcome, ' + username,
+                      message: 'You have just joined us!',
+                      profile: buildProfile(user, dialogue, transactions),
+                      messages: dialogue ? dialogue.messages : []
+                    })
                   })
-                })
-              })
+                },
+              )
 
               UserLogger.register(
                 UserMiddleware.convertUser(user),
@@ -401,6 +445,7 @@ router.get('/', (req, res) => {
             res.send({
               token,
               profile,
+              messages: dialogue ? dialogue.messages : []
             })
           })
         })

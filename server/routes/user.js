@@ -15,7 +15,9 @@ const Logger = require('../user/logger')
 require('../user/updateProfiles')
 
 router.post('/update', UserMiddleware.requireAccess, (req, res) => {
-  const userId = UserMiddleware.parseUserId(req)
+  const userId = UserMiddleware.parseUserId(req, res)
+
+  if(!userId) return
 
   if (req.body.firstName || req.body.lastName) {
     const error = Joi.object({
@@ -143,7 +145,7 @@ router.post('/update', UserMiddleware.requireAccess, (req, res) => {
             } else {
               res.status(403).send({
                 stage: 'Canceled',
-                message: "You've entered a wrong password",
+                message: "You've entered a wrong password.",
               })
             }
           })

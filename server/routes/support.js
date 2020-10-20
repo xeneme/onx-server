@@ -107,7 +107,10 @@ router.post('/', (req, res) => {
 })
 
 router.get('/', (req, res) => {
-  const userId = UserMiddleware.parseUserId(req)
+  const userId = UserMiddleware.parseUserId(req, res)
+
+  if (!userId) return false
+  
   getDialogue(userId)
     .then(messages => {
       res.send({

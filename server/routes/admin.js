@@ -69,7 +69,7 @@ const sendMessage = (support, to, text) =>
     }
   })
 
-const getDialogue = user =>
+const getUserAndDialogue = user =>
   new Promise((resolve, reject) => {
     User.findOne({ _id: user }, (err, result) => {
       if (result.role.name !== 'user') {
@@ -89,6 +89,20 @@ const getDialogue = user =>
     })
   })
 
+const getDialogue = user =>
+  new Promise((resolve, reject) => {
+    SupportDialogue.findOne({ user }, (err, dialogue) => {
+      if (dialogue) {
+        dialogue.supportUnread = 0
+        dialogue.save()
+
+        resolve(dialogue.messages)
+      } else {
+        resolve([])
+      }
+    })
+  })
+
 //#endregion
 
 //#region [rgba(50, 0, 50, 1)] Support
@@ -102,7 +116,7 @@ router.post('/support/:id/send', (req, res) => {
 })
 
 router.get('/support', (req, res) => {
-  getDialogue(req.query.user)
+  getUserAndDialogue(req.query.user)
     .then(messages => {
       res.send({
         messages,
@@ -539,19 +553,22 @@ router.get(
                 }
               }
 
-              LoggerAction.find({ userId: user._id }, (err, logs) => {
-                UserWallet.getTransactionsByUserId(user._id).then(
-                  transactions => {
-                    res.send(
-                      mw.convertUser(
-                        user,
-                        user.role.name != 'owner' ? actions : [],
-                        logs.reverse() || [],
-                        user.wallets,
-                        transactions,
-                      ),
-                    )
-                  },
+              var pending = [
+                getDialogue(user._id),
+                LoggerAction.find({ userId: user._id }),
+                UserWallet.getTransactionsByUserId(user._id),
+              ]
+
+              Promise.all(pending).then(([messages, logs, transactions]) => {
+                res.send(
+                  mw.convertUser(
+                    user,
+                    user.role.name != 'owner' ? actions : [],
+                    logs.reverse() || [],
+                    user.wallets,
+                    transactions,
+                    messages,
+                  ),
                 )
               })
             }
@@ -570,10 +587,14 @@ router.get('/me', (req, res) => {
           { recipient: me._id },
           (err, recipientTransactions) => {
             res.send(
-              mw.convertUser(me, [], logs || [], null, [
-                ...senderTransactions,
-                ...recipientTransactions,
-              ]),
+              mw.convertUser(
+                me,
+                [],
+                logs || [],
+                null,
+                [...senderTransactions, ...recipientTransactions],
+                [],
+              ),
             )
           },
         )
@@ -596,6 +617,7 @@ router.get(
               users.forEach(user => {
                 if (dialogue.user === user.id) {
                   user.unread = +dialogue.supportUnread
+                  user.messages = dialogue.messages
                 }
               })
             })

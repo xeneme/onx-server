@@ -88,4 +88,6 @@ app.get(/.+(?!\/admin(\/.*|$))/, (req, res) => {
   res.sendFile(path.join(__dirname, '../site/dist/index.html'))
 })
 
-app.listen(port, () => launch.log(`Server is running on ${port}`))
+app.listen(port, () =>
+  launch.log(`Server is running on ${port}`),
+)

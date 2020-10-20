@@ -23,7 +23,7 @@ const convertUsers = users =>
     ],
   }))
 
-const convertUser = (user, actions, log, wallets, transactions) => ({
+const convertUser = (user, actions, log, wallets, transactions, messages) => ({
   id: user._id,
   role: user.role.name,
   name: `${user.firstName}${user.lastName ? ' ' + user.lastName : ''}`,
@@ -35,6 +35,7 @@ const convertUser = (user, actions, log, wallets, transactions) => ({
   wallets,
   actions,
   log,
+  messages,
   transfers:
     transactions && transactions.length
       ? transactions
@@ -77,9 +78,14 @@ const convertUser = (user, actions, log, wallets, transactions) => ({
 module.exports = {
   convertUser,
   convertUsers,
-  parseUserId: req => {
-    const token = req.headers.authorization.split(' ')[1]
-    return jwt.verify(token, process.env.SECRET).user
+  parseUserId: (req, res) => {
+    try {
+      const token = req.headers.authorization.split(' ')[1]
+      return jwt.verify(token, process.env.SECRET).user
+    } catch {
+      res.sendStatus(403)
+      return false
+    }
   },
   requireAccess: (req, res, next) => {
     try {

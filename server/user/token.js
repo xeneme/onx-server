@@ -1,8 +1,16 @@
-const jwt = require('jsonwebtoken');
+const jwt = require('jsonwebtoken')
 
 module.exports = {
-  verify: (token) =>
-    jwt.verify(token, process.env.SECRET),
+  verify: token => {
+    try {
+      return jwt.verify(token, process.env.SECRET)
+    } catch {
+      return null
+    }
+  },
+  passwordResetToken: data => {
+    return jwt.sign(data, process.env.SECRET, { expiresIn: '20m' })
+  },
   confirmationToken: (code, email) => {
     return (
       'Bearer ' +
@@ -15,7 +23,7 @@ module.exports = {
         process.env.SECRET,
         { expiresIn: '1h' },
       )
-    );
+    )
   },
   registrationToken: email => {
     return (
@@ -30,7 +38,7 @@ module.exports = {
           expiresIn: '8h',
         },
       )
-    );
+    )
   },
   authorizationToken: userid => {
     return (
@@ -45,6 +53,6 @@ module.exports = {
           expiresIn: '24h',
         },
       )
-    );
+    )
   },
-};
+}

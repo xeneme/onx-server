@@ -1,14 +1,33 @@
-var states = 3
-var state = 0
+var states = 4,
+  state = 0,
+  callbackExecuted = false,
+  callback = null
 
 if (process.env.UPDATE_ROLES) states++
 if (process.env.SYNC_WALLETS) states++
 
 module.exports = {
-  log: text => {
+  log: (text, cb) => {
     state++
+
+    if (cb) callback = cb
+
     console.log(
-      `[${state}/${states}] ${text}${state == states ? '. OK!' : '...'}`,
+      `[${state}/${states}] ${text}${
+        state == states + +Boolean(callback) ? '.' : '...'
+      }`,
     )
+
+    if (state == states && !callback) {
+      console.log('\n-------- OK! --------\n')
+    }
+
+    if (state == states - +Boolean(callback) && !callbackExecuted && callback) {
+      callback()
+      callbackExecuted = true
+    }
+  },
+  sublog: text => {
+    console.log(' -- ' + text)
   },
 }

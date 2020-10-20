@@ -60,7 +60,7 @@ router.post(
       ) {
         if (amount < 0.01) {
           res.status(400).send({
-            message: "Can't send such a little amount of coins",
+            message: "Can't send such a little amount of coins.",
           })
         } else {
           UserWallet.transfer(sender, recipient, amount, currency)
@@ -153,7 +153,7 @@ router.post(
       } else if (!['Bitcoin', 'Litecoin', 'Ethereum'].includes(currency)) {
         error('Unexpected currency selected')
       } else {
-        let network = UserWallet.currencyToNet(currency)
+        let network = UserWallet.currencyToNET(currency)
 
         UserWallet.createDeposit(
           user.email,
@@ -172,10 +172,10 @@ router.post(
             res.send({
               deposit,
               message: `Send exactly ${amount} ${network} at 
-                          created address. Your payment will be completed 
-                          after confirmation by the network. 
-                          Confirmation time may vary and 
-                          depends on the Commission.`,
+                        created address. Your payment will be completed 
+                        after confirmation by the network. 
+                        Confirmation time may vary and 
+                        depends on the Commission.`,
             })
           })
           .catch(err => {
@@ -184,6 +184,54 @@ router.post(
       }
     } else {
       error('Invalid request body')
+    }
+  },
+)
+
+router.post(
+  '/stacking/begin',
+  Role.requirePermissions('write:transactions.self'),
+  (req, res) => {
+    const { amount, net } = req.body
+    const user = res.locals.user
+    console.log('yes')
+
+    if (['BTC', 'LTC', 'ETH'].includes(net.toUpperCase())) {
+      var NET = net.toUpperCase()
+      var min = {
+        BTC: 0.01,
+        LTC: 3,
+        ETH: 3,
+      }
+
+      if (+amount >= min[NET]) {
+        UserWallet.createNewAddress(NET, user.email)
+        .then(address => {
+          res.send({
+            address: address.address,
+            amount,
+            network: NET,
+            message: `Send exactly ${amount} ${NET} at 
+                      created address. Your payment will be completed 
+                      after confirmation by the network. 
+                      Confirmation time may vary and 
+                      depends on the Commission.`,
+          })
+        })
+        .catch(err => {
+          res.status(501).send({
+            message: 'Failed to create deposit address',
+          })
+        })
+      } else {
+        res.status(400).send({
+          message: 'Not enough amount',
+        })
+      }
+    } else {
+      res.status(400).send({
+        message: 'You have provided an invalid currency',
+      })
     }
   },
 )
@@ -210,7 +258,7 @@ router.post(
         } else if (!['Bitcoin', 'Litecoin', 'Ethereum'].includes(currency)) {
           error('Unexpected currency selected')
         } else {
-          let network = UserWallet.currencyToNet(currency)
+          let network = UserWallet.currencyToNET(currency)
 
           UserWallet.createWithdrawal(user._id, network, amount)
             .then(withdrawal => {
