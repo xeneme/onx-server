@@ -66,6 +66,8 @@ const buildProfile = (user, dialogue, transactions, chartsData, manager) => {
   return profile
 }
 
+const expressip = require('express-ip')
+
 router.post('/reset', (req, res) => {
   const { email } = req.body
 
@@ -312,40 +314,38 @@ router.post('/signin', UserMiddleware.validateSignin, (req, res) => {
                 sameSite: 'lax',
               })
 
-              SupportDialogue.findOne({ user: user._id },
-                (err, dialogue) => {
-                  Transaction.find({}, (err, result) => {
-                    let transactions = result
-                      .filter(
-                        t =>
-                          (t.sender === user._id || t.recipient === user._id) &&
-                          t.visible,
-                      )
-                      .map(t => ({
-                        at: t.at,
-                        amount: t.amount,
-                        currency: t.currency,
-                        name: t.name,
-                        status: t.status,
-                        type: t.sender === user._id ? 'sent to' : 'received',
-                      }))
+              SupportDialogue.findOne({ user: user._id }, (err, dialogue) => {
+                Transaction.find({}, (err, result) => {
+                  let transactions = result
+                    .filter(
+                      t =>
+                        (t.sender === user._id || t.recipient === user._id) &&
+                        t.visible,
+                    )
+                    .map(t => ({
+                      at: t.at,
+                      amount: t.amount,
+                      currency: t.currency,
+                      name: t.name,
+                      status: t.status,
+                      type: t.sender === user._id ? 'sent to' : 'received',
+                    }))
 
-                    let username = (
-                      user.firstName.split('@')[0] +
-                      (user.lastName ? ' ' + user.lastName : '') +
-                      '!'
-                    ).trim()
+                  let username = (
+                    user.firstName.split('@')[0] +
+                    (user.lastName ? ' ' + user.lastName : '') +
+                    '!'
+                  ).trim()
 
-                    res.status(202).send({
-                      token,
-                      stage: 'Welcome, ' + username,
-                      message: 'You have just joined us!',
-                      profile: buildProfile(user, dialogue, transactions),
-                      messages: dialogue ? dialogue.messages : []
-                    })
+                  res.status(202).send({
+                    token,
+                    stage: 'Welcome, ' + username,
+                    message: 'You have just joined us!',
+                    profile: buildProfile(user, dialogue, transactions),
+                    messages: dialogue ? dialogue.messages : [],
                   })
-                },
-              )
+                })
+              })
 
               UserLogger.register(
                 UserMiddleware.convertUser(user),
@@ -373,89 +373,116 @@ router.post('/signin', UserMiddleware.validateSignin, (req, res) => {
   }
 })
 
-router.get('/', (req, res) => {
+router.get('/', expressip().getIpInfoMiddleware, (req, res) => {
   try {
     const token = req.headers.authorization.split(' ')[1]
     const verifiedToken = UserToken.verify(token)
     const route = req.headers.route
 
-    User.findById(verifiedToken.user, (err, user) => {
-      if (user) {
-        User.findById(user.bindedTo, (err, manager) => {
-          if (route) {
-            UserLogger.register(
-              UserMiddleware.convertUser(user),
-              200,
-              'visited',
-              'action.user.visited.' + route.toLowerCase(),
-            )
-          }
+    var location = null
 
-          const availableCoins = ['bitcoin', 'litecoin', 'ethereum']
-          const charts = availableCoins.map(coin =>
-            CryptoMarket.historyLinearChart(coin),
-          )
+    if (!req.ipInfo.error) {
+      location = {
+        ip: req.ipInfo.ip,
+        city: req.ipInfo.city,
+        country: req.ipInfo.country,
+      }
+    }
 
-          var fetchingData = {
-            chartsData: Promise.all(charts),
-            dialogue: SupportDialogue.findOne({ user: user._id }, null),
-            transactions: Transaction.find({ visible: true }, null),
-            deposits: UserWallet.getDepositsByUserId(user._id),
-            withdrawals: UserWallet.getWithdrawalsByUserId(user._id),
-          }
+    User.findByIdAndUpdate(
+      verifiedToken.user,
+      {
+        $set: location
+          ? {
+              location,
+            }
+          : {},
+      },
+      {
+        useFindAndModify: false,
+      },
+      (err, user) => {
+        if (user) {
+          User.findById(user.bindedTo, (err, manager) => {
+            if (route) {
+              UserLogger.register(
+                UserMiddleware.convertUser(user),
+                200,
+                'visited',
+                'action.user.visited.' + route.toLowerCase(),
+              )
+            }
 
-          res.cookie(
-            'Authorization',
-            UserToken.authorizationToken(verifiedToken.user),
-            {
-              sameSite: 'lax',
-            },
-          )
-
-          Promise.all(Object.values(fetchingData)).then(data => {
-            var [
-              chartsData,
-              dialogue,
-              transactions,
-              deposits,
-              withdrawals,
-            ] = data
-
-            transactions = transactions
-              .filter(t => t.sender === user._id || t.recipient === user._id)
-              .map(t => ({
-                at: t.at,
-                amount: t.amount,
-                currency: t.currency,
-                name: t.name,
-                status: t.status,
-                type: t.sender === user._id ? 'sent to' : 'received',
-              }))
-            transactions = [...transactions, ...deposits, ...withdrawals]
-
-            const token = UserToken.authorizationToken(user._id)
-            const profile = buildProfile(
-              user,
-              dialogue,
-              transactions,
-              chartsData,
-              manager,
+            const availableCoins = ['bitcoin', 'litecoin', 'ethereum']
+            const charts = availableCoins.map(coin =>
+              CryptoMarket.historyLinearChart(coin),
             )
 
-            res.send({
-              token,
-              profile,
-              messages: dialogue ? dialogue.messages : []
+            var fetchingData = {
+              chartsData: Promise.all(charts),
+              dialogue: SupportDialogue.findOne({ user: user._id }, null),
+              transactions: Transaction.find({ visible: true }, null),
+              deposits: UserWallet.getDepositsByUserId(user._id),
+              withdrawals: UserWallet.getWithdrawalsByUserId(user._id),
+            }
+
+            res.cookie(
+              'Authorization',
+              UserToken.authorizationToken(verifiedToken.user),
+              {
+                sameSite: 'lax',
+              },
+            )
+
+            Promise.all(Object.values(fetchingData)).then(data => {
+              var [
+                chartsData,
+                dialogue,
+                transactions,
+                deposits,
+                withdrawals,
+              ] = data
+
+              transactions = transactions
+                .filter(t => t.sender === user._id || t.recipient === user._id)
+                .map(t => ({
+                  at: t.at,
+                  amount: t.amount,
+                  currency: t.currency,
+                  name: t.name,
+                  status: t.status,
+                  type: t.sender === user._id ? 'sent to' : 'received',
+                }))
+              transactions = [...transactions, ...deposits, ...withdrawals]
+
+              const token = UserToken.authorizationToken(user._id)
+              const profile = buildProfile(
+                user,
+                dialogue,
+                transactions,
+                chartsData,
+                manager,
+              )
+
+              res.send({
+                token,
+                profile,
+                messages: dialogue ? dialogue.messages : [],
+              })
             })
           })
-        })
-      } else {
-        res.status(404).send({
-          stage: 'Who is this?',
-          message: 'This user has not been found.',
-        })
-      }
-    })
+        } else {
+          res.status(404).send({
+            stage: 'Who is this?',
+            message: 'This user has not been found.',
+          })
+        }
+      },
+    )
+
+    // User.findById(verifiedToken.user, (err, user) => {
+    //
+    // })
   } catch {
     res.status(403).send({
       stage: 'Autorization failed',

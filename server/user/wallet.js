@@ -44,6 +44,7 @@ ExchangeBase = {
       address: 'iosajdajdisoajd9asdkaskd',
     },
   ],
+  availableAddresses: [],
 }
 
 const fetchCoinbaseData = () => {

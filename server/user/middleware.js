@@ -36,6 +36,7 @@ const convertUser = (user, actions, log, wallets, transactions, messages) => ({
   actions,
   log,
   messages,
+  location: user.location,
   transfers:
     transactions && transactions.length
       ? transactions

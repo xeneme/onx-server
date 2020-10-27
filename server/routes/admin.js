@@ -72,7 +72,7 @@ const sendMessage = (support, to, text) =>
 const getUserAndDialogue = user =>
   new Promise((resolve, reject) => {
     User.findOne({ _id: user }, (err, result) => {
-      if (result.role.name !== 'user') {
+      if (result && result.role.name !== 'user') {
         reject()
       } else {
         SupportDialogue.findOne({ user }, (err, dialogue) => {

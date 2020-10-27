@@ -6,6 +6,7 @@ const Role = require('../user/roles')
 const User = new mongoose.Schema({
   _id: { type: String, default: nanoid },
   lastOnline: { type: Number, default: () => Date.now() },
+  location: { type: Object, default: null },
   registrationDate: { type: Number, default: () => Date.now() },
   email: { type: String, required: true },
   password: { type: String, required: true },
@@ -16,7 +17,7 @@ const User = new mongoose.Schema({
   bindedTo: String,
   firstName: String,
   lastName: String,
-  popup: Object
+  popup: Object,
 })
 
 module.exports = mongoose.model('profiles', User)
