@@ -6,7 +6,9 @@ const cookieParser = require('cookie-parser')
 const path = require('path')
 const User = require('./models/User')
 const jwt = require('jsonwebtoken')
-var cors = require('cors')
+const cors = require('cors')
+
+const slowDown = require('express-slow-down')
 
 require('dotenv/config')
 
@@ -21,6 +23,15 @@ app.use(
     optionsSuccessStatus: 200,
   }),
 )
+
+
+const speedLimiter = slowDown({
+  windowMs: 60 * 1000,
+  delayAfter: 100,
+  delayMs: 500
+});
+ 
+app.use('/api', speedLimiter);
 
 app.use(bodyParser.urlencoded({ extended: false }))
 app.use(bodyParser.json())
