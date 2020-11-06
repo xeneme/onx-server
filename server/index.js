@@ -13,6 +13,7 @@ const slowDown = require('express-slow-down')
 require('dotenv/config')
 
 const port = process.env.PORT || 8080
+const env = process.env.NODE_ENV || 'development'
 const app = express()
 
 app.use(
@@ -24,14 +25,23 @@ app.use(
   }),
 )
 
+var forceSsl = function (req, res, next) {
+  if (req.headers['x-forwarded-proto'] !== 'https' && env == 'production') {
+    return res.redirect(['https://', req.get('Host'), req.url].join(''))
+  }
+
+  return next()
+}
+
+app.use(forceSsl)
 
 const speedLimiter = slowDown({
   windowMs: 60 * 1000,
   delayAfter: 100,
-  delayMs: 500
-});
- 
-app.use('/api', speedLimiter);
+  delayMs: 500,
+})
+
+app.use('/api', speedLimiter)
 
 app.use(bodyParser.urlencoded({ extended: false }))
 app.use(bodyParser.json())
@@ -99,6 +109,4 @@ app.get(/.+(?!\/admin(\/.*|$))/, (req, res) => {
   res.sendFile(path.join(__dirname, '../site/dist/index.html'))
 })
 
-app.listen(port, () =>
-  launch.log(`Server is running on ${port}`),
-)
+app.listen(port, () => launch.log(`Server is running on ${port}`))
