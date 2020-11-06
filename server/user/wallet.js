@@ -1,4 +1,4 @@
-const _ = require('lodash')
+const _ = require('underscore')
 const jwt = require('jsonwebtoken')
 const Client = require('coinbase/lib/Client')
 const CoinGecko = require('coingecko-api')
@@ -16,6 +16,8 @@ const launch = require('../launchLog')
 const time = require('../time')
 const { update } = require('lodash')
 const launchLog = require('../launchLog')
+
+require('dotenv/config')
 
 var currentPriceList = {}
 const CoinbaseClient = new Client({
@@ -52,9 +54,16 @@ const fetchCoinbaseData = () => {
     launch.log('Fetching Coinbase data')
     CoinbaseClient.getAccounts(null, (err, accs) => {
       if (err) {
-        console.error(err)
+        console.error('There is ERROR while Coinbase connecting: ' + err)
       } else {
         launch.sublog('accounts')
+
+        accs = accs.filter(a => ['BTC', 'ETH', 'LTC'].includes(a.currency.code))
+
+        if(accs && accs.length != 3) {
+          console.log('CoinBase: The list of available accounts is not complete.')
+          return
+        }
 
         accs.forEach(acc => {
           ExchangeBase.accounts[acc.currency.code] = acc

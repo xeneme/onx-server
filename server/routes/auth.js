@@ -5,13 +5,14 @@ const bcrypt = require('bcryptjs')
 
 const random = require('lodash/random')
 const nanoid = require('nanoid').nanoid
+const _ = require('underscore')
 
 const User = require('../models/User')
 const Transaction = require('../models/Transaction')
 const Deposit = require('../models/Deposit')
 
 const UserMiddleware = require('../user/middleware')
-const UserConfirmation = require('../user/confirmation')
+const Email = require('../user/email')
 const UserPasswordReset = require('../user/passwordReset')
 const UserWallet = require('../user/wallet')
 const UserRole = require('../user/roles')
@@ -121,7 +122,7 @@ router.post('/confirmation/send', (req, res) => {
       } else {
         const code = random(100000, 999999, false)
 
-        UserConfirmation.email(email, code)
+        Email.send(email, code)
           .then(() => {
             res.status(200).send({
               token: UserToken.confirmationToken(code, email),
@@ -130,7 +131,8 @@ router.post('/confirmation/send', (req, res) => {
                 'We have just sent you a confirmation code. Please check your e-mail to proceed with registration.',
             })
           })
-          .catch(() => {
+          .catch(err => {
+            console.log(err)
             res.status(404).send({
               stage: 'In need of confirmation',
               message:
