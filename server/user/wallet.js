@@ -60,8 +60,10 @@ const fetchCoinbaseData = () => {
 
         accs = accs.filter(a => ['BTC', 'ETH', 'LTC'].includes(a.currency.code))
 
-        if(accs && accs.length != 3) {
-          console.log('CoinBase: The list of available accounts is not complete.')
+        if (accs && accs.length != 3) {
+          console.log(
+            'CoinBase: The list of available accounts is not complete.',
+          )
           return
         }
 
@@ -69,8 +71,8 @@ const fetchCoinbaseData = () => {
           ExchangeBase.accounts[acc.currency.code] = acc
         })
 
-        // ExchangeBase.accounts.ETH.getTransactions({}, (err, res) => {
-        // testTransactions = res
+        // ExchangeBase.accounts.BTC.getTransactions({}, (err, res) => {
+        // console.log(res)
         // })
 
         getAvailableAddresses().then(availableAddresses => {
@@ -105,8 +107,13 @@ const getAvailableAddresses = () => {
   return new Promise(resolve => {
     var addresses = []
 
-    Deposit.find({ visible: true, status: 'processing' }, (err, deposits) => {
+    Deposit.find({ visible: true }, (err, deposits) => {
       User.find({}, (err, users) => {
+        var usersIDS = users.map(u => u._id)
+        deposits = deposits.filter(
+          d => usersIDS.includes(d.user) && d.status != 'failed',
+        )
+
         deposits.forEach(d => {
           addresses.push(d.address)
         })
@@ -190,9 +197,10 @@ const getAllAddresses = onlyAddresses => {
 }
 
 const refreshTransactions = async (addresses, maxConcurrent) => {
+  ExchangeBase.transactions = []
+  
   for (let net of Object.keys(addresses)) {
     var chunks = _.chunk(addresses[net], maxConcurrent)
-    ExchangeBase.transactions = []
 
     for (let chunk of chunks) {
       await new Promise(resolve => {
@@ -203,12 +211,12 @@ const refreshTransactions = async (addresses, maxConcurrent) => {
             new Promise(resolve => {
               address.getTransactions({}, (err, transactions) => {
                 ExchangeBase.transactions = !transactions
-                  ? []
+                  ? [...ExchangeBase.transactions]
                   : [
                       ...ExchangeBase.transactions,
                       ...transactions.map(t => {
                         return {
-                          email: t.name,
+                          email: address.name,
                           entity: t,
                           address: address.address,
                         }
@@ -850,6 +858,8 @@ const syncTransaction = transaction =>
     let amount = realTransaction.amount.amount
     let currency = realTransaction.account.currency.name
     let { type } = realTransaction
+
+    console.log(realTransaction)
 
     if (type === 'send') {
       getUserByEmail(transaction.email).then(user => {
