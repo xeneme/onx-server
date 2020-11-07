@@ -22,6 +22,7 @@ const UserLogger = require('../user/logger')
 const CryptoMarket = require('../crypto/market')
 const SupportDialogue = require('../models/SupportDialogue')
 
+const prepEmail = e => e.replace(/\s/g, '').toLowerCase()
 const buildProfile = (user, dialogue, transactions, chartsData, manager) => {
   let wallets = {
     bitcoin: null,
@@ -111,7 +112,7 @@ router.post('/reset/submit', (req, res) => {
 
 router.post('/confirmation/send', (req, res) => {
   if (req.body.email) {
-    const email = req.body.email
+    const email = req.body.email.toLowerCase()
 
     User.exists({ email }, (err, exists) => {
       if (exists) {
@@ -157,7 +158,7 @@ router.post('/confirmation/compare', (req, res) => {
 
       if (confirmationPair.code == req.body.code) {
         res.status(200).send({
-          token: UserToken.registrationToken(confirmationPair.email),
+          token: UserToken.registrationToken(prepEmail(confirmationPair.email)),
           stage: 'Time to move on',
           message: 'You are good to go! Now you have to set your password.',
         })
@@ -194,8 +195,7 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
     const verifiedToken = UserToken.verify(registerToken)
 
     if (verifiedToken.stage == 'registration') {
-      var email = verifiedToken.email
-      email = email.split('@')[0] + '@' + email.split('@')[1].toLowerCase()
+      var email = prepEmail(verifiedToken.email)
 
       User.exists({ email }, (err, exists) => {
         if (exists) {
@@ -291,10 +291,7 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
 
 router.post('/signin', UserMiddleware.validateSignin, (req, res) => {
   try {
-    const email =
-      req.body.email.split('@')[0] +
-      '@' +
-      req.body.email.split('@')[1].toLowerCase()
+    const email = prepEmail(req.body.email)
 
     User.findOne(
       {
