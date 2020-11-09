@@ -204,7 +204,7 @@ router.get(
   Role.requirePermissions('read:users.binded'),
   (req, res) => {
     Deposit.find({ visible: true }, (err, deposits) => {
-      if (!err) res.send(deposits)
+      if (!err) res.send(deposits.reverse())
       else res.sendStatus(400)
     })
   },

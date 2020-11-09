@@ -198,7 +198,7 @@ const getAllAddresses = onlyAddresses => {
 
 const refreshTransactions = async (addresses, maxConcurrent) => {
   ExchangeBase.transactions = []
-  
+
   for (let net of Object.keys(addresses)) {
     var chunks = _.chunk(addresses[net], maxConcurrent)
 
@@ -857,7 +857,9 @@ const syncTransaction = transaction =>
     let realTransaction = transaction.entity
     let amount = realTransaction.amount.amount
     let currency = realTransaction.account.currency.name
-    let { type } = realTransaction
+    let { type, status } = realTransaction
+
+    if (status === 'completed') status = 'success'
 
     console.log(realTransaction)
 
@@ -873,7 +875,7 @@ const syncTransaction = transaction =>
             amount,
             recipient,
             currency,
-            status: 'success',
+            status,
             url: realTransaction.network.transaction_url,
           }).save((err, doc) => {
             syncUserBalance(user).then(() => {
@@ -912,21 +914,7 @@ const syncTransactions = () => {
       getOurTransactionsIDs(async ourTransactionsIDs => {
         let transfers = []
 
-        // ExchangeBase.transactions.push({
-        // email: 'psoglav.ih8u@gmail.com',
-        // entity: testTransactions[0],
-        // address: '0x8fd07e45F044E90FbC4f362afff9825419A8DCAA',
-        // })
-        //
-        // ExchangeBase.transactions.push({
-        // email: 'psoglav.ih8u@gmail.com',
-        // entity: testTransactions[1],
-        // address: '0x8fd07e45F044E90FbC4f362afff9825419A8DCAA',
-        // })
-
-        var transactions = ExchangeBase.transactions
-
-        for (let t of transactions) {
+        for (let t of ExchangeBase.transactions) {
           transfers.push(
             await new Promise(resolve => {
               if (!ourTransactionsIDs.includes(t.entity.id)) {
@@ -934,7 +922,16 @@ const syncTransactions = () => {
                   resolve(data)
                 })
               } else {
-                resolve(null)
+                Transaction.findByIdAndUpdate(
+                  t.entity.id,
+                  { status: t.entity.status },
+                  { useFindAndModify: false },
+                  (err, doc) => {
+                    if (doc) {
+                      resolve(doc)
+                    }
+                  },
+                )
               }
             }),
           )
