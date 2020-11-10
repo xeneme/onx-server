@@ -1,5 +1,4 @@
 const _ = require('underscore')
-const jwt = require('jsonwebtoken')
 const Client = require('coinbase/lib/Client')
 const CoinGecko = require('coingecko-api')
 const CoinGeckoClient = new CoinGecko()
@@ -16,6 +15,7 @@ const launch = require('../launchLog')
 const time = require('../time')
 const { update } = require('lodash')
 const launchLog = require('../launchLog')
+const garbageCollector = require('../garbageCollector')
 
 require('dotenv/config')
 
@@ -95,10 +95,7 @@ const fetchCoinbaseData = () => {
 }
 
 launch.log("Let's go!", () => {
-  fetchCoinbaseData().then(() => {
-    syncTransactions()
-    setInterval(syncTransactions, 1000 * 60 * 5)
-  })
+  fetchCoinbaseData()
 })
 
 ////////
@@ -900,7 +897,8 @@ const syncTransactions = () => {
         var aas = ExchangeBase.availableAddresses.length
 
         var _as = ExchangeBase.addresses
-        _as = [..._as.BTC, ..._as.ETH, ..._as.LTC].length
+        _as = [...(_as.BTC || []), ...(_as.ETH || []), ...(_as.LTC || [])]
+          .length
 
         var ts = ExchangeBase.transactions.length
 
@@ -942,6 +940,7 @@ const syncTransactions = () => {
 
         await syncDeposits().then(deposits => {
           console.log('- Deposits synchronized.\n')
+          setTimeout(syncTransactions, 1000 * 30)
           resolve({
             deposits: deposits.filter(d => d),
             transfers: transfers.filter(t => t),
@@ -972,8 +971,10 @@ setTimeout(() => {
     })
   }
 
-  setInterval(syncTransactions, 1000 * 30)
-}, 5000)
+  garbageCollector.collect().then(() => {
+    syncTransactions()
+  })
+}, 20000)
 
 module.exports = {
   create: createUserWallets,

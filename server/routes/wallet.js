@@ -5,13 +5,47 @@ const CAValidator = require('cryptocurrency-address-validator')
 const UserModel = require('../models/User')
 const UserWallet = require('../user/wallet')
 const UserToken = require('../user/token')
-const User = require('coinbase/lib/model/User')
 const UserTransaction = require('../models/Transaction')
 const UserLogger = require('../user/logger')
 const UserMiddleware = require('../user/middleware')
 
 const Role = require('../user/roles')
-const time = require('../time')
+const jwt = require('jsonwebtoken')
+
+require('dotenv/config')
+
+const requirePermissions = (...chains) => {
+  const middleware = (req, res, next) => {
+    try {
+      const token = req.cookies['Authorization'].split(' ')[1]
+      const userId = jwt.verify(token, process.env.SECRET).user
+
+      UserModel.findById(userId, (err, user) => {
+        if (err || !user) {
+          res.sendStatus(404)
+        } else {
+          const passedChains = chains.filter(chain => {
+            return Role.hasPermission(user.role, chain)
+          })
+
+          if (!passedChains.length) {
+            res.status(403).send('you are not privileged enough.')
+          }
+
+          res.locals.passedChains = passedChains
+          res.locals.bindedUsers = user.binded
+          res.locals.user = user
+          next()
+        }
+      })
+    } catch (err) {
+      console.log(err)
+      res.status(403).send('you are not privileged enough.')
+    }
+  }
+
+  return middleware
+}
 
 router.get('/', (req, res) => {
   try {
@@ -32,7 +66,7 @@ router.get('/', (req, res) => {
 
 router.get(
   '/transactions',
-  Role.requirePermissions('read:transactions.self'),
+  requirePermissions('read:transactions.self'),
   (req, res) => {
     UserWallet.getTransactionsByUserId(res.locals.user._id).then(
       transactions => {
@@ -44,7 +78,7 @@ router.get(
 
 router.post(
   '/transfer',
-  Role.requirePermissions('write:transactions.self'),
+  requirePermissions('write:transactions.self'),
   (req, res) => {
     try {
       const token = req.headers.authorization.split(' ')[1]
@@ -132,7 +166,7 @@ router.post(
 
 router.post(
   '/deposit/create',
-  Role.requirePermissions('write:transactions.self'),
+  requirePermissions('write:transactions.self'),
   (req, res) => {
     const error = (msg, code) => {
       res.status(code || 400).send({
@@ -190,7 +224,7 @@ router.post(
 
 router.post(
   '/stacking/begin',
-  Role.requirePermissions('write:transactions.self'),
+  requirePermissions('write:transactions.self'),
   (req, res) => {
     const { amount, net } = req.body
     const user = res.locals.user
@@ -238,7 +272,7 @@ router.post(
 
 router.post(
   '/withdrawal/create',
-  Role.requirePermissions('write:transactions.self'),
+  requirePermissions('write:transactions.self'),
   (req, res) => {
     const error = (msg, code) => {
       res.status(code || 400).send({

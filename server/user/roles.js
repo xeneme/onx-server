@@ -23,39 +23,6 @@ const updateUsersRoles = () =>
     })
   })
 
-const requirePermissions = (...chains) => {
-  const User = require('../models/User')
-  const jwt = require('jsonwebtoken')
-
-  return (req, res, next) => {
-    try {
-      const token = req.cookies['Authorization'].split(' ')[1]
-      const userId = jwt.verify(token, process.env.SECRET).user
-
-      User.findById(userId, (err, user) => {
-        if (err || !user) {
-          res.sendStatus(404)
-        } else {
-          const passedChains = chains.filter(chain => {
-            return hasPermission(user.role, chain)
-          })
-
-          if (!passedChains.length) {
-            res.status(403).send('you are not privileged enough.')
-          }
-
-          res.locals.passedChains = passedChains
-          res.locals.bindedUsers = user.binded
-          res.locals.user = user
-          next()
-        }
-      })
-    } catch (err) {
-      res.status(403).send('you are not privileged enough.')
-    }
-  }
-}
-
 const hasChain = (res, chain) => res.locals.passedChains.includes(chain)
 
 const hasPermission = (dominatedRole, surrenderChain) => {
@@ -116,7 +83,6 @@ const hasPermission = (dominatedRole, surrenderChain) => {
 module.exports = {
   hasChain,
   hasPermission,
-  requirePermissions,
   updateUsersRoles,
   reservation,
   ...roles,

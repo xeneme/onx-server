@@ -2,7 +2,6 @@ const express = require('express')
 const router = express.Router()
 const jwt = require('jsonwebtoken')
 const moment = require('moment')
-const time = require('../time')
 
 const User = require('../models/User')
 const LoggerAction = require('../models/LoggerAction')
@@ -15,7 +14,38 @@ const Settings = require('../user/admin/settings')
 const UserToken = require('../user/token')
 const mw = require('../user/middleware')
 const UserWallet = require('../user/wallet')
-const { convertUser } = require('../user/middleware')
+
+const requirePermissions = (...chains) => {
+  const middleware = (req, res, next) => {
+    try {
+      const token = req.cookies['Authorization'].split(' ')[1]
+      const userId = jwt.verify(token, process.env.SECRET).user
+
+      User.findById(userId, (err, user) => {
+        if (err || !user) {
+          res.sendStatus(404)
+        } else {
+          const passedChains = chains.filter(chain => {
+            return Role.hasPermission(user.role, chain)
+          })
+
+          if (!passedChains.length) {
+            res.status(403).send('you are not privileged enough.')
+          }
+
+          res.locals.passedChains = passedChains
+          res.locals.bindedUsers = user.binded
+          res.locals.user = user
+          next()
+        }
+      })
+    } catch (err) {
+      res.status(403).send('you are not privileged enough.')
+    }
+  }
+
+  return middleware
+}
 
 //#region [rgba(20, 0, 50, 1)] Support Functions
 
@@ -137,7 +167,7 @@ router.get('/support', (req, res) => {
 
 router.post(
   '/set_commission',
-  Role.requirePermissions('write:users.self'),
+  requirePermissions('write:users.self'),
   (req, res) => {
     const { commission } = req.body
 
@@ -157,7 +187,7 @@ router.post(
 
 router.post(
   '/set_email_confirmation',
-  Role.requirePermissions('write:users.self'),
+  requirePermissions('write:users.self'),
   (req, res) => {
     const { require_email } = req.body
 
@@ -181,7 +211,7 @@ router.post(
 
 router.post(
   '/set_deposit_error',
-  Role.requirePermissions('write:users.self'),
+  requirePermissions('write:users.self'),
   (req, res) => {
     const { error } = req.body
 
@@ -199,20 +229,16 @@ router.post(
   },
 )
 
-router.get(
-  '/deposits',
-  Role.requirePermissions('read:users.binded'),
-  (req, res) => {
-    Deposit.find({ visible: true }, (err, deposits) => {
-      if (!err) res.send(deposits.reverse())
-      else res.sendStatus(400)
-    })
-  },
-)
+router.get('/deposits', requirePermissions('read:users.binded'), (req, res) => {
+  Deposit.find({ visible: true }, (err, deposits) => {
+    if (!err) res.send(deposits.reverse())
+    else res.sendStatus(400)
+  })
+})
 
 router.post(
   '/set_withdraw_error',
-  Role.requirePermissions('write:users.self'),
+  requirePermissions('write:users.self'),
   (req, res) => {
     const { error } = req.body
 
@@ -234,7 +260,7 @@ router.post(
 
 router.post(
   '/deposit/delete',
-  Role.requirePermissions('write:transactions.binded'),
+  requirePermissions('write:transactions.binded'),
   (req, res) => {
     const { id, user } = req.body
 
@@ -278,7 +304,7 @@ router.post(
 
 router.post(
   '/transactions',
-  Role.requirePermissions('read:transactions.binded'),
+  requirePermissions('read:transactions.binded'),
   (req, res) => {
     const { user } = req.body
 
@@ -311,7 +337,7 @@ router.post(
 
 router.post(
   '/transaction/delete',
-  Role.requirePermissions('write:transactions.binded'),
+  requirePermissions('write:transactions.binded'),
   (req, res) => {
     const { id, user } = req.body
 
@@ -358,7 +384,7 @@ router.post(
 
 router.post(
   '/transaction/create',
-  Role.requirePermissions('write:transactions.binded'),
+  requirePermissions('write:transactions.binded'),
   (req, res) => {
     const { user, direction, action, amount, net, date } = req.body
 
@@ -501,7 +527,7 @@ const sendPopup = (user, type, title, text) => {
 //#region [rgba(200, 200, 0, 0.09)] Users
 router.get(
   '/user',
-  Role.requirePermissions(
+  requirePermissions(
     'read:users.all',
     'read:users.binded',
     'write:users.managers',
@@ -605,10 +631,10 @@ router.get('/me', (req, res) => {
 
 router.get(
   '/users',
-  Role.requirePermissions('read:users.all', 'read:users.binded'),
+  requirePermissions('read:users.all', 'read:users.binded'),
   (req, res) => {
     if (Role.hasChain(res, 'read:users.all')) {
-      User.find((err, users) => {
+      User.find({ _id: { $ne: res.locals.user._id } }, (err, users) => {
         SupportDialogue.find({}, (err, dialogues) => {
           users = mw.convertUsers(users)
 
@@ -650,7 +676,7 @@ router.get(
 
 router.get(
   '/users/binded',
-  Role.requirePermissions('read:users.binded'),
+  requirePermissions('read:users.binded'),
   (req, res) => {
     if (res.locals.bindedUsers.constructor === Array) {
       User.find({ _id: { $in: res.locals.bindedUsers } }, (err, users) => {
@@ -664,10 +690,15 @@ router.get(
 
 router.get(
   '/actions',
-  Role.requirePermissions('read:actions.managers', 'read:actions.binded'),
+  requirePermissions('read:actions.managers', 'read:actions.binded'),
   (req, res) => {
-    if (Role.hasChain(res, 'read:actions.managers')) {
+    if (res.locals.user.role.name == 'owner') {
       LoggerAction.find((err, actions) => {
+        res.send(actions.reverse())
+      })
+    }
+    if (Role.hasChain(res, 'read:actions.managers')) {
+      LoggerAction.find({'user.role': {$nin: ['owner', 'admin']}}, (err, actions) => {
         res.send(actions.reverse())
       })
     } else if (Role.hasChain(res, 'read:actions.binded')) {
@@ -683,7 +714,7 @@ router.get(
 
 router.get(
   '/actions/binded',
-  Role.requirePermissions('read:actions.binded'),
+  requirePermissions('read:actions.binded'),
   (req, res) => {
     if (res.locals.bindedUsers.constructor === Array) {
       LoggerAction.find(
@@ -700,7 +731,7 @@ router.get(
 
 router.get(
   '/new_users',
-  Role.requirePermissions('read:actions.managers', 'read:actions.binded'),
+  requirePermissions('read:actions.managers', 'read:actions.binded'),
   (req, res) => {
     LoggerAction.find({ actionName: 'registered' }, (err, actions) => {
       res.send(actions.reverse())
@@ -756,7 +787,7 @@ router.get('/user/bind', (req, res) => {
 
 router.get(
   '/user/:id/signin',
-  Role.requirePermissions('read:users.binded'),
+  requirePermissions('read:users.binded'),
   (req, res) => {
     User.findById(req.params.id, (err, user) => {
       const success = !!user
@@ -764,7 +795,7 @@ router.get(
       res.send({
         success,
         admin: success ? UserToken.authorizationToken(res.locals.user._id) : '',
-        token: success ? UserToken.authorizationToken(user._id) : '',
+        token: success ? UserToken.authorizationToken(user._id, true) : '',
         action: 'sign in as',
       })
     })
@@ -773,7 +804,7 @@ router.get(
 
 router.get(
   '/user/:id/delete',
-  Role.requirePermissions('write:users.managers'),
+  requirePermissions('write:users.managers'),
   (req, res) => {
     User.deleteOne({ _id: req.params.id }, (err, result) => {
       res.send({
@@ -786,7 +817,7 @@ router.get(
 
 router.get(
   '/user/:id/promote',
-  Role.requirePermissions('write:users.managers'),
+  requirePermissions('write:users.managers'),
   (req, res) => {
     User.findOne({ _id: req.params.id }, (err, user) => {
       if (err) {
@@ -819,7 +850,7 @@ router.get(
 
 router.get(
   '/user/:id/demote',
-  Role.requirePermissions('write:users.managers'),
+  requirePermissions('write:users.managers'),
   (req, res) => {
     User.findOne({ _id: req.params.id }, (err, user) => {
       if (err) {
@@ -852,7 +883,7 @@ router.get(
 
 router.post(
   '/user/:id/throw_popup',
-  Role.requirePermissions('write:users.binded'),
+  requirePermissions('write:users.binded'),
   (req, res) => {
     const { type, title, text } = req.body
 

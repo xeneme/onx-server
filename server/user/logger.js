@@ -29,7 +29,9 @@ module.exports = {
 
       if (relatedData) newAction.relatedData = relatedData
 
-      new LoggerAction(newAction).save((e, product) => {})
+      new LoggerAction(newAction).save(null)
+
+      console.log(`${user.role.toUpperCase()} (${user.email}): ${messageLocalPath} + ${relatedData}`)
     }
   },
 }

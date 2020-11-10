@@ -40,19 +40,21 @@ module.exports = {
       )
     )
   },
-  authorizationToken: userid => {
+  authorizationToken: (userid, isAdmin) => {
+    var entity = {
+      stage: 'authorization',
+      user: userid,
+    }
+
+    if (isAdmin) {
+      entity.lock_location = true
+    }
+
     return (
       'Bearer ' +
-      jwt.sign(
-        {
-          stage: 'authorization',
-          user: userid,
-        },
-        process.env.SECRET,
-        {
-          expiresIn: '24h',
-        },
-      )
+      jwt.sign(entity, process.env.SECRET, {
+        expiresIn: '24h',
+      })
     )
   },
 }
