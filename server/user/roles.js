@@ -54,7 +54,7 @@ const hasPermission = (dominatedRole, surrenderChain) => {
       d = splitChain(chain)
 
       const typeMap = 'read -> write'
-      const accessMap = 'self -> binded -> managers -> all'
+      const accessMap = 'self -> binded -> all'
 
       const type =
         typeMap.search(s.type) >= 0 &&
@@ -67,8 +67,8 @@ const hasPermission = (dominatedRole, surrenderChain) => {
         accessMap.search(s.access) >= 0 &&
         accessMap.search(d.access) >= 0 &&
         accessMap.search(d.access) >= accessMap.search(s.access) &&
-        ['self', 'binded', 'managers', 'all'].includes(s.access) &&
-        ['self', 'binded', 'managers', 'all'].includes(d.access)
+        ['self', 'binded', 'all'].includes(s.access) &&
+        ['self', 'binded', 'all'].includes(d.access)
 
       const assert = type && field && access
 
@@ -86,25 +86,7 @@ module.exports = {
   updateUsersRoles,
   reservation,
   ...roles,
-  promote: role => {
-    switch (role) {
-      case 'user':
-        return roles['manager']
-        break
-      default:
-        return roles['admin']
-        break
-    }
-  },
-  demote: role => {
-    switch (role) {
-      case 'admin':
-        return roles['manager']
-        break
-      default:
-        return roles['user']
-        break
-    }
-  },
+  promote: () => roles['manager'],
+  demote: () => roles['user'],
   actions,
 }

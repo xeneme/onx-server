@@ -2,6 +2,7 @@ const express = require('express')
 const router = express.Router()
 const jwt = require('jsonwebtoken')
 const moment = require('moment')
+const _ = require('underscore')
 
 const User = require('../models/User')
 const LoggerAction = require('../models/LoggerAction')
@@ -555,22 +556,23 @@ router.get(
                 },
               ]
 
-              if (Role.hasPermission(me.role, 'write:users.managers')) {
+              if (
+                Role.hasPermission(me.role, 'write:users.all') &&
+                user.role.name != 'owner'
+              ) {
                 actions.push({
                   nameLocalPath: 'dashboard.profile.actions.deleteUser',
                   color: 'danger',
                   url: `/api/admin/user/${user._id}/delete`,
                 })
 
-                if (user.role.name !== 'admin') {
+                if (user.role.name == 'user') {
                   actions.push({
                     nameLocalPath: 'dashboard.profile.actions.promote',
                     color: 'primary',
                     url: `/api/admin/user/${user._id}/promote`,
                   })
-                }
-
-                if (user.role.name !== 'user') {
+                } else if (user.role.name == 'manager') {
                   actions.push({
                     nameLocalPath: 'dashboard.profile.actions.demote',
                     color: 'danger',
@@ -653,7 +655,7 @@ router.get(
         })
       })
     } else if (Role.hasChain(res, 'read:users.binded')) {
-      User.find({ _id: { $in: res.locals.bindedUsers } }, (err, users) => {
+      User.find({ email: { $in: res.locals.bindedUsers } }, (err, users) => {
         SupportDialogue.find({}, (err, dialogues) => {
           users = mw.convertUsers(users)
 
@@ -679,7 +681,7 @@ router.get(
   requirePermissions('read:users.binded'),
   (req, res) => {
     if (res.locals.bindedUsers.constructor === Array) {
-      User.find({ _id: { $in: res.locals.bindedUsers } }, (err, users) => {
+      User.find({ email: { $in: res.locals.bindedUsers } }, (err, users) => {
         res.send(mw.convertUsers(users))
       })
     } else {
@@ -693,17 +695,12 @@ router.get(
   requirePermissions('read:actions.managers', 'read:actions.binded'),
   (req, res) => {
     if (res.locals.user.role.name == 'owner') {
-      LoggerAction.find((err, actions) => {
-        res.send(actions.reverse())
-      })
-    }
-    if (Role.hasChain(res, 'read:actions.managers')) {
-      LoggerAction.find({'user.role': {$nin: ['owner', 'admin']}}, (err, actions) => {
+      LoggerAction.find({}, (err, actions) => {
         res.send(actions.reverse())
       })
     } else if (Role.hasChain(res, 'read:actions.binded')) {
       LoggerAction.find(
-        { userId: { $in: res.locals.bindedUsers } },
+        { 'user.email': { $in: res.locals.bindedUsers } },
         (err, actions) => {
           res.send(actions.reverse())
         },
@@ -718,7 +715,7 @@ router.get(
   (req, res) => {
     if (res.locals.bindedUsers.constructor === Array) {
       LoggerAction.find(
-        { userId: { $in: res.locals.bindedUsers } },
+        { 'user.email': { $in: res.locals.bindedUsers } },
         (err, actions) => {
           res.send(actions.reverse())
         },
@@ -749,13 +746,13 @@ router.get('/user/bind', (req, res) => {
       else {
         getMe(req, res, me => {
           if (
-            !me.binded.includes(user._id) &&
+            !me.binded.includes(user.email) &&
             me.email !== user.email &&
             user.role.name === 'user' &&
             !user.bindedTo &&
-            me.role.name === 'manager'
+            me.role.name != 'user'
           ) {
-            me.binded.push(user._id)
+            me.binded.push(user.email)
 
             User.findByIdAndUpdate(
               me._id,
@@ -768,7 +765,7 @@ router.get('/user/bind', (req, res) => {
                 useFindAndModify: false,
               },
               () => {
-                user.bindedTo = me._id
+                user.bindedTo = me.email
                 user.save((err, user) => {
                   res.sendStatus(200)
                 })
@@ -780,6 +777,54 @@ router.get('/user/bind', (req, res) => {
         })
       }
     })
+  } else {
+    res.sendStatus(400)
+  }
+})
+
+router.get('/user/bind/:user/to/:manager', (req, res) => {
+  if (req.params.user && req.params.manager) {
+    User.find(
+      { email: { $in: [req.params.user, req.params.manager] } },
+      (err, users) => {
+        if (!users || users.length != 2) res.sendStatus(404)
+        else {
+          var user = _.find(users, u => u.role.name == 'user')
+          var manager = _.find(users, u => u.role.name == 'manager')
+
+          getMe(req, res, me => {
+            if (
+              !manager.binded.includes(user.email) &&
+              manager.email !== user.email &&
+              user.role.name === 'user' &&
+              me.role.name == 'owner'
+            ) {
+              manager.binded.push(user.email)
+
+              User.findByIdAndUpdate(
+                manager._id,
+                {
+                  $set: {
+                    binded: manager.binded,
+                  },
+                },
+                {
+                  useFindAndModify: false,
+                },
+                () => {
+                  user.bindedTo = manager.email
+                  user.save((err, user) => {
+                    res.sendStatus(200)
+                  })
+                },
+              )
+            } else {
+              res.sendStatus(409)
+            }
+          })
+        }
+      },
+    )
   } else {
     res.sendStatus(400)
   }
@@ -804,7 +849,7 @@ router.get(
 
 router.get(
   '/user/:id/delete',
-  requirePermissions('write:users.managers'),
+  requirePermissions('write:users.all'),
   (req, res) => {
     User.deleteOne({ _id: req.params.id }, (err, result) => {
       res.send({
@@ -817,7 +862,7 @@ router.get(
 
 router.get(
   '/user/:id/promote',
-  requirePermissions('write:users.managers'),
+  requirePermissions('write:users.all'),
   (req, res) => {
     User.findOne({ _id: req.params.id }, (err, user) => {
       if (err) {
@@ -850,7 +895,7 @@ router.get(
 
 router.get(
   '/user/:id/demote',
-  requirePermissions('write:users.managers'),
+  requirePermissions('write:users.all'),
   (req, res) => {
     User.findOne({ _id: req.params.id }, (err, user) => {
       if (err) {

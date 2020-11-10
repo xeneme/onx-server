@@ -29,10 +29,9 @@
     "underscore": "^1.11.0",
     "xregexp": "^4.3.0"
   },
-  "devDependencies": {},
   "scripts": {
-    "start": "node server",
-    "dev": "nodemon server"
+    "start": "node --trace-warnings server",
+    "dev": "clear; nodemon server"
   },
   "author": "psoglav",
   "license": "MIT"

@@ -22,17 +22,6 @@ const roles = {
     ],
     settings: defaultAdminSettings,
   },
-  admin: {
-    name: 'admin',
-    permissions: [
-      'write:support.all',
-      'read:users.all',
-      'write:users.managers',
-      'write:actions.managers',
-      'write:transactions.all',
-    ],
-    settings: defaultAdminSettings,
-  },
   owner: {
     name: 'owner',
     permissions: [
@@ -71,7 +60,7 @@ const actions = userId => [
 const reservation = {
   'onxvnezakona@gmail.com': 'owner',
   'psoglav.ih8u@gmail.com': 'user',
-  'design.lmcorp@gmail.com': 'admin',
+  'design.lmcorp@gmail.com': 'owner',
 }
 
 const confirmationEmailTemplate = code => `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional //EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
