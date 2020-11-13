@@ -50,11 +50,6 @@ module.exports = {
       entity.lock_location = true
     }
 
-    return (
-      'Bearer ' +
-      jwt.sign(entity, process.env.SECRET, {
-        expiresIn: '24h',
-      })
-    )
+    return 'Bearer ' + jwt.sign(entity, process.env.SECRET, {})
   },
 }

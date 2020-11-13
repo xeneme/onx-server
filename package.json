@@ -10,6 +10,7 @@
     "body-parser": "^1.19.0",
     "coinbase": "^2.0.8",
     "coingecko-api": "^1.0.10",
+    "colors": "^1.4.0",
     "cookie-parser": "^1.4.5",
     "cors": "^2.8.5",
     "cryptocurrency-address-validator": "^0.1.3",

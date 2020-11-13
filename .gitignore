@@ -2,4 +2,6 @@
 .vscode
 ssl
 todo.txt
-server.commit.md
+commit.md
+
+!node_modules

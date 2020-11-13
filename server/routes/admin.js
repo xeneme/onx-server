@@ -247,7 +247,7 @@ router.post(
       Settings.setCustomWithdrawEmailError(res.locals.user, error).then(
         user => {
           res.send({
-            message: 'Your custom withdraw email error changed',
+            message: 'Your withdraw email error changed',
           })
         },
       )
@@ -936,6 +936,34 @@ router.post(
       sendPopup(req.params.id, type, title, text).then(user => {
         res.send(user)
       })
+    } else {
+      res.sendStatus(403)
+    }
+  },
+)
+
+router.post(
+  '/user/:id/set_withdraw_error',
+  requirePermissions('write:users.binded'),
+  (req, res) => {
+    const { text } = req.body
+
+    if (text) {
+      User.findByIdAndUpdate(
+        req.params.id,
+        {
+          $set: {
+            customWithdrawError: text,
+          },
+        },
+        {
+          useFindAndModify: false,
+        },
+        (err, user) => {
+          if (user) res.sendStatus(200)
+          else res.sendStatus(404)
+        },
+      )
     } else {
       res.sendStatus(403)
     }

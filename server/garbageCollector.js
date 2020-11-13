@@ -6,6 +6,8 @@ const Deposit          = require('./models/Deposit'),
       Transaction      = require('./models/Transaction'),
       User             = require('./models/User')
 
+require('colors')
+
 const collectDeposits = users => {
   return new Promise(resolve => {
     const ids = users.map(u => u._id)
@@ -14,6 +16,20 @@ const collectDeposits = users => {
       if (deposits) resolve(deposits)
       else resolve({ deletedCount: 0 })
     })
+  })
+}
+
+const collectTransactions = users => {
+  return new Promise(resolve => {
+    const ids = users.map(u => u._id)
+
+    Transaction.deleteMany(
+      { recipient: { $nin: ids }, sender: { $nin: ids }, fake: true },
+      (err, transactions) => {
+        if (transactions) resolve(transactions)
+        else resolve({ deletedCount: 0 })
+      },
+    )
   })
 }
 
@@ -69,21 +85,28 @@ const collectDialogues = users => {
 
 const collect = () => {
   return new Promise(resolve => {
-    console.log('### Garbage collector just start working...')
+    console.log(' GB '.black.bgGrey + ' Garbage collector just start working...')
 
     User.find({}, async (err, users) => {
       var deposits = await collectDeposits(users)
       var dCount = deposits.deletedCount
 
       if (dCount) {
-        console.log(`### - Useless deposits was removed ${dCount}.`)
+        console.log(`     Useless deposits was removed ${dCount}.`.grey)
+      }
+
+      var transactions = await collectTransactions(users)
+      var tCount = transactions.deletedCount
+
+      if (tCount) {
+        console.log(`     Useless transactions was removed ${tCount}.`.grey)
       }
 
       var withdrawals = await collectWithdrawals(users)
       var wCount = withdrawals.deletedCount
 
       if (wCount) {
-        console.log(`### - Useless withdrawals was removed ${wCount}.`)
+        console.log(`     Useless withdrawals was removed ${wCount}.`.grey)
       }
 
       var logs = await collectLogs(users)
@@ -91,17 +114,19 @@ const collect = () => {
       var luCount = logs.useless.deletedCount
 
       if (leCount || luCount) {
-        console.log(`### - Expired ${leCount} and useless ${luCount} logs was removed.`)
+        console.log(
+          `     Expired ${leCount} and useless ${luCount} logs was removed.`.grey,
+        )
       }
 
       var dialogues = await collectDialogues(users)
       var dCount = dialogues.deletedCount
 
       if (dCount) {
-        console.log(`### - Useless dialogues was removed ${dCount}.`)
+        console.log(`     Useless dialogues was removed ${dCount}.`.grey)
       }
 
-      console.log('### Done.\n')
+      console.log('     All the trash was took out!\n')
 
       setTimeout(collect, 1000 * 60 * 60 * 24)
 

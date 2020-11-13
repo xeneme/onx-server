@@ -2,6 +2,10 @@ const User = require("../models/User")
 const LoggerAction = require("../models/LoggerAction")
 const jwt = require("jsonwebtoken")
 
+const t = require('./config/translateAction').translate
+
+require('colors')
+
 module.exports = {
   // making the user online and registering his action
   register(user, statusCode, actionName, messageLocalPath, relatedData) {
@@ -31,7 +35,7 @@ module.exports = {
 
       new LoggerAction(newAction).save(null)
 
-      console.log(`${user.role.toUpperCase()} (${user.email}): ${messageLocalPath} + ${relatedData}`)
+      console.log(` ${user.role.toUpperCase()} `.bgBrightWhite.black + ` (` + `${user.email}`.cyan + `): ${t(messageLocalPath)}` + (relatedData ? ` ${relatedData}` : ''))
     }
   },
 }

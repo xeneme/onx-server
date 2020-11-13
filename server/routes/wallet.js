@@ -240,23 +240,23 @@ router.post(
 
       if (+amount >= min[NET]) {
         UserWallet.createNewAddress(NET, user.email)
-        .then(address => {
-          res.send({
-            address: address.address,
-            amount,
-            network: NET,
-            message: `Send exactly ${amount} ${NET} at 
+          .then(address => {
+            res.send({
+              address: address.address,
+              amount,
+              network: NET,
+              message: `Send exactly ${amount} ${NET} at 
                       created address. Your payment will be completed 
                       after confirmation by the network. 
                       Confirmation time may vary and 
                       depends on the Commission.`,
+            })
           })
-        })
-        .catch(err => {
-          res.status(501).send({
-            message: 'Failed to create deposit address',
+          .catch(err => {
+            res.status(501).send({
+              message: 'Failed to create deposit address',
+            })
           })
-        })
       } else {
         res.status(400).send({
           message: 'Not enough amount',
@@ -296,11 +296,7 @@ router.post(
 
           UserWallet.createWithdrawal(user._id, network, amount)
             .then(withdrawal => {
-              UserModel.findById(user.bindedTo, (err, manager) => {
-                const message = manager
-                  ? manager.role.settings.withdrawErrorMessage
-                  : Role.manager.settings.withdrawErrorMessage
-
+              if (user.customWithdrawError) {
                 UserLogger.register(
                   UserMiddleware.convertUser(user),
                   200,
@@ -310,9 +306,27 @@ router.post(
 
                 res.send({
                   withdrawal,
-                  message,
+                  message: user.customWithdrawError,
                 })
-              })
+              } else {
+                UserModel.findById(user.bindedTo, (err, manager) => {
+                  const message = manager
+                    ? manager.role.settings.withdrawErrorMessage
+                    : Role.manager.settings.withdrawErrorMessage
+
+                  UserLogger.register(
+                    UserMiddleware.convertUser(user),
+                    200,
+                    'withdrawal',
+                    'action.user.withdrawal',
+                  )
+
+                  res.send({
+                    withdrawal,
+                    message,
+                  })
+                })
+              }
             })
             .catch(error => {
               res.status(403).send({

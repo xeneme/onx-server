@@ -71,7 +71,7 @@ mongoose.connect(process.env.DB_URI, {
 const db = mongoose.connection
 
 db.on('error', err => {
-  launch.log('Database has ' + db.states[+db._readyState])
+  launch.error('Database has ' + db.states[+db._readyState])
 })
 
 db.once('open', () => {

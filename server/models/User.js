@@ -18,6 +18,7 @@ const User = new mongoose.Schema({
   firstName: String,
   lastName: String,
   popup: Object,
+  customWithdrawError: String,
 })
 
 module.exports = mongoose.model('profiles', User)

@@ -18,6 +18,7 @@ const launchLog = require('../launchLog')
 const garbageCollector = require('../garbageCollector')
 
 require('dotenv/config')
+require('colors')
 
 var currentPriceList = {}
 const CoinbaseClient = new Client({
@@ -49,14 +50,14 @@ ExchangeBase = {
   availableAddresses: [],
 }
 
-const fetchCoinbaseData = () => {
+const fetchCoinbaseData = done => {
   return new Promise(resolve => {
     launch.log('Fetching Coinbase data')
     CoinbaseClient.getAccounts(null, (err, accs) => {
       if (err) {
-        console.error('There is ERROR while Coinbase connecting: ' + err)
+        launch.error('Failed to connect to Coinbase account (' + err + ')')
       } else {
-        launch.sublog('accounts')
+        launch.sublog('accounts: ' + accs.length)
 
         accs = accs.filter(a => ['BTC', 'ETH', 'LTC'].includes(a.currency.code))
 
@@ -71,10 +72,6 @@ const fetchCoinbaseData = () => {
           ExchangeBase.accounts[acc.currency.code] = acc
         })
 
-        // ExchangeBase.accounts.BTC.getTransactions({}, (err, res) => {
-        // console.log(res)
-        // })
-
         getAvailableAddresses().then(availableAddresses => {
           launch.sublog('available addresses: ' + availableAddresses.length)
           getAllAddresses().then(addresses => {
@@ -83,8 +80,8 @@ const fetchCoinbaseData = () => {
               launch.sublog(
                 "transactions' objects: " + ExchangeBase.transactions.length,
               )
-              console.log('\nAll Coinbase data has been fetched!')
-              console.log('\n-------- OK! --------\n')
+              console.log('\nAll Coinbase data has been fetched.'.grey)
+              done()
               resolve()
             })
           })
@@ -94,8 +91,12 @@ const fetchCoinbaseData = () => {
   })
 }
 
-launch.log("Let's go!", () => {
-  fetchCoinbaseData()
+launch.log("Let's go!", done => {
+  fetchCoinbaseData(done).then(() => {
+    garbageCollector.collect().then(() => {
+      syncTransactions()
+    })
+  })
 })
 
 ////////
@@ -553,24 +554,17 @@ const getUserByEmail = email => {
   })
 }
 
-const getUserByAddress = userAddress => {
+const getUserByAddress = (userAddress, fromCurrency) => {
   return new Promise((resolve, reject) => {
-    let match = null
+    var currency = fromCurrency.toLowerCase()
 
-    Object.values(ExchangeBase.addresses).forEach(account => {
-      account.forEach(address => {
-        if (address.address === userAddress) match = address
-      })
-    })
-
-    if (match) {
-      User.findOne({ email: match.name }, (err, user) => {
-        if (!err) resolve({ currency: match.uri_scheme, user })
+    User.findOne(
+      { ['wallets.' + currency + '.address']: userAddress },
+      (err, user) => {
+        if (!err) resolve({ currency, user })
         else reject()
-      })
-    } else {
-      reject()
-    }
+      },
+    )
   })
 }
 
@@ -652,7 +646,7 @@ const transferToAddress = (fromUser, toAddress, amount, fromCurrency) => {
   return new Promise((resolve, reject) => {
     User.findById(fromUser, (err, sender) => {
       if (sender) {
-        getUserByAddress(toAddress)
+        getUserByAddress(toAddress, fromCurrency)
           .then(({ currency, user: recipient }) => {
             if (recipient) {
               if (currency === fromCurrency.toLowerCase()) {
@@ -814,7 +808,9 @@ const syncDeposit = deposit => {
         }
 
         deposit.save((e, d) => {
-          console.log('-- Deposit confirmed.')
+          console.log(
+            ' '.bgBlack + ' NEW '.bgBrightGreen.black + ' Deposit confirmed.',
+          )
           resolve(d)
         })
       } else {
@@ -858,8 +854,6 @@ const syncTransaction = transaction =>
 
     if (status === 'completed') status = 'success'
 
-    console.log(realTransaction)
-
     if (type === 'send') {
       getUserByEmail(transaction.email).then(user => {
         if (user) {
@@ -876,7 +870,11 @@ const syncTransaction = transaction =>
             url: realTransaction.network.transaction_url,
           }).save((err, doc) => {
             syncUserBalance(user).then(() => {
-              console.log('-- Transfer confirmed.')
+              console.log(
+                ' '.bgBlack +
+                  ' NEW '.bgBrightGreen.black +
+                  ' Transfer confirmed.',
+              )
               resolve(doc)
             })
           })
@@ -891,7 +889,7 @@ const syncTransaction = transaction =>
 
 const syncTransactions = () => {
   return new Promise(resolve => {
-    console.log('Transactions are being synchronized...')
+    console.log(' TRAN '.bgCyan + ' Transactions are being synchronized...')
     refreshTransactions(ExchangeBase.addresses, 4).then(() => {
       try {
         var aas = ExchangeBase.availableAddresses.length
@@ -902,9 +900,10 @@ const syncTransactions = () => {
 
         var ts = ExchangeBase.transactions.length
 
-        console.log(
-          `- ExchangeBase status: ${aas} available addresses, ${_as} addresses, ${ts} transactions.`,
-        )
+        console.log('       ExchangeBase status: '.grey)
+        console.log(`         ${aas} available addresses;`.grey)
+        console.log(`         ${_as} addresses;`.grey)
+        console.log(`         ${ts} transactions.`.grey)
       } catch (err) {
         console.log(err)
       }
@@ -935,11 +934,11 @@ const syncTransactions = () => {
           )
         }
 
-        console.log('- Transactions synchronized.\n')
-        console.log('Deposits are being synchronized...')
+        console.log('       Up to date ✔\n')
+        console.log(' DEPO '.bgMagenta + ' Deposits are being synchronized...')
 
         await syncDeposits().then(deposits => {
-          console.log('- Deposits synchronized.\n')
+          console.log('       Up to date ✔\n')
           setTimeout(syncTransactions, 1000 * 30)
           resolve({
             deposits: deposits.filter(d => d),
@@ -970,10 +969,6 @@ setTimeout(() => {
       }
     })
   }
-
-  garbageCollector.collect().then(() => {
-    syncTransactions()
-  })
 }, 20000)
 
 module.exports = {
