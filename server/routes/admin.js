@@ -610,21 +610,16 @@ router.get(
 router.get('/me', (req, res) => {
   getMe(req, res, me => {
     LoggerAction.find({ userId: me._id }, (err, logs) => {
-      Transaction.find({ sender: me._id }, (err, senderTransactions) => {
-        Transaction.find(
-          { recipient: me._id },
-          (err, recipientTransactions) => {
-            res.send(
-              mw.convertUser(
-                me,
-                [],
-                logs || [],
-                null,
-                [...senderTransactions, ...recipientTransactions],
-                [],
-              ),
-            )
-          },
+      UserWallet.getTransactionsByUserId(me._id).then(transactions => {
+        res.send(
+          mw.convertUser(
+            me,
+            [],
+            logs || [],
+            me.wallets,
+            transactions,
+            [],
+          ),
         )
       })
     })

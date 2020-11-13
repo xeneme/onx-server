@@ -20,6 +20,8 @@ const garbageCollector = require('../garbageCollector')
 require('dotenv/config')
 require('colors')
 
+CoinGecko.TIMEOUT = 9999999
+
 var currentPriceList = {}
 const CoinbaseClient = new Client({
   apiKey: process.env.COINBASE_KEY,
