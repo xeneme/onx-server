@@ -23,7 +23,7 @@ const convertUsers = users =>
     ],
   }))
 
-const convertUser = (user, actions, log, wallets, transactions, messages) => ({
+const convertUser = (user, actions, log, wallets, transactions, messages, me) => ({
   id: user._id,
   role: user.role.name,
   name: `${user.firstName}${user.lastName ? ' ' + user.lastName : ''}`,
@@ -35,6 +35,7 @@ const convertUser = (user, actions, log, wallets, transactions, messages) => ({
   wallets,
   actions,
   log,
+  me: !!me,
   messages,
   customWithdrawError: user.customWithdrawError,
   location: user.location,
