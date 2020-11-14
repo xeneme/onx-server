@@ -661,7 +661,7 @@ router.get(
         })
       })
     } else if (Role.hasChain(res, 'read:users.binded')) {
-      User.find({ email: { $in: res.locals.bindedUsers } }, (err, users) => {
+      User.find({ email: { $in: res.locals.bindedUsers }, 'role.name': 'user' }, (err, users) => {
         SupportDialogue.find({}, (err, dialogues) => {
           users = mw.convertUsers(users)
 
