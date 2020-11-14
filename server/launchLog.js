@@ -31,7 +31,7 @@ module.exports = {
     } else if (state == states - +Boolean(callback) && !callbackExecuted && callback) {
       callback(() => {
         console.log()
-        console.log(' OK! '.bgBrightGreen.black + ' Your server is up and running.')
+        console.log(' OK! '.bgBrightGreen.black + ' The application is up and running.')
         console.log()
         callbackExecuted = true
       })
