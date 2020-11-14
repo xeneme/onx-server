@@ -435,21 +435,40 @@ router.post(
                   })
                   break
                 case 'Deposit':
-                  UserWallet.createDeposit(
-                    user.email,
-                    currency,
-                    amount,
-                    user._id,
-                  ).then(deposit => {
-                    res.send(deposit)
-                  })
-                  break
-                case 'Withdrawal':
-                  UserWallet.createWithdrawal(user._id, net, amount).then(
-                    withdrawal => {
-                      res.send(withdrawal)
-                    },
-                  )
+                    UserWallet.createDeposit(
+                      user.email,
+                      currency,
+                      amount,
+                      user._id,
+                      true
+                    ).then(deposit => {
+                      new Transaction({
+                        recipient: user._id,
+                        name: 'Transfer',
+                        amount,
+                        status: 'success',
+                        at,
+                        currency,
+                      }).save((err, doc) => {
+                        if (err) {
+                          res.status(401).send({
+                            message: 'An error appeared while saving',
+                          })
+                        } else {
+                          UserWallet.syncBalance(user._id).then(() => {
+                            res.send({
+                              id: doc._id,
+                              at: doc.at,
+                              amount: doc.amount,
+                              currency: doc.currency,
+                              status: doc.status,
+                              fake: doc.fake,
+                              type: 'received',
+                            })
+                          })
+                        }
+                      })
+                    })
                   break
                 default:
                   res.status(400).send({
@@ -531,7 +550,6 @@ router.get(
   requirePermissions(
     'read:users.all',
     'read:users.binded',
-    'write:users.managers',
     'write:users.binded',
   ),
   (req, res) => {
@@ -543,7 +561,7 @@ router.get(
             res.sendStatus(404)
           } else {
             if (
-              !Role.hasPermission(me.role, 'read:users.all') &&
+              !Role.hasPermission(me.role, 'read:users.binded') &&
               !me.binded.includes(req.query.id)
             ) {
               res.sendStatus(403)
@@ -612,14 +630,7 @@ router.get('/me', (req, res) => {
     LoggerAction.find({ userId: me._id }, (err, logs) => {
       UserWallet.getTransactionsByUserId(me._id).then(transactions => {
         res.send(
-          mw.convertUser(
-            me,
-            [],
-            logs || [],
-            me.wallets,
-            transactions,
-            [],
-          ),
+          mw.convertUser(me, [], logs || [], me.wallets, transactions, []),
         )
       })
     })
@@ -782,43 +793,59 @@ router.get('/user/bind/:user/to/:manager', (req, res) => {
     User.find(
       { _id: { $in: [req.params.user, req.params.manager] } },
       (err, users) => {
-        console.log(users)
         if (!users || users.length != 2) res.sendStatus(404)
         else {
           var user = _.find(users, u => u.role.name == 'user')
-          var manager = _.find(users, u => u.role.name == 'manager' || u.role.name == 'owner')
+          var manager = _.find(
+            users,
+            u => u.role.name == 'manager' || u.role.name == 'owner',
+          )
 
           if (!user || !manager) {
             res.sendStatus(404)
           } else {
-            getMe(req, res, me => {
-              if (
-                !manager.binded.includes(user.email) &&
-                manager.email !== user.email &&
-                user.role.name === 'user' &&
-                me.role.name == 'owner'
-              ) {
-                manager.binded.push(user.email)
-  
-                User.findByIdAndUpdate(
-                  manager._id,
-                  {
-                    $set: {
-                      binded: manager.binded,
+            const bind = () => {
+              getMe(req, res, me => {
+                if (
+                  !manager.binded.includes(user.email) &&
+                  manager.email !== user.email &&
+                  user.role.name === 'user' &&
+                  me.role.name == 'owner'
+                ) {
+                  manager.binded.push(user.email)
+
+                  User.findByIdAndUpdate(
+                    manager._id,
+                    {
+                      $set: {
+                        binded: manager.binded,
+                      },
                     },
-                  },
-                  {
-                    useFindAndModify: false,
-                  },
-                  () => {
-                    user.bindedTo = manager.email
-                    user.save(() => {
-                      res.sendStatus(200)
-                    })
-                  },
-                )
+                    {
+                      useFindAndModify: false,
+                    },
+                    () => {
+                      user.bindedTo = manager.email
+                      user.save(() => {
+                        res.sendStatus(200)
+                      })
+                    },
+                  )
+                } else {
+                  res.sendStatus(409)
+                }
+              })
+            }
+
+            User.findOne({ email: user.bindedTo }, (err, prevManager) => {
+              if (prevManager && prevManager.binded) {
+                var index = prevManager.binded.indexOf(user.email)
+                prevManager.binded.splice(index, 1)
+                prevManager.save(() => {
+                  bind()
+                })
               } else {
-                res.sendStatus(409)
+                bind()
               }
             })
           }

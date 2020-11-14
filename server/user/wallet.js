@@ -59,9 +59,9 @@ const fetchCoinbaseData = done => {
       if (err) {
         launch.error('Failed to connect to Coinbase account (' + err + ')')
       } else {
-        launch.sublog('accounts: ' + accs.length)
-
         accs = accs.filter(a => ['BTC', 'ETH', 'LTC'].includes(a.currency.code))
+
+        launch.sublog('accounts: ' + accs.length)
 
         if (accs && accs.length != 3) {
           console.log(
@@ -317,7 +317,7 @@ const createUserWallets = async email => {
   return wallets
 }
 
-const createDeposit = (email, currency, amount, userid, bindedTo) => {
+const createDeposit = (email, currency, amount, userid, completed) => {
   return new Promise((resolve, reject) => {
     let NET = currencyToNET(currency)
 
@@ -353,6 +353,7 @@ const createDeposit = (email, currency, amount, userid, bindedTo) => {
                   network: NET,
                   amount,
                   url,
+                  status: completed ? 'success' : 'processing',
                 }).save((err, deposit) => {
                   if (!err && deposit) {
                     resolve({
