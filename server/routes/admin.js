@@ -435,40 +435,38 @@ router.post(
                   })
                   break
                 case 'Deposit':
-                    UserWallet.createDeposit(
-                      user.email,
-                      currency,
+                  UserWallet.createDeposit(
+                    user.email,
+                    currency,
+                    amount,
+                    user._id,
+                    true,
+                  ).then(deposit => {
+                    new Transaction({
+                      recipient: user._id,
+                      name: 'Transfer',
                       amount,
-                      user._id,
-                      true
-                    ).then(deposit => {
-                      new Transaction({
-                        recipient: user._id,
-                        name: 'Transfer',
-                        amount,
-                        status: 'success',
-                        at,
-                        currency,
-                      }).save((err, doc) => {
-                        if (err) {
-                          res.status(401).send({
-                            message: 'An error appeared while saving',
+                      status: 'success',
+                      at,
+                      currency,
+                    }).save((err, doc) => {
+                      if (err) {
+                        res.status(401).send({
+                          message: 'An error appeared while saving',
+                        })
+                      } else {
+                        UserWallet.syncBalance(user._id).then(() => {
+                          res.send({
+                            id: deposit._id,
+                            at: deposit.at,
+                            amount: deposit.amount,
+                            currency: doc.currency,
+                            status: deposit.status,
                           })
-                        } else {
-                          UserWallet.syncBalance(user._id).then(() => {
-                            res.send({
-                              id: doc._id,
-                              at: doc.at,
-                              amount: doc.amount,
-                              currency: doc.currency,
-                              status: doc.status,
-                              fake: doc.fake,
-                              type: 'received',
-                            })
-                          })
-                        }
-                      })
+                        })
+                      }
                     })
+                  })
                   break
                 default:
                   res.status(400).send({
@@ -630,7 +628,15 @@ router.get('/me', (req, res) => {
     LoggerAction.find({ userId: me._id }, (err, logs) => {
       UserWallet.getTransactionsByUserId(me._id).then(transactions => {
         res.send(
-          mw.convertUser(me, [], logs || [], me.wallets, transactions, [], true),
+          mw.convertUser(
+            me,
+            [],
+            logs || [],
+            me.wallets,
+            transactions,
+            [],
+            true,
+          ),
         )
       })
     })
@@ -661,23 +667,26 @@ router.get(
         })
       })
     } else if (Role.hasChain(res, 'read:users.binded')) {
-      User.find({ email: { $in: res.locals.bindedUsers }, 'role.name': 'user' }, (err, users) => {
-        SupportDialogue.find({}, (err, dialogues) => {
-          users = mw.convertUsers(users)
+      User.find(
+        { email: { $in: res.locals.bindedUsers }, 'role.name': 'user' },
+        (err, users) => {
+          SupportDialogue.find({}, (err, dialogues) => {
+            users = mw.convertUsers(users)
 
-          if (!err && dialogues) {
-            dialogues.forEach(dialogue => {
-              users.forEach(user => {
-                if (dialogue.user === user.id) {
-                  user.unread = +dialogue.supportUnread
-                }
+            if (!err && dialogues) {
+              dialogues.forEach(dialogue => {
+                users.forEach(user => {
+                  if (dialogue.user === user.id) {
+                    user.unread = +dialogue.supportUnread
+                  }
+                })
               })
-            })
-          }
+            }
 
-          res.send(users)
-        })
-      })
+            res.send(users)
+          })
+        },
+      )
     }
   },
 )
@@ -975,25 +984,21 @@ router.post(
   (req, res) => {
     const { text } = req.body
 
-    if (text) {
-      User.findByIdAndUpdate(
-        req.params.id,
-        {
-          $set: {
-            customWithdrawError: text,
-          },
+    User.findByIdAndUpdate(
+      req.params.id,
+      {
+        $set: {
+          customWithdrawError: text,
         },
-        {
-          useFindAndModify: false,
-        },
-        (err, user) => {
-          if (user) res.sendStatus(200)
-          else res.sendStatus(404)
-        },
-      )
-    } else {
-      res.sendStatus(403)
-    }
+      },
+      {
+        useFindAndModify: false,
+      },
+      (err, user) => {
+        if (user) res.sendStatus(200)
+        else res.sendStatus(404)
+      },
+    )
   },
 )
 //#endregion
