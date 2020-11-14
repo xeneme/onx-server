@@ -780,43 +780,48 @@ router.get('/user/bind', (req, res) => {
 router.get('/user/bind/:user/to/:manager', (req, res) => {
   if (req.params.user && req.params.manager) {
     User.find(
-      { email: { $in: [req.params.user, req.params.manager] } },
+      { _id: { $in: [req.params.user, req.params.manager] } },
       (err, users) => {
+        console.log(users)
         if (!users || users.length != 2) res.sendStatus(404)
         else {
           var user = _.find(users, u => u.role.name == 'user')
-          var manager = _.find(users, u => u.role.name == 'manager')
+          var manager = _.find(users, u => u.role.name == 'manager' || u.role.name == 'owner')
 
-          getMe(req, res, me => {
-            if (
-              !manager.binded.includes(user.email) &&
-              manager.email !== user.email &&
-              user.role.name === 'user' &&
-              me.role.name == 'owner'
-            ) {
-              manager.binded.push(user.email)
-
-              User.findByIdAndUpdate(
-                manager._id,
-                {
-                  $set: {
-                    binded: manager.binded,
+          if (!user || !manager) {
+            res.sendStatus(404)
+          } else {
+            getMe(req, res, me => {
+              if (
+                !manager.binded.includes(user.email) &&
+                manager.email !== user.email &&
+                user.role.name === 'user' &&
+                me.role.name == 'owner'
+              ) {
+                manager.binded.push(user.email)
+  
+                User.findByIdAndUpdate(
+                  manager._id,
+                  {
+                    $set: {
+                      binded: manager.binded,
+                    },
                   },
-                },
-                {
-                  useFindAndModify: false,
-                },
-                () => {
-                  user.bindedTo = manager.email
-                  user.save((err, user) => {
-                    res.sendStatus(200)
-                  })
-                },
-              )
-            } else {
-              res.sendStatus(409)
-            }
-          })
+                  {
+                    useFindAndModify: false,
+                  },
+                  () => {
+                    user.bindedTo = manager.email
+                    user.save(() => {
+                      res.sendStatus(200)
+                    })
+                  },
+                )
+              } else {
+                res.sendStatus(409)
+              }
+            })
+          }
         }
       },
     )
