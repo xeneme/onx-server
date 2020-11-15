@@ -14,7 +14,7 @@ let transporter = nodemailer.createTransport({
 module.exports = {
   send: (to, code) => {
     return transporter.sendMail({
-      from: '"MyBitFX Support Team" <support@mybitfx.com>',
+      from: 'support@mybitfx.com',
       to,
       subject: "Email Confirmation",
       html: confirmationEmailTemplate(code),
