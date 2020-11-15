@@ -132,7 +132,9 @@ module.exports = {
       } else {
         next()
       }
-    } catch (err) {}
+    } catch (err) {
+      res.sendStatus(400)
+    }
   },
   validateSignin: (req, res, next) => {
     try {
@@ -155,6 +157,8 @@ module.exports = {
       } else {
         next()
       }
-    } catch (err) {}
+    } catch (err) {
+      res.sendStatus(400)
+    }
   },
 }
