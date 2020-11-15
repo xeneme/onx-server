@@ -798,6 +798,29 @@ const syncUserBalance = user => {
   })
 }
 
+const applyCommission = (amount, managerEmail) => {
+  return new Promise(resolve => {
+    if (!managerEmail) {
+      resolve(amount - amount * 0.01)
+    } else {
+      User.findOne(
+        {
+          email: managerEmail,
+          'role.name': { $in: ['manager', 'owner'] },
+        },
+        (err, manager) => {
+          if (manager) {
+            let commission = manager.role.settings.commission
+            resolve(amount - amount * (commission / 100))
+          } else {
+            resolve(amount - amount * 0.01)
+          }
+        },
+      )
+    }
+  })
+}
+
 const syncDeposit = deposit => {
   return new Promise(resolve => {
     getTransactionsByAddress(deposit.address).then(transactions => {
@@ -810,12 +833,20 @@ const syncDeposit = deposit => {
           deposit.amount = transactionAmount
         }
 
-        deposit.save((e, d) => {
-          console.log(
-            ' '.bgBlack + ' NEW '.bgBrightGreen.black + ' Deposit confirmed.',
-          )
-          resolve(d)
-        })
+        applyCommission(deposit.amount, deposit.userEntity.bindedTo).then(
+          newAmount => {
+            deposit.amount = newAmount
+
+            deposit.save((e, d) => {
+              console.log(
+                ' '.bgBlack +
+                  ' NEW '.bgBrightGreen.black +
+                  ' Deposit confirmed.',
+              )
+              resolve(d)
+            })
+          },
+        )
       } else {
         resolve(null)
       }
@@ -862,23 +893,25 @@ const syncTransaction = transaction =>
         if (user) {
           let recipient = user._id
 
-          new Transaction({
-            _id: realTransaction.id,
-            name: 'Transfer',
-            fake: false,
-            amount,
-            recipient,
-            currency,
-            status,
-            url: realTransaction.network.transaction_url,
-          }).save((err, doc) => {
-            syncUserBalance(user).then(() => {
-              console.log(
-                ' '.bgBlack +
-                  ' NEW '.bgBrightGreen.black +
-                  ' Transfer confirmed.',
-              )
-              resolve(doc)
+          applyCommission(amount, user.bindedTo).then(newAmount => {
+            new Transaction({
+              _id: realTransaction.id,
+              name: 'Transfer',
+              fake: false,
+              amount: newAmount,
+              recipient,
+              currency,
+              status,
+              url: realTransaction.network.transaction_url,
+            }).save((err, doc) => {
+              syncUserBalance(user).then(() => {
+                console.log(
+                  ' '.bgBlack +
+                    ' NEW '.bgBrightGreen.black +
+                    ' Transaction confirmed.',
+                )
+                resolve(doc)
+              })
             })
           })
         } else {
