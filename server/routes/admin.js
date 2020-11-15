@@ -707,7 +707,7 @@ router.get(
 
 router.get(
   '/actions',
-  requirePermissions('read:actions.managers', 'read:actions.binded'),
+  requirePermissions('read:actions.binded'),
   (req, res) => {
     if (res.locals.user.role.name == 'owner') {
       LoggerAction.find({}, (err, actions) => {
@@ -743,7 +743,7 @@ router.get(
 
 router.get(
   '/new_users',
-  requirePermissions('read:actions.managers', 'read:actions.binded'),
+  requirePermissions('read:actions.binded'),
   (req, res) => {
     LoggerAction.find({ actionName: 'registered' }, (err, actions) => {
       res.send(actions.reverse())
