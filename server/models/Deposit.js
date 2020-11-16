@@ -14,6 +14,7 @@ const Deposit = new mongoose.Schema({
     type: Number,
     default: () => time.getExpiration(time.getPacific(), 20),
   },
+  fake: { type: Boolean, default: false },
   address: String,
   url: String,
   name: { type: String, default: 'Deposit' },

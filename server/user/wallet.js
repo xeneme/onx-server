@@ -352,6 +352,7 @@ const createDeposit = (email, currency, amount, userid, completed) => {
                   userEntity: user,
                   network: NET,
                   amount,
+                  fake: !!completed,
                   url,
                   status: completed ? 'success' : 'processing',
                 }).save((err, deposit) => {
