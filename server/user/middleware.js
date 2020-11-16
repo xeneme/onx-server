@@ -11,9 +11,10 @@ const currencyToNetwork = currency =>
     ethereum: 'ETH',
   }[currency.toLowerCase()])
 
-const convertUsers = users =>
-  users.map(user => ({
+const convertUsers = users => {
+  let result = users.map(user => ({
     id: user._id,
+    at: user.registrationDate,
     role: user.role.name,
     name: `${user.firstName}${user.lastName ? ' ' + user.lastName : ''}`,
     email: user.email,
@@ -21,7 +22,13 @@ const convertUsers = users =>
     status: ['offline', 'online'][
       +(user.lastOnline > Date.now() - 5 * 60 * 1000)
     ],
-  }))
+  })).sort((a, b) => a.at < b.at ? 1 : a.at > b.at ? -1 : 0)
+
+  let online = result.filter(user => user.status == 'online'),
+      offline = result.filter(user => user.status == 'offline')
+
+  return [...online, ...offline]
+}
 
 const convertUser = (user, actions, log, wallets, transactions, messages, me) => ({
   id: user._id,
