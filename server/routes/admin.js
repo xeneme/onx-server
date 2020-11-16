@@ -235,8 +235,13 @@ router.post(
 
 router.get('/deposits', requirePermissions('read:users.binded'), (req, res) => {
   Deposit.find({ visible: true }, (err, deposits) => {
-    if (!err) res.send(deposits.reverse())
-    else res.sendStatus(400)
+    let result = deposits ? deposits.reverse() : []
+
+    if(res.locals.user.role.name != 'owner') {
+      result = result.filter(d => res.locals.bindedUsers.includes(d.userEntity.email))
+    } 
+
+    res.send(result)
   })
 })
 
