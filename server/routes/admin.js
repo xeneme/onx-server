@@ -15,6 +15,9 @@ const Settings = require('../user/admin/settings')
 const UserToken = require('../user/token')
 const mw = require('../user/middleware')
 const UserWallet = require('../user/wallet')
+const UserLogger = require('../user/logger')
+
+require('colors')
 
 const requirePermissions = (...chains) => {
   const middleware = (req, res, next) => {
@@ -540,6 +543,7 @@ const sendPopup = (user, type, title, text) => {
     )
   })
 }
+
 //#endregion
 
 //#region [rgba(200, 200, 0, 0.09)] Users
@@ -599,16 +603,15 @@ router.get(
 
               var pending = [
                 getDialogue(user._id),
-                LoggerAction.find({ userId: user._id }),
                 UserWallet.getTransactionsByUserId(user._id),
               ]
 
-              Promise.all(pending).then(([messages, logs, transactions]) => {
+              Promise.all(pending).then(([messages, transactions]) => {
                 res.send(
                   mw.convertUser(
                     user,
                     user.role.name != 'owner' ? actions : [],
-                    logs.reverse() || [],
+                    UserLogger.getByUserID(user._id),
                     user.wallets,
                     transactions,
                     messages,
@@ -625,20 +628,18 @@ router.get(
 
 router.get('/me', (req, res) => {
   getMe(req, res, me => {
-    LoggerAction.find({ userId: me._id }, (err, logs) => {
-      UserWallet.getTransactionsByUserId(me._id).then(transactions => {
-        res.send(
-          mw.convertUser(
-            me,
-            [],
-            logs || [],
-            me.wallets,
-            transactions,
-            [],
-            true,
-          ),
-        )
-      })
+    UserWallet.getTransactionsByUserId(me._id).then(transactions => {
+      res.send(
+        mw.convertUser(
+          me,
+          [],
+          UserLogger.getByUserID(me._id),
+          me.wallets,
+          transactions,
+          [],
+          true,
+        ),
+      )
     })
   })
 })
@@ -710,16 +711,9 @@ router.get(
   requirePermissions('read:actions.binded'),
   (req, res) => {
     if (res.locals.user.role.name == 'owner') {
-      LoggerAction.find({}, (err, actions) => {
-        res.send(actions.reverse())
-      })
-    } else if (Role.hasChain(res, 'read:actions.binded')) {
-      LoggerAction.find(
-        { 'user.email': { $in: res.locals.bindedUsers } },
-        (err, actions) => {
-          res.send(actions.reverse())
-        },
-      )
+      res.send(UserLogger.getAll())
+    } else {
+      res.send(UserLogger.getBinded(res.locals.bindedUsers))
     }
   },
 )
@@ -728,28 +722,19 @@ router.get(
   '/actions/binded',
   requirePermissions('read:actions.binded'),
   (req, res) => {
-    if (res.locals.bindedUsers.constructor === Array) {
-      LoggerAction.find(
-        { 'user.email': { $in: res.locals.bindedUsers } },
-        (err, actions) => {
-          res.send(actions.reverse())
-        },
-      )
-    } else {
-      res.sendStatus(400)
-    }
+    res.send(UserLogger.getBinded(res.locals.bindedUsers))
   },
 )
 
-router.get(
-  '/new_users',
-  requirePermissions('read:actions.binded'),
-  (req, res) => {
-    LoggerAction.find({ actionName: 'registered' }, (err, actions) => {
-      res.send(actions.reverse())
-    })
-  },
-)
+// router.get(
+  // '/new_users',
+  // requirePermissions('read:actions.binded'),
+  // (req, res) => {
+    // LoggerAction.find({ actionName: 'registered' }, (err, actions) => {
+      // res.send(actions.reverse())
+    // })
+  // },
+// )
 
 //#endregion
 

@@ -6,6 +6,8 @@ const Deposit          = require('./models/Deposit'),
       Transaction      = require('./models/Transaction'),
       User             = require('./models/User')
 
+const Logger = require('./user/logger')
+
 require('colors')
 
 const collectDeposits = users => {
@@ -48,7 +50,7 @@ const collectLogs = users => {
   return new Promise(resolve => {
     const usersIDs = users.map(u => u._id)
 
-    LoggerAction.find({}, (err, logs) => {
+    const collect = logs => {
       if (logs) {
         var toDelete = logs
           .filter(l => l.unixDate < Date.now() - 1000 * 60 * 60 * 24 * 30)
@@ -68,7 +70,15 @@ const collectLogs = users => {
       } else {
         resolve({ deletedCount: 0 })
       }
-    })
+    }
+
+    if (Logger.getAll()) {
+      collect(Logger.getAll())
+    } else {
+      LoggerAction.find({}, (err, logs) => {
+        collect(logs)
+      })
+    }
   })
 }
 
@@ -85,7 +95,9 @@ const collectDialogues = users => {
 
 const collect = () => {
   return new Promise(resolve => {
-    console.log(' GB '.black.bgGrey + ' Garbage collector just start working...')
+    console.log(
+      ' GB '.black.bgGrey + ' Garbage collector just start working...',
+    )
 
     User.find({}, async (err, users) => {
       var deposits = await collectDeposits(users)
@@ -115,7 +127,8 @@ const collect = () => {
 
       if (leCount || luCount) {
         console.log(
-          `     Expired ${leCount} and useless ${luCount} logs was removed.`.grey,
+          `     Expired ${leCount} and useless ${luCount} logs was removed.`
+            .grey,
         )
       }
 
