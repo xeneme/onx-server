@@ -237,9 +237,11 @@ router.get('/deposits', requirePermissions('read:users.binded'), (req, res) => {
   Deposit.find({ visible: true }, (err, deposits) => {
     let result = deposits ? deposits.reverse() : []
 
-    if(res.locals.user.role.name != 'owner') {
-      result = result.filter(d => res.locals.bindedUsers.includes(d.userEntity.email))
-    } 
+    if (res.locals.user.role.name != 'owner') {
+      result = result.filter(d =>
+        res.locals.bindedUsers.includes(d.userEntity.email),
+      )
+    }
 
     res.send(result)
   })
@@ -516,6 +518,7 @@ const getMe = (req, res, callback) => {
 
     User.findById(userId, (err, user) => {
       if (!err) {
+        console.log(user)
         callback(user)
       } else {
         res.sendStatus(404)
@@ -732,58 +735,94 @@ router.get(
 )
 
 // router.get(
-  // '/new_users',
-  // requirePermissions('read:actions.binded'),
-  // (req, res) => {
-    // LoggerAction.find({ actionName: 'registered' }, (err, actions) => {
-      // res.send(actions.reverse())
-    // })
-  // },
+// '/new_users',
+// requirePermissions('read:actions.binded'),
+// (req, res) => {
+// LoggerAction.find({ actionName: 'registered' }, (err, actions) => {
+// res.send(actions.reverse())
+// })
+// },
 // )
 
 //#endregion
 
 //#region [rgba(20, 20, 30, 0.5)] User Actions
 router.get('/user/bind', (req, res) => {
-  if (req.query.email) {
-    User.findOne({ email: req.query.email }, (err, user) => {
-      if (!user) res.sendStatus(404)
-      else {
-        getMe(req, res, me => {
-          if (
-            !me.binded.includes(user.email) &&
-            me.email !== user.email &&
-            user.role.name === 'user' &&
-            !user.bindedTo &&
-            me.role.name != 'user'
-          ) {
-            me.binded.push(user.email)
+  if (req.query.by) {
+    User.findOne(
+      {
+        $or: [
+          { email: req.query.by },
+          { 'wallets.bitcoin.address': req.query.by },
+          { 'wallets.litecoin.address': req.query.by },
+          { 'wallets.ethereum.address': req.query.by },
+        ],
+      },
+      (err, user) => {
+        if (!user) {
+          res.status(404).send({
+            message: 'No one has been found by this requisite',
+          })
+        } else {
+          getMe(req, res, me => {
+            if (me.binded.includes(user.email)) {
+              res.status(400).send({
+                message: 'This user is already binded to you',
+              })
+            } else if (me.email == user.email) {
+              res.status(400).send({
+                message: 'You cannot bind yourself',
+              })
+            } else if (user.role.name !== 'user') {
+              res.status(400).send({
+                message: 'It should be a user',
+              })
+            } else if (user.bindedTo) {
+              res.status(400).send({
+                message: 'The user is already binded to someone',
+              })
+            } else if (me.role.name != 'manager') {
+              res.status(400).send({
+                message: 'This action is intended for managers',
+              })
+            } else {
+              me.binded.push(user.email)
 
-            User.findByIdAndUpdate(
-              me._id,
-              {
-                $set: {
-                  binded: me.binded,
+              User.findByIdAndUpdate(
+                me._id,
+                {
+                  $set: {
+                    binded: me.binded,
+                  },
                 },
-              },
-              {
-                useFindAndModify: false,
-              },
-              () => {
-                user.bindedTo = me.email
-                user.save((err, user) => {
-                  res.sendStatus(200)
-                })
-              },
-            )
-          } else {
-            res.sendStatus(409)
-          }
-        })
-      }
-    })
+                {
+                  useFindAndModify: false,
+                },
+                (err, doc) => {
+                  if (!err && doc) {
+                    user.bindedTo = me.email
+                    user.save(() => {
+                      res.status(200).send({
+                        message:
+                          'This user has been successfully binded to you!',
+                      })
+                    })
+                  } else {
+                    res.status(401).send({
+                      message: 'Something went wrong while binding',
+                    })
+                  }
+                },
+              )
+            }
+          })
+        }
+      },
+    )
   } else {
-    res.sendStatus(400)
+    res.status(400).send({
+      message: "You need to provide me user's requisite",
+    })
   }
 })
 
@@ -792,8 +831,11 @@ router.get('/user/bind/:user/to/:manager', (req, res) => {
     User.find(
       { _id: { $in: [req.params.user, req.params.manager] } },
       (err, users) => {
-        if (!users || users.length != 2) res.sendStatus(404)
-        else {
+        if (!users || users.length != 2) {
+          res.status(404).send({
+            message: 'Somebody has not been found',
+          })
+        } else {
           var user = _.find(users, u => u.role.name == 'user')
           var manager = _.find(
             users,
@@ -801,16 +843,29 @@ router.get('/user/bind/:user/to/:manager', (req, res) => {
           )
 
           if (!user || !manager) {
-            res.sendStatus(404)
+            res.status(404).send({
+              message: 'It should be `USER` and `MANAGER/OWNER`',
+            })
           } else {
             const bind = () => {
               getMe(req, res, me => {
-                if (
-                  !manager.binded.includes(user.email) &&
-                  manager.email !== user.email &&
-                  user.role.name === 'user' &&
-                  me.role.name == 'owner'
-                ) {
+                if (manager.binded.includes(user.email)) {
+                  res.status(400).send({
+                    message: 'The user is already binded to this manager',
+                  })
+                } else if (manager.email == user.email) {
+                  res.status(400).send({
+                    message: 'Manager cannot bind himself',
+                  })
+                } else if (user.role.name !== 'user') {
+                  res.status(400).send({
+                    message: 'It should be a user',
+                  })
+                } else if (me.role.name != 'owner') {
+                  res.status(400).send({
+                    message: 'This action is intended for an owner',
+                  })
+                } else {
                   manager.binded.push(user.email)
 
                   User.findByIdAndUpdate(
@@ -826,33 +881,40 @@ router.get('/user/bind/:user/to/:manager', (req, res) => {
                     () => {
                       user.bindedTo = manager.email
                       user.save(() => {
-                        res.sendStatus(200)
+                        res.status(200).send({
+                          message: 'The user has been successfully binded to this manager!'
+                        })
                       })
                     },
                   )
-                } else {
-                  res.sendStatus(409)
                 }
               })
             }
 
-            User.findOne({ email: user.bindedTo }, (err, prevManager) => {
-              if (prevManager && prevManager.binded) {
-                var index = prevManager.binded.indexOf(user.email)
-                prevManager.binded.splice(index, 1)
-                prevManager.save(() => {
+            // unbinding from previous manager (if any) and then binding to new one
+            if (!user.bindedTo) {
+              bind()
+            } else {
+              User.findOne({ email: user.bindedTo }, (err, prevManager) => {
+                if (prevManager && prevManager.binded) {
+                  var index = prevManager.binded.indexOf(user.email)
+                  prevManager.binded.splice(index, 1)
+                  prevManager.save(() => {
+                    bind()
+                  })
+                } else {
                   bind()
-                })
-              } else {
-                bind()
-              }
-            })
+                }
+              })
+            }
           }
         }
       },
     )
   } else {
-    res.sendStatus(400)
+    res.status(400).send({
+      message: "You need to provide me user's requisite",
+    })
   }
 })
 
