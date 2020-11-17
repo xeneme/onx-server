@@ -518,7 +518,6 @@ const getMe = (req, res, callback) => {
 
     User.findById(userId, (err, user) => {
       if (!err) {
-        console.log(user)
         callback(user)
       } else {
         res.sendStatus(404)
