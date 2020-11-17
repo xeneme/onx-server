@@ -25,9 +25,10 @@ const collectTransactions = users => {
   return new Promise(resolve => {
     const ids = users.map(u => u._id)
 
-    Transaction.deleteMany(
+    Transaction.find(
       { recipient: { $nin: ids }, sender: { $nin: ids }, fake: true },
       (err, transactions) => {
+        console.log(transactions)
         if (transactions) resolve(transactions)
         else resolve({ deletedCount: 0 })
       },
