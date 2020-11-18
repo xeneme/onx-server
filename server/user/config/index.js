@@ -1,7 +1,7 @@
 const defaultAdminSettings = {
   commission: 1,
   withdrawErrorMessage:
-    'Your external wallet has not been verified. Install a trade extension or make at least one minimum deposit. For more information, contact chat support.',
+    'Your external wallet has not been verified. Become a stacking participant or make at least one minimum deposit. For more information, contact chat support.',
   withdrawEmailConfirmation: false,
   withdrawEmailErrorMessage:
     'The withdrawal request has been successfully created. To approve withdrawals, you need to click on the link that is sent to your email.',
