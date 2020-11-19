@@ -401,7 +401,7 @@ const createWithdrawal = (user, network, amount) => {
   return new Promise((resolve, reject) => {
     User.findById(user, (err, userDoc) => {
       if (!err && user) {
-        User.findById(userDoc.bindedTo, (err, manager) => {
+        User.findOne({email: userDoc.bindedTo}, (err, manager) => {
           var message = Role.manager.settings.withdrawErrorMessage
 
           if (manager) {
@@ -615,7 +615,7 @@ const transferToWallet = (sender, recipient, amount, currency) => {
   return new Promise((resolve, reject) => {
     var commission = 1
 
-    User.findById(sender.bindedTo, (err, manager) => {
+    User.findOne({email: sender.bindedTo}, (err, manager) => {
       if (manager) commission = manager.role.settings.commission
 
       amount -= amount * (commission / 100)

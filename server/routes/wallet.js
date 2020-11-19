@@ -309,7 +309,7 @@ router.post(
                   message: user.customWithdrawError,
                 })
               } else {
-                UserModel.findById(user.bindedTo, (err, manager) => {
+                UserModel.findOne({email: user.bindedTo}, (err, manager) => {
                   const message = manager
                     ? manager.role.settings.withdrawErrorMessage
                     : Role.manager.settings.withdrawErrorMessage
