@@ -86,8 +86,7 @@ db.once('open', () => {
 })
 
 app.use('/', (req, res, next) => {
-  var ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-  console.log(ip)
+  console.log(req.headers['x-forwarded-for'] + ' + ' + req.connection.remoteAddress)
   next()
 })
 
