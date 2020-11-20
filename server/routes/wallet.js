@@ -194,7 +194,6 @@ router.post(
           currency,
           amount,
           user._id,
-          user.bindedTo,
         )
           .then(deposit => {
             UserLogger.register(
