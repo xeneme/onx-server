@@ -390,7 +390,7 @@ router.get('/', expressip().getIpInfoMiddleware, (req, res) => {
 
     if (!req.ipInfo.error && !verifiedToken.lock_location) {
       location = {
-        ip: req.ipInfo.ip,
+        ip: req.headers['x-forwarded-for'],
         city: req.ipInfo.city,
         country: req.ipInfo.country,
       }

@@ -85,11 +85,6 @@ db.once('open', () => {
   }
 })
 
-app.use('/', (req, res, next) => {
-  console.log(req.headers['x-forwarded-for'] + ' + ' + req.connection.remoteAddress)
-  next()
-})
-
 app.use('/', express.static(path.join(__dirname, '../site/dist')))
 app.use(express.static(path.join(__dirname, '../admin/dist')))
 
