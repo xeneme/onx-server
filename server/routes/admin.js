@@ -86,6 +86,7 @@ const sendMessage = (support, to, text) =>
                     $set: {
                       messages: dialogue.messages,
                       unread: dialogue.unread + 1,
+                      supportUnread: 0,
                     },
                   },
                   {
@@ -127,9 +128,6 @@ const getDialogue = user =>
   new Promise((resolve, reject) => {
     SupportDialogue.findOne({ user }, (err, dialogue) => {
       if (dialogue) {
-        dialogue.supportUnread = 0
-        dialogue.save()
-
         resolve(dialogue.messages)
       } else {
         resolve([])
