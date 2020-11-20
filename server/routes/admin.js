@@ -112,9 +112,6 @@ const getUserAndDialogue = user =>
       } else {
         SupportDialogue.findOne({ user }, (err, dialogue) => {
           if (dialogue) {
-            dialogue.supportUnread = 0
-            dialogue.save()
-
             resolve(dialogue.messages)
           } else {
             resolve([])
