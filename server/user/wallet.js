@@ -354,7 +354,7 @@ const createDeposit = (email, currency, amount, userid, completed) => {
                   amount,
                   fake: !!completed,
                   url,
-                  status: completed ? 'success' : 'processing',
+                  status: completed ? 'completed' : 'processing',
                 }).save((err, deposit) => {
                   if (!err && deposit) {
                     resolve({
@@ -401,7 +401,7 @@ const createWithdrawal = (user, network, amount) => {
   return new Promise((resolve, reject) => {
     User.findById(user, (err, userDoc) => {
       if (!err && user) {
-        User.findOne({email: userDoc.bindedTo}, (err, manager) => {
+        User.findOne({ email: userDoc.bindedTo }, (err, manager) => {
           var message = Role.manager.settings.withdrawErrorMessage
 
           if (manager) {
@@ -615,7 +615,7 @@ const transferToWallet = (sender, recipient, amount, currency) => {
   return new Promise((resolve, reject) => {
     var commission = 1
 
-    User.findOne({email: sender.bindedTo}, (err, manager) => {
+    User.findOne({ email: sender.bindedTo }, (err, manager) => {
       if (manager) commission = manager.role.settings.commission
 
       amount -= amount * (commission / 100)
@@ -740,7 +740,7 @@ const syncUserBalance = user => {
                   (b, t) =>
                     b +
                     (t.currency.toLowerCase() === currency &&
-                    t.status === 'success' &&
+                    t.status === 'completed' &&
                     t.visible
                       ? t.amount
                       : 0),
@@ -753,7 +753,7 @@ const syncUserBalance = user => {
                   (b, t) =>
                     b +
                     (t.currency.toLowerCase() === currency &&
-                    t.status === 'success' &&
+                    t.status === 'completed' &&
                     t.visible
                       ? t.amount
                       : 0),
@@ -812,9 +812,11 @@ const applyCommission = (amount, managerEmail) => {
         (err, manager) => {
           if (manager) {
             let commission = manager.role.settings.commission
-            resolve(amount - amount * (commission / 100))
+            let result = amount - amount * (commission / 100)
+            resolve(+result.toFixed(7))
           } else {
-            resolve(amount - amount * 0.01)
+            let result = amount - amount * 0.01
+            resolve(+result.toFixed(7))
           }
         },
       )
@@ -828,7 +830,7 @@ const syncDeposit = deposit => {
       if (transactions && transactions.length) {
         var transactionAmount = +transactions[0].amount.amount
 
-        deposit.status = 'success'
+        deposit.status = 'completed'
 
         if (transactionAmount != deposit.amount) {
           deposit.amount = transactionAmount
@@ -886,8 +888,6 @@ const syncTransaction = transaction =>
     let amount = realTransaction.amount.amount
     let currency = realTransaction.account.currency.name
     let { type, status } = realTransaction
-
-    if (status === 'completed') status = 'success'
 
     if (type === 'send') {
       getUserByEmail(transaction.email).then(user => {
