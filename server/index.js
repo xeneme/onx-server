@@ -11,6 +11,18 @@ const cors = require('cors')
 const slowDown = require('express-slow-down')
 
 require('dotenv/config')
+require('colors')
+
+const blackList = require('./user/blackList')
+var blackListIPs = []
+
+const updateBlackList = () => {
+  blackList.get().then(data => {
+    blackListIPs = data
+    console.log(' BLACK LIST '.bgBrightWhite.red + ' Black list updated.')
+    setTimeout(updateBlackList, 20000)
+  })
+}
 
 const port = process.env.PORT || 8080
 const env = process.env.NODE_ENV || 'development'
@@ -83,6 +95,16 @@ db.once('open', () => {
       else launch.log('Users roles have been updated')
     })
   }
+
+  updateBlackList()
+})
+
+app.use('/', (req, res, next) => {
+  if (blackListIPs.includes(req.headers['x-forwarded-for'])) {
+    res.sendStatus(403)
+  } else {
+    next()
+  }
 })
 
 app.use('/', express.static(path.join(__dirname, '../site/dist')))
@@ -94,19 +116,10 @@ app.get(/(?!\/api)\/admin(\/.*|$)/, (req, res) => {
     const userId = jwt.verify(token, process.env.SECRET).user
 
     User.findById(userId, (err, match) => {
-      if (
-        match &&
-        match.location &&
-        match.location.ip == req.headers['x-forwarded-for'] &&
-        match.banned
-      ) {
-        res.sendStatus(403)
+      if (match && match.role.name !== 'user') {
+        res.sendFile(path.join(__dirname, '../admin/dist/index.html'))
       } else {
-        if (match && match.role.name !== 'user') {
-          res.sendFile(path.join(__dirname, '../admin/dist/index.html'))
-        } else {
-          res.sendFile(path.join(__dirname, '../site/dist/index.html'))
-        }
+        res.sendFile(path.join(__dirname, '../site/dist/index.html'))
       }
     })
   } catch (err) {

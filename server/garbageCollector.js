@@ -28,7 +28,7 @@ const collectTransactions = users => {
     Transaction.find(
       { recipient: { $nin: ids }, sender: { $nin: ids }, fake: true },
       (err, transactions) => {
-        console.log(transactions)
+        console.log('Potential deleted transfers: ' + transactions.length)
         if (transactions) resolve(transactions)
         else resolve({ deletedCount: 0 })
       },
