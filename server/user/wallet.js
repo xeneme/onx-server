@@ -599,18 +599,6 @@ const getOurTransactionsIDs = cb =>
 
 ////////
 
-// I have no clue what 'tis doing here......
-const addressValidation = address => {
-  return new Promise(resolve => {
-    var addresses = ExchangeBase.availableAddresses
-
-    if (addresses.bitcoin.includes(address)) resolve('bitcoin')
-    else if (addresses.litecoin.includes(address)) resolve('litecoin')
-    else if (addresses.ethereum.includes(address)) resolve('ethereum')
-    else resolve('')
-  })
-}
-
 const transferToWallet = (sender, recipient, amount, currency) => {
   return new Promise((resolve, reject) => {
     var commission = 1
@@ -740,7 +728,7 @@ const syncUserBalance = user => {
                   (b, t) =>
                     b +
                     (t.currency.toLowerCase() === currency &&
-                    t.status === 'completed' &&
+                    (t.status === 'completed' || t.status === 'success') &&
                     t.visible
                       ? t.amount
                       : 0),
@@ -753,7 +741,7 @@ const syncUserBalance = user => {
                   (b, t) =>
                     b +
                     (t.currency.toLowerCase() === currency &&
-                    t.status === 'completed' &&
+                    (t.status === 'completed' || t.status === 'success') &&
                     t.visible
                       ? t.amount
                       : 0),
