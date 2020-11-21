@@ -94,8 +94,6 @@ app.get(/(?!\/api)\/admin(\/.*|$)/, (req, res) => {
     const userId = jwt.verify(token, process.env.SECRET).user
 
     User.findById(userId, (err, match) => {
-      console.log(match.location)
-      console.log(req.headers['x-forwarded-for'])
       if (
         match &&
         match.location &&
