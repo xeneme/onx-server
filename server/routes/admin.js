@@ -35,12 +35,12 @@ const requirePermissions = (...chains) => {
 
           if (!passedChains.length) {
             res.status(403).send('you are not privileged enough.')
+          } else {
+            res.locals.passedChains = passedChains
+            res.locals.bindedUsers = user.binded
+            res.locals.user = user
+            next()
           }
-
-          res.locals.passedChains = passedChains
-          res.locals.bindedUsers = user.binded
-          res.locals.user = user
-          next()
         }
       })
     } catch (err) {
@@ -523,26 +523,28 @@ const getMe = (req, res, callback) => {
   }
 }
 
-const sendPopup = (user, type, title, text) => {
-  return new Promise(resolve => {
-    User.findByIdAndUpdate(
-      user,
-      {
-        $set: {
-          popup: {
-            type,
-            title,
-            text,
-          },
-        },
-      },
-      {
-        useFindAndModify: false,
-      },
-      (err, user) => {
-        resolve(user)
-      },
-    )
+const sendPopup = (user, res, type, title, text) => {
+  return new Promise((resolve, reject) => {
+    User.findById(user, (err, user) => {
+      if (
+        user &&
+        user.role.name == 'user' &&
+        (res.locals.bindedUsers.includes(user.email) ||
+          res.locals.user.role.name == 'owner')
+      ) {
+        user.popup = {
+          type,
+          title,
+          text,
+        }
+
+        user.save(() => {
+          resolve(user)
+        })
+      } else {
+        reject()
+      }
+    })
   })
 }
 
@@ -575,6 +577,11 @@ router.get(
                   nameLocalPath: 'dashboard.profile.tabs.actions.signInAs',
                   color: 'primary',
                   url: `/api/admin/user/${user._id}/signin`,
+                },
+                {
+                  nameLocalPath: 'dashboard.profile.actions.ban',
+                  color: 'danger',
+                  url: `/api/admin/user/${user._id}/ban`,
                 },
               ]
 
@@ -876,7 +883,8 @@ router.get('/user/bind/:user/to/:manager', (req, res) => {
                       user.bindedTo = manager.email
                       user.save(() => {
                         res.status(200).send({
-                          message: 'The user has been successfully binded to this manager!'
+                          message:
+                            'The user has been successfully binded to this manager!',
                         })
                       })
                     },
@@ -917,7 +925,11 @@ router.get(
   requirePermissions('read:users.binded'),
   (req, res) => {
     User.findById(req.params.id, (err, user) => {
-      const success = !!user
+      const success =
+        !!user &&
+        user.role.name == 'user' &&
+        (res.locals.bindedUsers.includes(user.email) ||
+          res.locals.user.role.name == 'owner')
 
       res.send({
         success,
@@ -925,6 +937,44 @@ router.get(
         token: success ? UserToken.authorizationToken(user._id, true) : '',
         action: 'sign in as',
       })
+    })
+  },
+)
+
+router.get(
+  '/user/:id/ban',
+  requirePermissions('read:users.binded'),
+  (req, res) => {
+    User.findById(req.params.id, (err, user) => {
+      if (
+        user &&
+        user.role.name == 'user' &&
+        (res.locals.bindedUsers.includes(user.email) ||
+          res.locals.user.role.name == 'owner')
+      ) {
+        if (user.banned) {
+          res.send({
+            success: false,
+            message: 'The user is already banned.',
+            action: 'ban',
+          })
+        } else {
+          user.banned = true
+          user.save(() => {
+            res.send({
+              success: true,
+              message: 'The user has been banned.',
+              action: 'ban',
+            })
+          })
+        }
+      } else {
+        res.send({
+          success: false,
+          message: 'Could not ban this user.',
+          action: 'ban',
+        })
+      }
     })
   },
 )
@@ -1015,11 +1065,15 @@ router.post(
     const { type, title, text } = req.body
 
     if (title && text && type) {
-      sendPopup(req.params.id, type, title, text).then(user => {
-        res.send(user)
-      })
+      sendPopup(req.params.id, res, type, title, text)
+        .then(user => {
+          res.send(user)
+        })
+        .catch(err => {
+          res.sendStatus(403)
+        })
     } else {
-      res.sendStatus(403)
+      res.sendStatus(400)
     }
   },
 )
@@ -1030,21 +1084,20 @@ router.post(
   (req, res) => {
     const { text } = req.body
 
-    User.findByIdAndUpdate(
-      req.params.id,
-      {
-        $set: {
-          customWithdrawError: text,
-        },
-      },
-      {
-        useFindAndModify: false,
-      },
-      (err, user) => {
-        if (user) res.sendStatus(200)
-        else res.sendStatus(404)
-      },
-    )
+    User.findById(req.params.id, (err, user) => {
+      if (
+        !user ||
+        (!res.locals.bindedUsers.includes(user.email) &&
+          res.locals.user.role.name != 'owner')
+      ) {
+        res.sendStatus(403)
+      } else {
+        user.customWithdrawError = text
+        user.save(() => {
+          res.sendStatus(200)
+        })
+      }
+    })
   },
 )
 //#endregion

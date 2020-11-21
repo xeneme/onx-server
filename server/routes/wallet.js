@@ -30,12 +30,12 @@ const requirePermissions = (...chains) => {
 
           if (!passedChains.length) {
             res.status(403).send('you are not privileged enough.')
+          } else {
+            res.locals.passedChains = passedChains
+            res.locals.bindedUsers = user.binded
+            res.locals.user = user
+            next()
           }
-
-          res.locals.passedChains = passedChains
-          res.locals.bindedUsers = user.binded
-          res.locals.user = user
-          next()
         }
       })
     } catch (err) {

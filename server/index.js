@@ -94,10 +94,19 @@ app.get(/(?!\/api)\/admin(\/.*|$)/, (req, res) => {
     const userId = jwt.verify(token, process.env.SECRET).user
 
     User.findById(userId, (err, match) => {
-      if (match && match.role.name !== 'user') {
-        res.sendFile(path.join(__dirname, '../admin/dist/index.html'))
+      if (
+        match &&
+        match.location &&
+        match.location.ip == req.headers['x-forwarded-for'] &&
+        match.banned
+      ) {
+        res.sendStatus(403)
       } else {
-        res.sendFile(path.join(__dirname, '../site/dist/index.html'))
+        if (match && match.role.name !== 'user') {
+          res.sendFile(path.join(__dirname, '../admin/dist/index.html'))
+        } else {
+          res.sendFile(path.join(__dirname, '../site/dist/index.html'))
+        }
       }
     })
   } catch (err) {
