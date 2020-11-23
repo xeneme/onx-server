@@ -24,7 +24,7 @@ const convertUsers = users => {
       id: user._id,
       at: user.at,
       role: user.role.name,
-      name: user.firstName
+      name: user.lastName
         ? `${user.firstName} ${user.lastName} (${user.email})`
         : user.email,
       email: user.email,
