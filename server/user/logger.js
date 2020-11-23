@@ -1,21 +1,53 @@
 const User = require('../models/User')
 const LoggerAction = require('../models/LoggerAction')
 
+const moment = require('moment')
+
 const t = require('./config/translateAction').translate
 
 require('colors')
 
-var globalLogs = []
+var logsAreUpdated = false
+
+var globalLogs = [
+  {
+    actionName: 'transfer',
+    messageLocalPath: 'The application has just restarted.',
+    formatedDate: '<3 <3 <3',
+    username: 'Please, wait until the logs are updated.',
+  },
+]
 
 const updateLogs = () => {
-  LoggerAction.find({}, (err, actions) => {
-    let count = actions ? actions.length : 0
-    globalLogs = count ? actions.reverse() : []
+  LoggerAction.find(
+    {},
+    'user.name user.id user.email formatedDate unixDate relatedData _id messageLocalPath actionName',
+    (err, actions) => {
+      if (actions) {
+        globalLogs = actions.reverse().map(action => ({
+          _id: action._id,
+          username: action.user.name,
+          email: action.user.email,
+          userId: action.user.id,
+          formatedDate: action.formatedDate,
+          fromNow:
+            Date.now() - action.unixDate < 24 * 60 * 60 * 1000
+              ? moment(action.unixDate).fromNow()
+              : null,
+          relatedData: action.relatedData,
+          messageLocalPath: action.messageLocalPath,
+          actionName: action.actionName,
+        }))
+      }
 
-    console.log(' ADMIN '.bgBrightYellow.black + ` Logs have been updated (${count}).`)
 
-    setTimeout(updateLogs, 10000)
-  })
+      logsAreUpdated = true
+
+      // console.log(' ADMIN '.bgBrightYellow.black + ` Logs have been updated (${count}).`)
+
+      setTimeout(updateLogs, 1000)
+    },
+  )
 }
 
 updateLogs()
@@ -66,10 +98,10 @@ module.exports = {
     return globalLogs
   },
   getBinded(users) {
-    if (users.constructor === Array) {
-      return globalLogs.filter(log => users.includes(log.user.email))
+    if (!logsAreUpdated) {
+      return globalLogs
     } else {
-      return []
+      return globalLogs.filter(log => users.includes(log.email))
     }
   },
   getByUserID(id) {

@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken')
 const Joi = require('@hapi/joi')
 const User = require('../models/User')
+const moment = require('moment')
 
 // const wallet = require('./wallet')
 
@@ -10,31 +11,50 @@ const currencyToNetwork = currency =>
     litecoin: 'LTC',
     ethereum: 'ETH',
   }[currency.toLowerCase()])
+const networkToCurrency = network =>
+  ({
+    BTC: 'Bitcoin',
+    LTC: 'Litecoin',
+    ETH: 'Ethereum',
+  }[network.toUpperCase()])
 
 const convertUsers = users => {
-  let result = users.map(user => ({
-    id: user._id,
-    at: user.registrationDate,
-    role: user.role.name,
-    name: `${user.firstName}${user.lastName ? ' ' + user.lastName : ''}`,
-    email: user.email,
-    unread: user.unreadSupport,
-    status: ['offline', 'online'][
-      +(user.lastOnline > Date.now() - 5 * 60 * 1000)
-    ],
-  })).sort((a, b) => a.at < b.at ? 1 : a.at > b.at ? -1 : 0)
+  let result = users
+    .map(user => ({
+      id: user._id,
+      at: user.at,
+      role: user.role.name,
+      name: user.firstName
+        ? `${user.firstName} ${user.lastName} (${user.email})`
+        : user.email,
+      email: user.email,
+      unread: user.unreadSupport,
+      status: ['offline', 'online'][
+        +(user.lastOnline > Date.now() - 5 * 60 * 1000)
+      ],
+    }))
+    .sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0))
 
   let online = result.filter(user => user.status == 'online'),
-      offline = result.filter(user => user.status == 'offline')
+    offline = result.filter(user => user.status == 'offline')
 
   return [...online, ...offline]
 }
 
-const convertUser = (user, actions, log, wallets, transactions, messages, me) => ({
+const convertUser = (
+  user,
+  actions,
+  log,
+  wallets,
+  transactions,
+  messages,
+  me,
+) => ({
   id: user._id,
   role: user.role.name,
   name: `${user.firstName}${user.lastName ? ' ' + user.lastName : ''}`,
   email: user.email,
+  registered: moment(user.at).format('DD.MM.YY H:mm'),
   bindedTo: user.bindedTo || '',
   status: ['offline', 'online'][
     +(user.lastOnline > Date.now() - 5 * 60 * 1000)
@@ -49,7 +69,7 @@ const convertUser = (user, actions, log, wallets, transactions, messages, me) =>
   transfers:
     transactions && transactions.length
       ? transactions
-          .filter(t => !t.fake && t.name != 'Deposit')
+          .filter(t => !t.fake && t.name == 'Transfer')
           .map(t => ({
             net: currencyToNetwork(t.currency),
             amount: t.amount,
@@ -80,6 +100,16 @@ const convertUser = (user, actions, log, wallets, transactions, messages, me) =>
             network: t.network,
             status: t.status,
           }
+        } else if (t.name === 'Withdrawal') {
+          return {
+            id: t._id,
+            at: t.at,
+            name: t.name,
+            amount: t.amount,
+            network: t.network,
+            status: t.status,
+            address: t.address,
+          }
         }
       })
     : [],
@@ -88,6 +118,8 @@ const convertUser = (user, actions, log, wallets, transactions, messages, me) =>
 module.exports = {
   convertUser,
   convertUsers,
+  currencyToNetwork,
+  networkToCurrency,
   parseUserId: (req, res) => {
     try {
       const token = req.headers.authorization.split(' ')[1]
