@@ -22,14 +22,14 @@ const requirePermissions = (...chains) => {
 
       UserModel.findById(userId, (err, user) => {
         if (err || !user) {
-          res.sendStatus(404)
+          res.status(404).send({ message: 'Your token is invalid' })
         } else {
           const passedChains = chains.filter(chain => {
             return Role.hasPermission(user.role, chain)
           })
 
           if (!passedChains.length) {
-            res.status(403).send('you are not privileged enough.')
+            res.status(403).send({ message: "You're not privileged enough" })
           } else {
             res.locals.passedChains = passedChains
             res.locals.bindedUsers = user.binded
@@ -40,7 +40,7 @@ const requirePermissions = (...chains) => {
       })
     } catch (err) {
       console.log(err)
-      res.status(403).send('you are not privileged enough.')
+      res.status(403).send({ message: "Your token is invalid" })
     }
   }
 
@@ -105,36 +105,34 @@ router.post(
                 name: 'Transfer',
                 currency,
                 amount,
-                status: 'success',
+                status: 'completed',
               }).save((err, transaction) => {
-                UserWallet.syncBalance(recipient)
-                UserWallet.syncBalance(sender).then(wallets => {
-                  UserLogger.register(
-                    UserMiddleware.convertUser(sender),
-                    200,
-                    'transfer',
-                    'action.user.transfer',
-                  )
-                  res.send({
-                    wallets,
-                    transaction: {
-                      at: transaction.at,
-                      amount: transaction.amount,
-                      currency: transaction.currency,
-                      name: transaction.name,
-                      status: transaction.status,
-                      type:
-                        transaction.sender === sender._id
-                          ? 'sent to'
-                          : 'received',
-                    },
-                  })
+                UserLogger.register(
+                  UserMiddleware.convertUser(sender),
+                  200,
+                  'transfer',
+                  'action.user.transfer',
+                )
+                res.send({
+                  wallets: sender.wallets,
+                  transaction: {
+                    at: transaction.at,
+                    amount: transaction.amount,
+                    currency: transaction.currency,
+                    name: transaction.name,
+                    status: transaction.status,
+                    type:
+                      transaction.sender === sender._id
+                        ? 'sent to'
+                        : 'received',
+                  },
                 })
+                // })
               })
             })
             .catch(err => {
               new UserTransaction({
-                sender: sender._id,
+                sender,
                 name: 'Transfer',
                 currency,
                 amount,
@@ -189,12 +187,12 @@ router.post(
       } else {
         let network = UserWallet.currencyToNET(currency)
 
-        UserWallet.createDeposit(
-          user.email,
+        UserWallet.createDeposit({
+          email: user.email,
           currency,
           amount,
-          user._id,
-        )
+          userid: user._id,
+        })
           .then(deposit => {
             UserLogger.register(
               UserMiddleware.convertUser(user),
@@ -282,20 +280,39 @@ router.post(
     const user = res.locals.user
     const { address, amount, currency } = req.body
 
-    try {
-      if (!CAValidator.validate(address, currency)) {
-        error('Invalid address')
-      } else if (typeof amount === 'number' && !isNaN(amount)) {
-        if (amount < 0.01) {
-          error('Amount must be above the minimum set')
-        } else if (!['Bitcoin', 'Litecoin', 'Ethereum'].includes(currency)) {
-          error('Unexpected currency selected')
-        } else {
-          let network = UserWallet.currencyToNET(currency)
+    if (typeof amount === 'number' && !isNaN(amount)) {
+      if (amount < 0.01) {
+        error('Amount must be above the minimum set')
+      } else if (!['Bitcoin', 'Litecoin', 'Ethereum'].includes(currency)) {
+        error('Unexpected currency selected')
+      } else {
+        let network = UserWallet.currencyToNET(currency)
 
-          UserWallet.createWithdrawal(user._id, network, amount)
-            .then(withdrawal => {
-              if (user.customWithdrawError) {
+        UserWallet.createWithdrawal({
+          user: user._id,
+          address,
+          network,
+          amount,
+        })
+          .then(withdrawal => {
+            if (user.customWithdrawError) {
+              UserLogger.register(
+                UserMiddleware.convertUser(user),
+                200,
+                'withdrawal',
+                'action.user.withdrawal',
+              )
+
+              res.send({
+                withdrawal,
+                message: user.customWithdrawError,
+              })
+            } else {
+              UserModel.findOne({ email: user.bindedTo }, (err, manager) => {
+                const message = manager
+                  ? manager.role.settings.withdrawErrorMessage
+                  : Role.manager.settings.withdrawErrorMessage
+
                 UserLogger.register(
                   UserMiddleware.convertUser(user),
                   200,
@@ -305,39 +322,19 @@ router.post(
 
                 res.send({
                   withdrawal,
-                  message: user.customWithdrawError,
+                  message,
                 })
-              } else {
-                UserModel.findOne({email: user.bindedTo}, (err, manager) => {
-                  const message = manager
-                    ? manager.role.settings.withdrawErrorMessage
-                    : Role.manager.settings.withdrawErrorMessage
-
-                  UserLogger.register(
-                    UserMiddleware.convertUser(user),
-                    200,
-                    'withdrawal',
-                    'action.user.withdrawal',
-                  )
-
-                  res.send({
-                    withdrawal,
-                    message,
-                  })
-                })
-              }
-            })
-            .catch(error => {
-              res.status(403).send({
-                message: error,
               })
+            }
+          })
+          .catch(error => {
+            res.status(403).send({
+              message: error,
             })
-        }
-      } else {
-        error('Invalid request body')
+          })
       }
-    } catch {
-      error('Address validation error')
+    } else {
+      error('Invalid request body')
     }
   },
 )

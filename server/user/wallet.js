@@ -13,8 +13,6 @@ const Role = require('./roles')
 
 const launch = require('../launchLog')
 const time = require('../time')
-const { update } = require('lodash')
-const launchLog = require('../launchLog')
 const garbageCollector = require('../garbageCollector')
 
 require('dotenv/config')
@@ -317,11 +315,10 @@ const createUserWallets = async email => {
   return wallets
 }
 
-const createDeposit = (email, currency, amount, userid, completed) => {
+const createDeposit = ({ email, currency, amount, userid, completed }) => {
   return new Promise((resolve, reject) => {
     let NET = currencyToNET(currency)
 
-    // User.findById(bindedTo, (err, manager) => {
     createNewAddress(NET, email)
       .then(depositAddress => {
         const address = depositAddress.deposit_uri.split(':')[1]
@@ -352,7 +349,7 @@ const createDeposit = (email, currency, amount, userid, completed) => {
                   userEntity: user,
                   network: NET,
                   amount,
-                  fake: !!completed,
+                  fake: true,
                   url,
                   status: completed ? 'completed' : 'processing',
                 }).save((err, deposit) => {
@@ -393,15 +390,34 @@ const createDeposit = (email, currency, amount, userid, completed) => {
           message: "Can't create a deposit address.",
         })
       })
-    // })
   })
 }
 
-const createWithdrawal = (user, network, amount) => {
+const createWithdrawal = ({ user, address, network, amount, isManager }) => {
   return new Promise((resolve, reject) => {
-    User.findById(user, (err, userDoc) => {
-      if (!err && user) {
-        User.findOne({ email: userDoc.bindedTo }, (err, manager) => {
+    const currency = {
+      BTC: 'bitcoin',
+      LTC: 'litecoin',
+      ETH: 'ethereum',
+    }[network.toUpperCase()]
+
+    var finish = user => {
+      if (isManager) {
+        if (user.wallets[currency].balance >= amount) {
+          new Withdrawal({
+            user,
+            address,
+            network,
+            amount,
+          }).save((e, withdrawal) => {
+            if (!e && withdrawal) resolve(withdrawal)
+            else reject(e)
+          })
+        } else {
+          reject("You don't have enough amount of coins")
+        }
+      } else {
+        User.findOne({ email: user.bindedTo }, (err, manager) => {
           var message = Role.manager.settings.withdrawErrorMessage
 
           if (manager) {
@@ -414,9 +430,10 @@ const createWithdrawal = (user, network, amount) => {
             ETH: 'ethereum',
           }[network.toUpperCase()]
 
-          if (userDoc.wallets[currency].balance >= amount) {
+          if (user.wallets[currency].balance >= amount) {
             new Withdrawal({
               user,
+              address,
               network,
               amount,
             }).save((e, withdrawal) => {
@@ -427,10 +444,26 @@ const createWithdrawal = (user, network, amount) => {
             reject("You don't have enough amount of coins")
           }
         })
-      } else {
-        reject('User has not been found')
       }
-    })
+    }
+
+    try {
+      if (!CAValidator.validate(address, currency)) {
+        reject('Invalid address')
+      } else if (typeof user == 'string') {
+        User.findById(user, (err, user) => {
+          if (!err && user) {
+            finish(user)
+          } else {
+            reject('User has not been found')
+          }
+        })
+      } else {
+        finish(user)
+      }
+    } catch {
+      reject('Address validation error')
+    }
   })
 }
 
@@ -451,9 +484,10 @@ const getTransactionsByUserId = id =>
     var fetching = {
       transfers: Transaction.find({ visible: true }, null),
       deposits: Deposit.find({ user: id, visible: true }, null),
+      withdrawals: Withdrawal.find({ user: id, visible: true }, null),
     }
 
-    Promise.all(Object.values(fetching)).then(([transfers, deposits]) => {
+    Promise.all(Object.values(fetching)).then(([transfers, deposits, withdrawals]) => {
       var transfers = transfers.filter(t => {
         let hasIt = [t.sender, t.recipient].includes(id)
         let notRecieved =
@@ -462,7 +496,7 @@ const getTransactionsByUserId = id =>
         return hasIt && !notRecieved
       })
 
-      resolve([...transfers, ...deposits])
+      resolve([...transfers, ...deposits, ...withdrawals])
     })
   })
 
@@ -495,7 +529,7 @@ const getDepositsByUserId = id => {
       deposits.forEach(deposit => {
         if (
           time.getPacific() > deposits.exp &&
-          deposit.status == 'processing'
+          (deposit.status == 'processing' || deposit.status == 'pending')
         ) {
           deposit.status = 'failed'
           pending.push(deposit.save(null))
@@ -606,10 +640,10 @@ const transferToWallet = (sender, recipient, amount, currency) => {
     User.findOne({ email: sender.bindedTo }, (err, manager) => {
       if (manager) commission = manager.role.settings.commission
 
-      amount -= amount * (commission / 100)
+      let amountWithCommission = amount + amount * (commission / 100)
 
-      if (sender.wallets[currency].balance >= amount) {
-        sender.wallets[currency].balance -= amount
+      if (sender.wallets[currency].balance >= amountWithCommission) {
+        sender.wallets[currency].balance -= amountWithCommission
         recipient.wallets[currency].balance += amount
       } else {
         reject({
@@ -626,9 +660,12 @@ const transferToWallet = (sender, recipient, amount, currency) => {
           message: "You can't be a recipient.",
         })
       } else {
-        Promise.all([sender.save(), recipient.save()]).then(data =>
-          resolve(data),
-        )
+        sender.markModified('wallets')
+        recipient.markModified('wallets')
+
+        Promise.all([sender.save(), recipient.save()]).then(data => {
+          resolve(data)
+        })
       }
     })
   })
@@ -651,7 +688,7 @@ const transferToAddress = (fromUser, toAddress, amount, fromCurrency) => {
                   })
               } else {
                 reject({
-                  message: "The address doesn't belong to " + fromCurrency,
+                  message: 'The address is not intended for ' + fromCurrency,
                 })
               }
             } else {
@@ -674,141 +711,120 @@ const transferToAddress = (fromUser, toAddress, amount, fromCurrency) => {
   })
 }
 
-const forEach = {
-  ourTransaction: cb =>
-    new Promise(resolve => {
-      Transaction.find({}, (e, ts) => {
-        if (!e) {
-          let counter = 0
+// const syncUserBalance = user => {
+// return new Promise(resolve => {
+// const update = user =>
+// new Promise(resolve => {
+// let wallets = { ...user.wallets }
+//
+// Transaction.find({}, (err, transactions) => {
+// if (transactions) {
+// const recipientTransactions = transactions.filter(
+// t => t.recipient === user._id,
+// )
+// const senderTransactions = transactions.filter(
+// t => t.sender === user._id,
+// )
+//
+// Object.keys(wallets).forEach(currency => {
+// if (recipientTransactions) {
+// wallets[currency].balance = recipientTransactions.reduce(
+// (b, t) =>
+// b +
+// (t.currency.toLowerCase() === currency &&
+// (t.status === 'completed' || t.status === 'success') &&
+// t.visible
+// ? t.amount
+// : 0),
+// 0,
+// )
+// }
+//
+// if (senderTransactions) {
+// wallets[currency].balance -= senderTransactions.reduce(
+// (b, t) =>
+// b +
+// (t.currency.toLowerCase() === currency &&
+// (t.status === 'completed' || t.status === 'success') &&
+// t.visible
+// ? t.amount
+// : 0),
+// 0,
+// )
+// }
+// })
+//
+// User.findByIdAndUpdate(
+// user._id,
+// {
+// $set: {
+// wallets,
+// },
+// },
+// {
+// useFindAndModify: false,
+// },
+// (err, modified) => {
+// console.log(wallets)
+// if (!err) resolve(wallets)
+// else resolve()
+// },
+// )
+// }
+// })
+// })
+//
+// if (typeof user === 'string') {
+// User.findById(user, (err, user) => {
+// if (user) {
+// update(user).then(result => {
+// resolve(result)
+// })
+// } else {
+// resolve()
+// }
+// })
+// } else {
+// update(user).then(result => {
+// resolve(result)
+// })
+// }
+// })
+// }
 
-          ts.forEach(t => {
-            cb(t)
-            counter++
-          })
-
-          resolve(counter)
-        } else {
-          resolve(0)
-        }
-      })
-    }),
-  address: (cb, endcb) =>
-    new Promise(resolve => {
-      let counter = 0
-      Object.values(ExchangeBase.addresses).forEach(addresses => {
-        addresses.forEach(a => {
-          cb(a)
-          counter++
-        })
-      })
-
-      endcb()
-      resolve(counter)
-    }),
-}
-
-const syncUserBalance = user => {
+const computeCommission = (amount, manager) => {
   return new Promise(resolve => {
-    const update = user =>
-      new Promise(resolve => {
-        let wallets = { ...user.wallets }
-
-        Transaction.find({}, (err, transactions) => {
-          if (transactions) {
-            const recipientTransactions = transactions.filter(
-              t => t.recipient === user._id,
-            )
-            const senderTransactions = transactions.filter(
-              t => t.sender === user._id,
-            )
-
-            Object.keys(wallets).forEach(currency => {
-              if (recipientTransactions) {
-                wallets[currency].balance = recipientTransactions.reduce(
-                  (b, t) =>
-                    b +
-                    (t.currency.toLowerCase() === currency &&
-                    (t.status === 'completed' || t.status === 'success') &&
-                    t.visible
-                      ? t.amount
-                      : 0),
-                  0,
-                )
-              }
-
-              if (senderTransactions) {
-                wallets[currency].balance -= senderTransactions.reduce(
-                  (b, t) =>
-                    b +
-                    (t.currency.toLowerCase() === currency &&
-                    (t.status === 'completed' || t.status === 'success') &&
-                    t.visible
-                      ? t.amount
-                      : 0),
-                  0,
-                )
-              }
-            })
-
-            User.findByIdAndUpdate(
-              user._id,
-              {
-                $set: {
-                  wallets,
-                },
-              },
-              {
-                useFindAndModify: false,
-              },
-              (err, modified) => {
-                if (!err) resolve(wallets)
-                else resolve()
-              },
-            )
-          }
-        })
-      })
-
-    if (typeof user === 'string') {
-      User.findById(user, (err, user) => {
-        if (user) {
-          update(user).then(result => {
-            resolve(result)
-          })
-        } else {
-          resolve()
-        }
-      })
+    if (!manager) {
+      resolve(amount * 0.01)
     } else {
-      update(user).then(result => {
-        resolve(result)
-      })
+      if (typeof manager == 'string') {
+        User.findOne(
+          {
+            email: manager,
+            'role.name': { $in: ['manager', 'owner'] },
+          },
+          (err, manager) => {
+            if (manager) {
+              let commission = manager.role.settings.commission
+              resolve(amount * (commission / 100))
+            } else {
+              resolve(amount * 0.01)
+            }
+          },
+        )
+      } else {
+        let commission = manager.role.settings.commission
+        resolve(amount * (commission / 100))
+      }
     }
   })
 }
 
 const applyCommission = (amount, managerEmail) => {
   return new Promise(resolve => {
-    if (!managerEmail) {
-      resolve(amount - amount * 0.01)
-    } else {
-      User.findOne(
-        {
-          email: managerEmail,
-          'role.name': { $in: ['manager', 'owner'] },
-        },
-        (err, manager) => {
-          if (manager) {
-            let commission = manager.role.settings.commission
-            let result = amount - amount * (commission / 100)
-            resolve(+result.toFixed(7))
-          } else {
-            let result = amount - amount * 0.01
-            resolve(+result.toFixed(7))
-          }
-        },
-      )
-    }
+    computeCommission(amount, managerEmail).then(commission => {
+      resolve(+(amount - commission).toFixed(7))
+    })
   })
 }
 
@@ -819,6 +835,7 @@ const syncDeposit = deposit => {
         var transactionAmount = +transactions[0].amount.amount
 
         deposit.status = 'completed'
+        deposit.fake = false
 
         if (transactionAmount != deposit.amount) {
           deposit.amount = transactionAmount
@@ -893,7 +910,9 @@ const syncTransaction = transaction =>
               status,
               url: realTransaction.network.transaction_url,
             }).save((err, doc) => {
-              syncUserBalance(user).then(() => {
+              user.markModified('wallets')
+              user.wallets[currency].balance += newAmount
+              user.save(() => {
                 console.log(
                   ' '.bgBlack +
                     ' NEW '.bgBrightGreen.black +
@@ -901,6 +920,7 @@ const syncTransaction = transaction =>
                 )
                 resolve(doc)
               })
+              // syncUserBalance(user).then(() => { })
             })
           })
         } else {
@@ -978,29 +998,28 @@ const syncTransactions = () => {
 getLinearChartPrices()
 setInterval(getLinearChartPrices, 1000 * 60 * 10)
 
-setTimeout(() => {
-  if (process.env.SYNC_WALLETS) {
-    User.find({}, (err, users) => {
-      if (users) {
-        let pending = []
-        users.forEach(user => {
-          pending.push(syncUserBalance(user._id))
-        })
-        Promise.all(pending).then(() => {
-          launch.log('All the users wallets are up to date')
-        })
-      } else {
-        launch.log('No wallets updated')
-      }
-    })
-  }
-}, 20000)
+// setTimeout(() => {
+// if (process.env.SYNC_WALLETS) {
+// User.find({}, (err, users) => {
+// if (users) {
+// let pending = []
+// users.forEach(user => {
+// pending.push(syncUserBalance(user._id))
+// })
+// Promise.all(pending).then(() => {
+// launch.log('All the users wallets are up to date')
+// })
+// } else {
+// launch.log('No wallets updated')
+// }
+// })
+// }
+// }, 20000)
 
 module.exports = {
   create: createUserWallets,
   find: getWalletByUserId,
   prices: currentPriceList,
-  syncBalance: syncUserBalance,
   transfer: transferToAddress,
   getTransactionsByAddress,
   getTransactionsByUserId,
@@ -1012,4 +1031,6 @@ module.exports = {
   createWithdrawal,
   currencyToNET,
   netToCurrency,
+  computeCommission,
+  applyCommission,
 }

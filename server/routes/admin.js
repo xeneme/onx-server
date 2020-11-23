@@ -5,10 +5,11 @@ const moment = require('moment')
 const _ = require('underscore')
 
 const User = require('../models/User')
-const LoggerAction = require('../models/LoggerAction')
+// const LoggerAction = require('../models/LoggerAction')
 const SupportDialogue = require('../models/SupportDialogue')
 const Transaction = require('../models/Transaction')
 const Deposit = require('../models/Deposit')
+const Withdrawal = require('../models/Withdrawal')
 
 const Role = require('../user/roles')
 const Settings = require('../user/admin/settings')
@@ -27,14 +28,14 @@ const requirePermissions = (...chains) => {
 
       User.findById(userId, (err, user) => {
         if (err || !user) {
-          res.sendStatus(404)
+          res.status(404).send({ message: 'Your token is invalid' })
         } else {
           const passedChains = chains.filter(chain => {
             return Role.hasPermission(user.role, chain)
           })
 
           if (!passedChains.length) {
-            res.status(403).send('you are not privileged enough.')
+            res.status(403).send({ message: "You're not privileged enough" })
           } else {
             res.locals.passedChains = passedChains
             res.locals.bindedUsers = user.binded
@@ -44,7 +45,7 @@ const requirePermissions = (...chains) => {
         }
       })
     } catch (err) {
-      res.status(403).send('you are not privileged enough.')
+      res.status(403).send({ message: "You're not privileged enough" })
     }
   }
 
@@ -170,7 +171,7 @@ router.post(
   (req, res) => {
     const { commission } = req.body
 
-    if (!isNaN(+commission) && +commission > 0) {
+    if (!isNaN(+commission) && +commission > 0 && +commission < 100) {
       Settings.setCommission(res.locals.user, +commission).then(user => {
         res.send({
           message: 'Your commission changed',
@@ -269,41 +270,109 @@ router.post(
   requirePermissions('write:transactions.binded'),
   (req, res) => {
     const { id, user } = req.body
+    const manager = res.locals.user
 
     if (id) {
-      Deposit.findByIdAndUpdate(
-        { _id: id },
-        {
-          $set: {
-            visible: false,
-          },
-        },
-        {
-          useFindAndModify: false,
-        },
-        (err, doc) => {
-          if (doc && !err) {
-            User.findById(user, (err, user) => {
-              if (user) {
+      User.findById(user, (err, user) => {
+        if (
+          user &&
+          (manager.binded.includes(user.email) ||
+            manager.role.name == 'owner' ||
+            (manager.role.name == 'manager' && manager.email == user.email))
+        ) {
+          Deposit.findByIdAndUpdate(
+            { _id: id },
+            {
+              $set: {
+                visible: false,
+              },
+            },
+            {
+              useFindAndModify: false,
+            },
+            (err, doc) => {
+              if (doc && !err) {
+                let currency = mw.networkToCurrency(doc.network)
+
                 res.send({
                   id: doc._id,
                   at: doc.at,
                   exp: doc.exp,
+                  name: 'Deposit',
                   amount: doc.amount,
                   network: doc.network,
                   status: doc.status,
+                  currency,
                 })
               } else {
-                res.sendStatus(404)
+                res.status(404).send({ message: 'Deposit not found' })
               }
-            })
-          } else {
-            res.sendStatus(404)
-          }
-        },
-      )
+            },
+          )
+        } else {
+          res.status(403).send({ message: 'Forbidden' })
+        }
+      })
     } else {
-      res.sendStatus(400)
+      res.status(400).send({ message: 'Bad request' })
+    }
+  },
+)
+
+router.post(
+  '/withdrawal/delete',
+  requirePermissions('write:transactions.binded'),
+  (req, res) => {
+    const { id, user } = req.body
+    const manager = res.locals.user
+
+    if (id) {
+      User.findById(user, (err, user) => {
+        if (
+          user &&
+          (manager.binded.includes(user.email) ||
+            manager.role.name == 'owner' ||
+            (manager.role.name == 'manager' && manager.email == user.email))
+        ) {
+          Withdrawal.findByIdAndUpdate(
+            { _id: id },
+            {
+              $set: {
+                visible: false,
+              },
+            },
+            {
+              useFindAndModify: false,
+            },
+            (err, doc) => {
+              if (doc && !err) {
+                let currency = mw.networkToCurrency(doc.network)
+
+                user.wallets[currency.toLowerCase()].balance += doc.amount
+                user.markModified('wallets')
+                user.save(() => {
+                  res.send({
+                    id: doc._id,
+                    at: doc.at,
+                    name: 'Withdrawal',
+                    amount: doc.amount,
+                    network: doc.network,
+                    status: doc.status,
+                    address: doc.address,
+                    currency,
+                  })
+                })
+              } else {
+                res.status(404).send({ message: 'Withdrawal not found' })
+              }
+            },
+          )
+        } else {
+          res.status(403).send({ message: 'Forbidden' })
+        }
+      })
+    } else {
+      res.status(400).send({ message: 'Bad request' })
     }
   },
 )
@@ -346,45 +415,54 @@ router.post(
   requirePermissions('write:transactions.binded'),
   (req, res) => {
     const { id, user } = req.body
+    const manager = res.locals.user
 
-    if (id) {
-      Transaction.findByIdAndUpdate(
-        { _id: id },
-        {
-          $set: {
-            visible: false,
+    User.findById(user, (err, user) => {
+      if (
+        user &&
+        (manager.binded.includes(user.email) ||
+          manager.role.name == 'owner' ||
+          (manager.role.name == 'manager' && manager.email == user.email))
+      ) {
+        Transaction.findByIdAndUpdate(
+          { _id: id },
+          {
+            $set: {
+              visible: false,
+            },
           },
-        },
-        {
-          useFindAndModify: false,
-        },
-        (err, doc) => {
-          if (doc && !err) {
-            User.findById(user, (err, user) => {
-              if (user) {
-                UserWallet.syncBalance(user).then(wallets => {
-                  res.send({
-                    id: doc._id,
-                    at: doc.at,
-                    amount: doc.amount,
-                    currency: doc.currency,
-                    status: doc.status,
-                    fake: doc.fake,
-                    type: doc.sender === user._id ? 'sender' : 'recipient',
-                  })
+          {
+            useFindAndModify: false,
+          },
+          (err, doc) => {
+            if (!err && doc) {
+              user.markModified('wallets')
+              user.wallets[doc.currency.toLowerCase()].balance -= doc.amount
+              user.save(() => {
+                res.send({
+                  id: doc._id,
+                  at: doc.at,
+                  name: 'Transfer',
+                  amount: doc.amount,
+                  currency: doc.currency,
+                  status: doc.status,
+                  fake: doc.fake,
+                  type: doc.sender === user._id ? 'sender' : 'recipient',
                 })
-              } else {
-                res.sendStatus(404)
-              }
-            })
-          } else {
-            res.sendStatus(404)
-          }
-        },
-      )
-    } else {
-      res.sendStatus(400)
-    }
+              })
+            } else {
+              res.status(404).send({
+                message: 'Transaction not updated',
+              })
+            }
+          },
+        )
+      } else {
+        res.status(403).send({
+          message: 'Forbidden',
+        })
+      }
+    })
   },
 )
 
@@ -392,101 +470,40 @@ router.post(
   '/transaction/create',
   requirePermissions('write:transactions.binded'),
   (req, res) => {
-    const { user, direction, action, amount, net, date } = req.body
+    const { user, direction, action, amount, net, date, address } = req.body
+    const manager = res.locals.user
 
-    User.findById(user, (err, user) => {
-      if (['Sent', 'Received'].includes(direction)) {
+    User.findById(user)
+      .catch(err => {
+        res.status(404).send({
+          message: 'User not found',
+        })
+      })
+      .then(user => {
+        if (
+          user &&
+          (manager.binded.includes(user.email) ||
+            manager.role.name == 'owner' ||
+            (manager.role.name == 'manager' && manager.email == user.email))
+        ) {
+          return user
+        } else {
+          res.status(403).send({
+            message: 'Forbidden',
+          })
+        }
+      })
+      .then(user => {
         if (typeof amount === 'number' && amount >= 0.01) {
           var currency = { BTC: 'Bitcoin', LTC: 'Litecoin', ETH: 'Ethereum' }[
             net
           ]
 
-          try {
-            if (new Date(date).toLocaleString() !== 'Invalid Date') {
-              var at = date
-            } else {
-              throw new Error()
-            }
-
-            if (currency) {
-              switch (action) {
-                case 'Transfer':
-                  let who = direction === 'Sent' ? 'sender' : 'recipient'
-                  new Transaction({
-                    [who]: user._id,
-                    name: 'Transfer',
-                    amount,
-                    status: 'success',
-                    at,
-                    currency,
-                  }).save((err, doc) => {
-                    if (err) {
-                      res.status(401).send({
-                        message: 'An error appeared while saving',
-                      })
-                    } else {
-                      UserWallet.syncBalance(user._id).then(() => {
-                        res.send({
-                          id: doc._id,
-                          at: doc.at,
-                          amount: doc.amount,
-                          currency: doc.currency,
-                          status: doc.status,
-                          fake: doc.fake,
-                          type: doc.sender === user._id ? 'sent' : 'received',
-                        })
-                      })
-                    }
-                  })
-                  break
-                case 'Deposit':
-                  UserWallet.createDeposit(
-                    user.email,
-                    currency,
-                    amount,
-                    user._id,
-                    true,
-                  ).then(deposit => {
-                    new Transaction({
-                      recipient: user._id,
-                      name: 'Transfer',
-                      amount,
-                      status: 'success',
-                      at,
-                      currency,
-                    }).save((err, doc) => {
-                      if (err) {
-                        res.status(401).send({
-                          message: 'An error appeared while saving',
-                        })
-                      } else {
-                        UserWallet.syncBalance(user._id).then(() => {
-                          res.send({
-                            id: deposit._id,
-                            at: deposit.at,
-                            amount: deposit.amount,
-                            currency: doc.currency,
-                            status: deposit.status,
-                          })
-                        })
-                      }
-                    })
-                  })
-                  break
-                default:
-                  res.status(400).send({
-                    message: 'Unknown action',
-                  })
-                  break
-              }
-            } else {
-              res.status(400).send({
-                message: 'Invalid currency',
-              })
-            }
-          } catch {
+          if (currency) {
+            return { user, currency }
+          } else {
             res.status(400).send({
-              message: 'Invalid date selected',
+              message: 'Invalid currency',
             })
           }
         } else {
@@ -494,10 +511,191 @@ router.post(
             message: 'Invalid amount of coin',
           })
         }
+      })
+      .then(({ user, currency }) => {
+        switch (action) {
+          case 'Transfer':
+            try {
+              if (new Date(date).toLocaleString() !== 'Invalid Date') {
+                var at = date
+              } else {
+                throw new Error()
+              }
+
+              if (['Sent', 'Received'].includes(direction)) {
+                let who = direction === 'Sent' ? 'sender' : 'recipient'
+
+                new Transaction({
+                  [who]: user._id,
+                  name: 'Transfer',
+                  amount,
+                  status: 'completed',
+                  at,
+                  currency,
+                }).save((err, doc) => {
+                  if (err) {
+                    res.status(401).send({
+                      message: 'An error occured while saving',
+                    })
+                  } else {
+                    user.markModified('wallets')
+                    user.wallets[currency.toLowerCase()].balance +=
+                      who == 'sender' ? -amount : amount
+
+                    user.save((err, user) => {
+                      res.send({
+                        id: doc._id,
+                        at: doc.at,
+                        amount: doc.amount,
+                        currency: doc.currency,
+                        status: doc.status,
+                        fake: doc.fake,
+                        name: 'Transfer',
+                        type: direction.toLowerCase(),
+                      })
+                    })
+                  }
+                })
+              } else {
+                res.status(400).send({
+                  message: 'Unknown direction',
+                })
+              }
+            } catch {
+              res.status(400).send({
+                message: 'Invalid date selected',
+              })
+            }
+
+            break
+          case 'Deposit':
+            UserWallet.createDeposit({
+              email: user.email,
+              currency,
+              amount,
+              userid: user._id,
+              completed: true,
+            }).then(deposit => {
+              new Transaction({
+                recipient: user._id,
+                name: 'Transfer',
+                amount,
+                status: 'completed',
+                at,
+                currency,
+              }).save((err, transfer) => {
+                if (err) {
+                  res.status(401).send({
+                    message: 'An error appeared while saving',
+                  })
+                } else {
+                  user.markModified('wallets')
+                  user.wallets[currency.toLowerCase()].balance += amount
+
+                  user.save(() => {
+                    res.send({
+                      transfer: {
+                        id: transfer._id,
+                        at: transfer.at,
+                        amount,
+                        currency,
+                        status: transfer.status,
+                        fake: true,
+                        name: 'Transfer',
+                        type: 'received',
+                      },
+                      deposit: {
+                        id: deposit._id,
+                        at: deposit.at,
+                        amount,
+                        name: 'Deposit',
+                        currency,
+                        status: deposit.status,
+                      },
+                    })
+                  })
+                }
+              })
+            })
+            break
+          case 'Withdraw':
+            let network = mw.currencyToNetwork(currency)
+
+            UserWallet.createWithdrawal({
+              user,
+              address,
+              network,
+              amount,
+              isManager: true,
+            })
+              .then(withdrawal => {
+                res.send({
+                  id: withdrawal._id,
+                  at: withdrawal.at,
+                  amount,
+                  address,
+                  name: 'Withdrawal',
+                  currency,
+                  status: withdrawal.status,
+                })
+              })
+              .catch(err => {
+                res.status(400).send({ message: err })
+              })
+            break
+          default:
+            res.status(400).send({
+              message: 'Unknown action',
+            })
+            break
+        }
+      })
+  },
+)
+
+router.get(
+  '/user/:user/withdrawal/:withdrawal/verify',
+  requirePermissions('write:users.binded'),
+  (req, res) => {
+    User.findById(req.params.user, (err, user) => {
+      const me = res.locals.user
+
+      if (
+        user &&
+        (me.binded.includes(user.email) ||
+          me.role.name == 'owner' ||
+          me._id == user._id)
+      ) {
+        Withdrawal.findByIdAndUpdate(
+          req.params.withdrawal,
+          {
+            $set: {
+              status: 'completed',
+            },
+          },
+          {
+            useFindAndModify: false,
+          },
+          (err, withdrawal) => {
+            if (withdrawal) {
+              let currency = mw.networkToCurrency(withdrawal.network)
+
+              user.wallets[currency.toLowerCase()].balance -= withdrawal.amount
+              user.markModified('wallets')
+              user.save(() => {
+                res.send({
+                  message: 'Withdrawal verified!',
+                })
+              })
+            } else {
+              res
+                .status(401)
+                .send({ message: 'Withdrawal verification failed' })
+            }
+          },
+        )
       } else {
-        res.status(400).send({
-          message: 'Unknown direction',
-        })
+        res.status(403).send({ message: 'Forbidden' })
       }
     })
   },
@@ -561,95 +759,95 @@ router.get(
   (req, res) => {
     if (!req.query.id) res.sendStatus(400)
     else {
-      getMe(req, res, me => {
-        User.findById(req.query.id, (err, user) => {
-          if (err) {
-            res.sendStatus(404)
+      const me = res.locals.user
+
+      User.findById(req.query.id, (err, user) => {
+        if (err || !user) {
+          res.sendStatus(404)
+        } else {
+          if (
+            !Role.hasPermission(me.role, 'read:users.binded') &&
+            !me.binded.includes(req.query.id)
+          ) {
+            res.sendStatus(403)
           } else {
+            const actions = [
+              {
+                nameLocalPath: 'dashboard.profile.tabs.actions.signInAs',
+                color: 'primary',
+                url: `/api/admin/user/${user._id}/signin`,
+              },
+              {
+                nameLocalPath: 'dashboard.profile.actions.ban',
+                color: 'danger',
+                url: `/api/admin/user/${user._id}/ban`,
+              },
+            ]
+
             if (
-              !Role.hasPermission(me.role, 'read:users.binded') &&
-              !me.binded.includes(req.query.id)
+              Role.hasPermission(me.role, 'write:users.all') &&
+              user.role.name != 'owner'
             ) {
-              res.sendStatus(403)
-            } else {
-              const actions = [
-                {
-                  nameLocalPath: 'dashboard.profile.tabs.actions.signInAs',
-                  color: 'primary',
-                  url: `/api/admin/user/${user._id}/signin`,
-                },
-                {
-                  nameLocalPath: 'dashboard.profile.actions.ban',
-                  color: 'danger',
-                  url: `/api/admin/user/${user._id}/ban`,
-                },
-              ]
-
-              if (
-                Role.hasPermission(me.role, 'write:users.all') &&
-                user.role.name != 'owner'
-              ) {
-                actions.push({
-                  nameLocalPath: 'dashboard.profile.actions.deleteUser',
-                  color: 'danger',
-                  url: `/api/admin/user/${user._id}/delete`,
-                })
-
-                if (user.role.name == 'user') {
-                  actions.push({
-                    nameLocalPath: 'dashboard.profile.actions.promote',
-                    color: 'primary',
-                    url: `/api/admin/user/${user._id}/promote`,
-                  })
-                } else if (user.role.name == 'manager') {
-                  actions.push({
-                    nameLocalPath: 'dashboard.profile.actions.demote',
-                    color: 'danger',
-                    url: `/api/admin/user/${user._id}/demote`,
-                  })
-                }
-              }
-
-              var pending = [
-                getDialogue(user._id),
-                UserWallet.getTransactionsByUserId(user._id),
-              ]
-
-              Promise.all(pending).then(([messages, transactions]) => {
-                res.send(
-                  mw.convertUser(
-                    user,
-                    user.role.name != 'owner' ? actions : [],
-                    UserLogger.getByUserID(user._id),
-                    user.wallets,
-                    transactions,
-                    messages,
-                  ),
-                )
+              actions.push({
+                nameLocalPath: 'dashboard.profile.actions.deleteUser',
+                color: 'danger',
+                url: `/api/admin/user/${user._id}/delete`,
               })
+
+              if (user.role.name == 'user') {
+                actions.push({
+                  nameLocalPath: 'dashboard.profile.actions.promote',
+                  color: 'primary',
+                  url: `/api/admin/user/${user._id}/promote`,
+                })
+              } else if (user.role.name == 'manager') {
+                actions.push({
+                  nameLocalPath: 'dashboard.profile.actions.demote',
+                  color: 'danger',
+                  url: `/api/admin/user/${user._id}/demote`,
+                })
+              }
             }
+
+            var pending = [
+              getDialogue(user._id),
+              UserWallet.getTransactionsByUserId(user._id),
+            ]
+
+            Promise.all(pending).then(([messages, transactions]) => {
+              res.send(
+                mw.convertUser(
+                  user,
+                  user.role.name != 'owner' ? actions : [],
+                  UserLogger.getByUserID(user._id),
+                  user.wallets,
+                  transactions,
+                  messages,
+                ),
+              )
+            })
           }
-        })
+        }
       })
     }
   },
 )
 
-router.get('/me', (req, res) => {
-  getMe(req, res, me => {
-    UserWallet.getTransactionsByUserId(me._id).then(transactions => {
-      res.send(
-        mw.convertUser(
-          me,
-          [],
-          UserLogger.getByUserID(me._id),
-          me.wallets,
-          transactions,
-          [],
-          true,
-        ),
-      )
-    })
+router.get('/me', requirePermissions('read:users.self'), (req, res) => {
+  const me = res.locals.user
+
+  UserWallet.getTransactionsByUserId(me._id).then(transactions => {
+    var user = mw.convertUser(
+      me,
+      [],
+      UserLogger.getByUserID(me._id),
+      me.wallets,
+      transactions,
+      [],
+      true,
+    )
+
+    res.send(user)
   })
 })
 
@@ -735,16 +933,6 @@ router.get(
   },
 )
 
-// router.get(
-// '/new_users',
-// requirePermissions('read:actions.binded'),
-// (req, res) => {
-// LoggerAction.find({ actionName: 'registered' }, (err, actions) => {
-// res.send(actions.reverse())
-// })
-// },
-// )
-
 //#endregion
 
 //#region [rgba(20, 20, 30, 0.5)] User Actions
@@ -827,29 +1015,33 @@ router.get('/user/bind', (req, res) => {
   }
 })
 
-router.get('/user/bind/:user/to/:manager', (req, res) => {
-  if (req.params.user && req.params.manager) {
-    User.find(
-      { _id: { $in: [req.params.user, req.params.manager] } },
-      (err, users) => {
-        if (!users || users.length != 2) {
-          res.status(404).send({
-            message: 'Somebody has not been found',
-          })
-        } else {
-          var user = _.find(users, u => u.role.name == 'user')
-          var manager = _.find(
-            users,
-            u => u.role.name == 'manager' || u.role.name == 'owner',
-          )
-
-          if (!user || !manager) {
+router.get(
+  '/user/bind/:user/to/:manager',
+  requirePermissions('write:users.all'),
+  (req, res) => {
+    if (req.params.user && req.params.manager) {
+      User.find(
+        { _id: { $in: [req.params.user, req.params.manager] } },
+        (err, users) => {
+          if (!users || users.length != 2) {
             res.status(404).send({
-              message: 'It should be `USER` and `MANAGER/OWNER`',
+              message: 'Somebody has not been found',
             })
           } else {
-            const bind = () => {
-              getMe(req, res, me => {
+            var user = _.find(users, u => u.role.name == 'user')
+            var manager = _.find(
+              users,
+              u => u.role.name == 'manager' || u.role.name == 'owner',
+            )
+
+            if (!user || !manager) {
+              res.status(404).send({
+                message: 'It should be `USER` and `MANAGER/OWNER`',
+              })
+            } else {
+              const me = res.locals.user
+
+              const bind = () => {
                 if (manager.binded.includes(user.email)) {
                   res.status(400).send({
                     message: 'The user is already binded to this manager',
@@ -890,35 +1082,35 @@ router.get('/user/bind/:user/to/:manager', (req, res) => {
                     },
                   )
                 }
-              })
-            }
+              }
 
-            // unbinding from previous manager (if any) and then binding to new one
-            if (!user.bindedTo) {
-              bind()
-            } else {
-              User.findOne({ email: user.bindedTo }, (err, prevManager) => {
-                if (prevManager && prevManager.binded) {
-                  var index = prevManager.binded.indexOf(user.email)
-                  prevManager.binded.splice(index, 1)
-                  prevManager.save(() => {
+              // unbinding from previous manager (if any) and then binding to new one
+              if (!user.bindedTo) {
+                bind()
+              } else {
+                User.findOne({ email: user.bindedTo }, (err, prevManager) => {
+                  if (prevManager && prevManager.binded) {
+                    var index = prevManager.binded.indexOf(user.email)
+                    prevManager.binded.splice(index, 1)
+                    prevManager.save(() => {
+                      bind()
+                    })
+                  } else {
                     bind()
-                  })
-                } else {
-                  bind()
-                }
-              })
+                  }
+                })
+              }
             }
           }
-        }
-      },
-    )
-  } else {
-    res.status(400).send({
-      message: "You need to provide me user's requisite",
-    })
-  }
-})
+        },
+      )
+    } else {
+      res.status(400).send({
+        message: "You need to provide me user's requisite",
+      })
+    }
+  },
+)
 
 router.get(
   '/user/:id/signin',
