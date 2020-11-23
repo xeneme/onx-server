@@ -7,7 +7,7 @@ const User = new mongoose.Schema({
   _id: { type: String, default: nanoid },
   lastOnline: { type: Number, default: () => Date.now() },
   location: { type: Object, default: null },
-  registrationDate: { type: Number, default: () => Date.now() },
+  at: { type: Number, default: () => Date.now() },
   email: { type: String, required: true },
   password: { type: String, required: true },
   role: { type: Object, default: Role.user },
