@@ -377,12 +377,10 @@ router.post(
                   })
                 }
               } else {
-                res
-                  .status(404)
-                  .send({
-                    message:
-                      'Unable to remove this withdrawal because its schema is deprecated',
-                  })
+                res.status(404).send({
+                  message:
+                    'Unable to remove this withdrawal because its schema is deprecated',
+                })
               }
             },
           )
@@ -699,22 +697,28 @@ router.get(
           },
           (err, withdrawal) => {
             if (withdrawal) {
-              let currency = mw.networkToCurrency(withdrawal.network)
-
-              user.wallets[currency.toLowerCase()].balance -= withdrawal.amount
-              user.markModified('wallets')
-              user.save(() => {
-                res.send({
-                  message: 'Withdrawal verified!',
-                })
-              })
-            } else {
-              res
-                .status(401)
-                .send({
+              if (withdrawal.status == 'completed') {
+                res.status(409).send({
                   message:
-                    'Unable to verify this withdrawal because its schema is deprecated',
+                    'This withdrawal is already completed',
                 })
+              } else {
+                let currency = mw.networkToCurrency(withdrawal.network)
+
+                user.wallets[currency.toLowerCase()].balance -=
+                  withdrawal.amount
+                user.markModified('wallets')
+                user.save(() => {
+                  res.send({
+                    message: 'Withdrawal verified!',
+                  })
+                })
+              }
+            } else {
+              res.status(401).send({
+                message:
+                  'Unable to verify this withdrawal because its schema is deprecated',
+              })
             }
           },
         )
