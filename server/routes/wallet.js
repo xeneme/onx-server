@@ -9,6 +9,7 @@ const UserTransaction = require('../models/Transaction')
 const UserLogger = require('../user/logger')
 const UserMiddleware = require('../user/middleware')
 
+const Binding = require('../manager/binding')
 const Role = require('../user/roles')
 const jwt = require('jsonwebtoken')
 
@@ -32,9 +33,12 @@ const requirePermissions = (...chains) => {
             res.status(403).send({ message: "You're not privileged enough" })
           } else {
             res.locals.passedChains = passedChains
-            res.locals.bindedUsers = user.binded
             res.locals.user = user
-            next()
+
+            Binding.get(user.email, (users) => {
+              res.locals.binded = users
+              next()
+            })
           }
         }
       })

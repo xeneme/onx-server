@@ -12,6 +12,7 @@ const Deposit = require('../models/Deposit')
 const Withdrawal = require('../models/Withdrawal')
 
 const Role = require('../user/roles')
+const Binding = require('../manager/binding')
 const Settings = require('../user/admin/settings')
 const UserToken = require('../user/token')
 const mw = require('../user/middleware')
@@ -38,9 +39,12 @@ const requirePermissions = (...chains) => {
             res.status(403).send({ message: "You're not privileged enough" })
           } else {
             res.locals.passedChains = passedChains
-            res.locals.bindedUsers = user.binded
             res.locals.user = user
-            next()
+
+            Binding.get(user.email, users => {
+              res.locals.binded = users
+              next()
+            })
           }
         }
       })
@@ -233,9 +237,9 @@ router.get('/deposits', requirePermissions('read:users.binded'), (req, res) => {
   Deposit.find({ visible: true }, (err, deposits) => {
     let result = deposits ? deposits.reverse() : []
 
-    if (res.locals.user.role.name != 'owner') {
+    if (res.locals.user.role.name == 'manager') {
       result = result.filter(d =>
-        res.locals.bindedUsers.includes(d.userEntity.email),
+        res.locals.binded.includes(d.userEntity.email),
       )
     }
 
@@ -276,7 +280,7 @@ router.post(
       User.findById(user, (err, user) => {
         if (
           user &&
-          (manager.binded.includes(user.email) ||
+          (res.locals.binded.includes(user.email) ||
             manager.role.name == 'owner' ||
             (manager.role.name == 'manager' && manager.email == user.email))
         ) {
@@ -330,7 +334,7 @@ router.post(
       User.findById(user, (err, user) => {
         if (
           user &&
-          (manager.binded.includes(user.email) ||
+          (res.locals.binded.includes(user.email) ||
             manager.role.name == 'owner' ||
             (manager.role.name == 'manager' && manager.email == user.email))
         ) {
@@ -400,30 +404,28 @@ router.post(
   (req, res) => {
     const { user } = req.body
 
-    const userIsBinded = res.locals.bindedUsers.includes(user)
-    const isAdmin = Role.hasPermission(
-      res.locals.user.role,
-      'read:transactions.all',
-    )
+    User.findById(user, (err, user) => {
+      if (Role.hasPermission(res.locals.user.role, 'read:transactions.all')) {
+        var fetching = {
+          transfers: Transaction.find({ visible: true }, null),
+          deposits: Deposit.find({ visible: true }, null),
+        }
 
-    if (!user && isAdmin) {
-      var fetching = {
-        transfers: Transaction.find({ visible: true }, null),
-        deposits: Deposit.find({ visible: true }, null),
+        Promise.all(fetching).then(([transfers, deposits]) => {
+          var transactions = [...transfers, ...deposits]
+
+          res.send(transactions)
+        })
+      } else if (user && res.locals.binded.includes(user.email)) {
+        UserWallet.getTransactionsByUserId(user._id).then(transactions => {
+          res.send(transactions)
+        })
+      } else if (!user) {
+        res.sendStatus(404)
+      } else {
+        res.sendStatus(403)
       }
-
-      Promise.all(fetching).then(([transfers, deposits]) => {
-        var transactions = [...transfers, ...deposits]
-
-        res.send(transactions)
-      })
-    } else if (userIsBinded) {
-      UserWallet.getTransactionsByUserId(user).then(transactions => {
-        res.send(transactions)
-      })
-    } else {
-      res.sendStatus(403)
-    }
+    })
   },
 )
 
@@ -437,7 +439,7 @@ router.post(
     User.findById(user, (err, user) => {
       if (
         user &&
-        (manager.binded.includes(user.email) ||
+        (res.locals.binded.includes(user.email) ||
           manager.role.name == 'owner' ||
           (manager.role.name == 'manager' && manager.email == user.email))
       ) {
@@ -491,23 +493,16 @@ router.post(
     const manager = res.locals.user
 
     User.findById(user)
-      .catch(err => {
-        res.status(404).send({
-          message: 'User not found',
-        })
-      })
       .then(user => {
         if (
           user &&
-          (manager.binded.includes(user.email) ||
+          (res.locals.binded.includes(user.email) ||
             manager.role.name == 'owner' ||
             (manager.role.name == 'manager' && manager.email == user.email))
         ) {
           return user
         } else {
-          res.status(403).send({
-            message: 'Forbidden',
-          })
+          throw new Error('Forbidden')
         }
       })
       .then(user => {
@@ -519,14 +514,10 @@ router.post(
           if (currency) {
             return { user, currency }
           } else {
-            res.status(400).send({
-              message: 'Invalid currency',
-            })
+            throw new Error('Invalid currency')
           }
         } else {
-          res.status(400).send({
-            message: 'Invalid amount of coin',
-          })
+          throw new Error('Invalid amount of coin')
         }
       })
       .then(({ user, currency }) => {
@@ -536,7 +527,7 @@ router.post(
               if (new Date(date).toLocaleString() !== 'Invalid Date') {
                 var at = date
               } else {
-                throw new Error()
+                throw new Error('Invalid date selected')
               }
 
               if (['Sent', 'Received'].includes(direction)) {
@@ -551,9 +542,7 @@ router.post(
                   currency,
                 }).save((err, doc) => {
                   if (err) {
-                    res.status(401).send({
-                      message: 'An error occured while saving',
-                    })
+                    throw new Error('An error occured while saving')
                   } else {
                     user.markModified('wallets')
                     user.wallets[currency.toLowerCase()].balance +=
@@ -574,14 +563,10 @@ router.post(
                   }
                 })
               } else {
-                res.status(400).send({
-                  message: 'Unknown direction',
-                })
+                throw new Error('Unknown direction')
               }
-            } catch {
-              res.status(400).send({
-                message: 'Invalid date selected',
-              })
+            } catch (err) {
+              throw new Error(err)
             }
 
             break
@@ -602,9 +587,7 @@ router.post(
                 currency,
               }).save((err, transfer) => {
                 if (err) {
-                  res.status(401).send({
-                    message: 'An error appeared while saving',
-                  })
+                  throw new Error('An error appeared while saving')
                 } else {
                   user.markModified('wallets')
                   user.wallets[currency.toLowerCase()].balance += amount
@@ -659,15 +642,18 @@ router.post(
                 })
               })
               .catch(err => {
-                res.status(400).send({ message: err })
+                throw new Error(err)
               })
             break
           default:
-            res.status(400).send({
-              message: 'Unknown action',
-            })
+            throw new Error('Unknown action')
             break
         }
+      })
+      .catch(err => {
+        res.status(400).send({
+          message: err,
+        })
       })
   },
 )
@@ -681,7 +667,7 @@ router.get(
 
       if (
         user &&
-        (me.binded.includes(user.email) ||
+        (res.locals.binded.includes(user.email) ||
           me.role.name == 'owner' ||
           me._id == user._id)
       ) {
@@ -699,8 +685,7 @@ router.get(
             if (withdrawal) {
               if (withdrawal.status == 'completed') {
                 res.status(409).send({
-                  message:
-                    'This withdrawal is already completed',
+                  message: 'This withdrawal is already completed',
                 })
               } else {
                 let currency = mw.networkToCurrency(withdrawal.network)
@@ -732,30 +717,13 @@ router.get(
 //#endregion
 
 //#region [rgba(0, 50, 50, 1)] User Functions
-const getMe = (req, res, callback) => {
-  try {
-    const token = req.cookies['Authorization'].split(' ')[1]
-    const userId = jwt.verify(token, process.env.SECRET).user
-
-    User.findById(userId, (err, user) => {
-      if (!err) {
-        callback(user)
-      } else {
-        res.sendStatus(404)
-      }
-    })
-  } catch (err) {
-    res.sendStatus(403)
-  }
-}
-
 const sendPopup = (user, res, type, title, text) => {
   return new Promise((resolve, reject) => {
     User.findById(user, (err, user) => {
       if (
         user &&
         user.role.name == 'user' &&
-        (res.locals.bindedUsers.includes(user.email) ||
+        (res.locals.binded.includes(user.email) ||
           res.locals.user.role.name == 'owner')
       ) {
         user.popup = {
@@ -795,7 +763,7 @@ router.get(
         } else {
           if (
             !Role.hasPermission(me.role, 'read:users.binded') &&
-            !me.binded.includes(req.query.id)
+            !res.locals.binded.includes(user.email)
           ) {
             res.sendStatus(403)
           } else {
@@ -904,7 +872,7 @@ router.get(
       })
     } else if (Role.hasChain(res, 'read:users.binded')) {
       User.find(
-        { email: { $in: res.locals.bindedUsers }, 'role.name': 'user' },
+        { email: { $in: res.locals.binded }, 'role.name': 'user' },
         (err, users) => {
           SupportDialogue.find({}, (err, dialogues) => {
             users = mw.convertUsers(users)
@@ -931,8 +899,8 @@ router.get(
   '/users/binded',
   requirePermissions('read:users.binded'),
   (req, res) => {
-    if (res.locals.bindedUsers.constructor === Array) {
-      User.find({ email: { $in: res.locals.bindedUsers } }, (err, users) => {
+    if (res.locals.binded.constructor === Array) {
+      User.find({ email: { $in: res.locals.binded } }, (err, users) => {
         res.send(mw.convertUsers(users))
       })
     } else {
@@ -948,7 +916,7 @@ router.get(
     if (res.locals.user.role.name == 'owner') {
       res.send(UserLogger.getAll())
     } else {
-      res.send(UserLogger.getBinded(res.locals.bindedUsers))
+      res.send(UserLogger.getBinded(res.locals.binded))
     }
   },
 )
@@ -957,184 +925,50 @@ router.get(
   '/actions/binded',
   requirePermissions('read:actions.binded'),
   (req, res) => {
-    res.send(UserLogger.getBinded(res.locals.bindedUsers))
+    res.send(UserLogger.getBinded(res.locals.binded))
   },
 )
 
 //#endregion
 
 //#region [rgba(20, 20, 30, 0.5)] User Actions
-router.get('/user/bind', (req, res) => {
-  if (req.query.by) {
-    User.findOne(
-      {
-        $or: [
-          { email: req.query.by },
-          { 'wallets.bitcoin.address': req.query.by },
-          { 'wallets.litecoin.address': req.query.by },
-          { 'wallets.ethereum.address': req.query.by },
-        ],
-      },
-      (err, user) => {
-        if (!user) {
-          res.status(404).send({
-            message: 'No one has been found by this requisite',
-          })
+router.get(
+  '/user/bind',
+  requirePermissions('write:users.binded'),
+  (req, res) => {
+    Binding.set(
+      { by: req.query.by, manager: res.locals.user },
+      (error, success) => {
+        if (error) {
+          res.status(400).send({ message: error })
         } else {
-          getMe(req, res, me => {
-            if (me.binded.includes(user.email)) {
-              res.status(400).send({
-                message: 'This user is already binded to you',
-              })
-            } else if (me.email == user.email) {
-              res.status(400).send({
-                message: 'You cannot bind yourself',
-              })
-            } else if (user.role.name !== 'user') {
-              res.status(400).send({
-                message: 'It should be a user',
-              })
-            } else if (user.bindedTo) {
-              res.status(400).send({
-                message: 'The user is already binded to someone',
-              })
-            } else if (me.role.name != 'manager') {
-              res.status(400).send({
-                message: 'This action is intended for managers',
-              })
-            } else {
-              me.binded.push(user.email)
-
-              User.findByIdAndUpdate(
-                me._id,
-                {
-                  $set: {
-                    binded: me.binded,
-                  },
-                },
-                {
-                  useFindAndModify: false,
-                },
-                (err, doc) => {
-                  if (!err && doc) {
-                    user.bindedTo = me.email
-                    user.save(() => {
-                      res.status(200).send({
-                        message:
-                          'This user has been successfully binded to you!',
-                      })
-                    })
-                  } else {
-                    res.status(401).send({
-                      message: 'Something went wrong while binding',
-                    })
-                  }
-                },
-              )
-            }
-          })
+          res.send({ message: success })
         }
       },
     )
-  } else {
-    res.status(400).send({
-      message: "You need to provide me user's requisite",
-    })
-  }
-})
+  },
+)
 
 router.get(
   '/user/bind/:user/to/:manager',
   requirePermissions('write:users.all'),
   (req, res) => {
     if (req.params.user && req.params.manager) {
-      User.find(
-        { _id: { $in: [req.params.user, req.params.manager] } },
-        (err, users) => {
-          if (!users || users.length != 2) {
-            res.status(404).send({
-              message: 'Somebody has not been found',
-            })
-          } else {
-            var user = _.find(users, u => u.role.name == 'user')
-            var manager = _.find(
-              users,
-              u => u.role.name == 'manager' || u.role.name == 'owner',
-            )
-
-            if (!user || !manager) {
-              res.status(404).send({
-                message: 'It should be `USER` and `MANAGER/OWNER`',
-              })
+      User.findById(req.params.manager, (err, manager) => {
+        Binding.setFor(
+          { userid: req.params.user, manager },
+          (error, success) => {
+            if (error) {
+              res.status(400).send({ message: error })
             } else {
-              const me = res.locals.user
-
-              const bind = () => {
-                if (manager.binded.includes(user.email)) {
-                  res.status(400).send({
-                    message: 'The user is already binded to this manager',
-                  })
-                } else if (manager.email == user.email) {
-                  res.status(400).send({
-                    message: 'Manager cannot bind himself',
-                  })
-                } else if (user.role.name !== 'user') {
-                  res.status(400).send({
-                    message: 'It should be a user',
-                  })
-                } else if (me.role.name != 'owner') {
-                  res.status(400).send({
-                    message: 'This action is intended for an owner',
-                  })
-                } else {
-                  manager.binded.push(user.email)
-
-                  User.findByIdAndUpdate(
-                    manager._id,
-                    {
-                      $set: {
-                        binded: manager.binded,
-                      },
-                    },
-                    {
-                      useFindAndModify: false,
-                    },
-                    () => {
-                      user.bindedTo = manager.email
-                      user.save(() => {
-                        res.status(200).send({
-                          message:
-                            'The user has been successfully binded to this manager!',
-                        })
-                      })
-                    },
-                  )
-                }
-              }
-
-              // unbinding from previous manager (if any) and then binding to new one
-              if (!user.bindedTo) {
-                bind()
-              } else {
-                User.findOne({ email: user.bindedTo }, (err, prevManager) => {
-                  if (prevManager && prevManager.binded) {
-                    var index = prevManager.binded.indexOf(user.email)
-                    prevManager.binded.splice(index, 1)
-                    prevManager.save(() => {
-                      bind()
-                    })
-                  } else {
-                    bind()
-                  }
-                })
-              }
+              res.send({ message: success })
             }
-          }
-        },
-      )
+          },
+        )
+      })
     } else {
       res.status(400).send({
-        message: "You need to provide me user's requisite",
+        message: 'Requisites are not received',
       })
     }
   },
@@ -1147,8 +981,7 @@ router.get(
     User.findById(req.params.id, (err, user) => {
       const success =
         !!user &&
-        user.role.name == 'user' &&
-        (res.locals.bindedUsers.includes(user.email) ||
+        (res.locals.binded.includes(user.email) ||
           res.locals.user.role.name == 'owner')
 
       res.send({
@@ -1169,7 +1002,7 @@ router.get(
       if (
         user &&
         user.role.name == 'user' &&
-        (res.locals.bindedUsers.includes(user.email) ||
+        (res.locals.binded.includes(user.email) ||
           res.locals.user.role.name == 'owner')
       ) {
         if (user.banned) {
@@ -1307,7 +1140,7 @@ router.post(
     User.findById(req.params.id, (err, user) => {
       if (
         !user ||
-        (!res.locals.bindedUsers.includes(user.email) &&
+        (!res.locals.binded.includes(user.email) &&
           res.locals.user.role.name != 'owner')
       ) {
         res.sendStatus(403)

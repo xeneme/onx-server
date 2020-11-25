@@ -13,7 +13,6 @@ const User = new mongoose.Schema({
   role: { type: Object, default: Role.user },
   wallets: Object,
   deposits: Object,
-  binded: Array,
   bindedTo: String,
   firstName: String,
   lastName: String,
