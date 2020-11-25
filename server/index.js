@@ -48,7 +48,7 @@ app.use(forceSsl)
 
 const speedLimiter = slowDown({
   windowMs: 60 * 1000,
-  delayAfter: 200,
+  delayAfter: 50,
   delayMs: 500,
 })
 
