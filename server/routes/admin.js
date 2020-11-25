@@ -281,7 +281,7 @@ router.post(
             (manager.role.name == 'manager' && manager.email == user.email))
         ) {
           Deposit.findByIdAndUpdate(
-            { _id: id },
+            id,
             {
               $set: {
                 visible: false,
@@ -292,7 +292,7 @@ router.post(
             },
             (err, doc) => {
               if (doc && !err) {
-                let currency = mw.networkToCurrency(doc.network)
+                var currency = mw.networkToCurrency(doc.network)
 
                 res.send({
                   id: doc._id,
@@ -334,7 +334,7 @@ router.post(
             manager.role.name == 'owner' ||
             (manager.role.name == 'manager' && manager.email == user.email))
         ) {
-          Withdrawal.findByIdAndUpdate(
+          Withdrawal.findOneAndUpdate(
             { _id: id },
             {
               $set: {
@@ -345,12 +345,26 @@ router.post(
               useFindAndModify: false,
             },
             (err, doc) => {
+              console.log(id)
               if (doc && !err) {
-                let currency = mw.networkToCurrency(doc.network)
+                if (doc.status == 'completed') {
+                  var currency = mw.networkToCurrency(doc.network)
 
-                user.wallets[currency.toLowerCase()].balance += doc.amount
-                user.markModified('wallets')
-                user.save(() => {
+                  user.wallets[currency.toLowerCase()].balance += doc.amount
+                  user.markModified('wallets')
+                  user.save(() => {
+                    res.send({
+                      id: doc._id,
+                      at: doc.at,
+                      name: 'Withdrawal',
+                      amount: doc.amount,
+                      network: doc.network,
+                      status: doc.status,
+                      address: doc.address,
+                      currency,
+                    })
+                  })
+                } else {
                   res.send({
                     id: doc._id,
                     at: doc.at,
@@ -361,9 +375,14 @@ router.post(
                     address: doc.address,
                     currency,
                   })
-                })
+                }
               } else {
-                res.status(404).send({ message: 'Withdrawal not found' })
+                res
+                  .status(404)
+                  .send({
+                    message:
+                      'Unable to remove this withdrawal because its schema is deprecated',
+                  })
               }
             },
           )
@@ -425,7 +444,7 @@ router.post(
           (manager.role.name == 'manager' && manager.email == user.email))
       ) {
         Transaction.findByIdAndUpdate(
-          { _id: id },
+          id,
           {
             $set: {
               visible: false,
@@ -447,7 +466,7 @@ router.post(
                   currency: doc.currency,
                   status: doc.status,
                   fake: doc.fake,
-                  type: doc.sender === user._id ? 'sender' : 'recipient',
+                  type: doc.sender === user._id ? 'sent' : 'received',
                 })
               })
             } else {
@@ -610,6 +629,7 @@ router.post(
                         amount,
                         name: 'Deposit',
                         currency,
+                        network: mw.currencyToNetwork(currency),
                         status: deposit.status,
                       },
                     })
@@ -636,6 +656,7 @@ router.post(
                   address,
                   name: 'Withdrawal',
                   currency,
+                  network,
                   status: withdrawal.status,
                 })
               })
@@ -690,7 +711,10 @@ router.get(
             } else {
               res
                 .status(401)
-                .send({ message: 'Withdrawal verification failed' })
+                .send({
+                  message:
+                    'Unable to verify this withdrawal because its schema is deprecated',
+                })
             }
           },
         )
