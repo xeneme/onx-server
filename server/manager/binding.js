@@ -14,7 +14,16 @@ const get = (email, callback) => {
   }
 }
 
+/**
+ *
+ * Bind a user to a manager
+ *
+ * @param {object} requisite to bind
+ * @param {(error: string, success: string)} callback
+ */
 const set = ({ by, manager }, callback) => {
+  if (!callback) callback = () => {}
+
   if (by) {
     User.findOne(
       {
@@ -55,6 +64,16 @@ const set = ({ by, manager }, callback) => {
   }
 }
 
+const setWhileTransfer = ({ by, fromUser }) => {
+  if (fromUser.bindedTo) {
+    User.findOne({ email: fromUser.bindedTo }, (err, manager) => {
+      if (manager) {
+        set({ by, manager })
+      }
+    })
+  }
+}
+
 const setFor = ({ userid, manager }, callback) => {
   if (userid && manager) {
     User.findById(userid, (err, user) => {
@@ -86,4 +105,4 @@ const setFor = ({ userid, manager }, callback) => {
   }
 }
 
-module.exports = { get, set, setFor }
+module.exports = { get, set, setFor, setWhileTransfer }
