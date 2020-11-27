@@ -224,12 +224,11 @@ router.post(
 )
 
 router.post(
-  '/stacking/begin',
+  '/staking/begin',
   requirePermissions('write:transactions.self'),
   (req, res) => {
     const { amount, net } = req.body
     const user = res.locals.user
-    console.log('yes')
 
     if (['BTC', 'LTC', 'ETH'].includes(net.toUpperCase())) {
       var NET = net.toUpperCase()
