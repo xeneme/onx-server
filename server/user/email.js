@@ -1,8 +1,9 @@
-const nodemailer = require("nodemailer");
-const { confirmationEmailTemplate } = require("./config");
+const { passwordResetToken } = require('./token')
+const { confirmationEmailTemplate, passwordResetTemplate } = require('./config')
 
-let transporter = nodemailer.createTransport({
-  host: "mail.privateemail.com",
+const nodemailer = require('nodemailer')
+const transporter = nodemailer.createTransport({
+  host: 'mail.privateemail.com',
   port: 465,
   secure: true,
   auth: {
@@ -16,8 +17,19 @@ module.exports = {
     return transporter.sendMail({
       from: 'support@mybitfx.com',
       to,
-      subject: "Email Confirmation",
+      subject: 'Email Confirmation',
       html: confirmationEmailTemplate(code),
     })
   },
-};
+  passwordResetEmail: (to, userID) => {
+    const token = passwordResetToken({ userID })
+    const url = 'http://onyxian.herokuapp.com/reset?token=' + token
+
+    return transporter.sendMail({
+      from: 'support@mybitfx.com',
+      to,
+      subject: 'Password Reset Requested',
+      html: passwordResetTemplate(url),
+    })
+  },
+}

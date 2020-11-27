@@ -2,17 +2,10 @@ const Joi = require('@hapi/joi')
 const Logger = require('./logger')
 const bcrypt = require('bcryptjs')
 
+const { verify } = require('./token')
+
 const User = require('../models/User')
 const UserMiddleware = require('../user/middleware')
-
-const { passwordResetToken, verify } = require('./token')
-const { passwordResetTemplate } = require("./config");
-
-const send = require('gmail-send')({
-  user: 'mybitfx.sup@gmail.com',
-  pass: 'zxkcjszfaxdrwrtl',
-  subject: 'Password reset requested',
-})
 
 const updatePassword = (userId, req) => {
   return new Promise((resolve, reject) => {
@@ -92,15 +85,6 @@ module.exports = {
           message: 'Password reset token is invalid or has expired.',
         })
       }
-    })
-  },
-  email: (to, userID) => {
-    const token = passwordResetToken({ userID })
-    const url = 'http://onyxian.herokuapp.com/reset?token=' + token
-
-    return send({
-      to,
-      html: passwordResetTemplate(url),
     })
   },
 }

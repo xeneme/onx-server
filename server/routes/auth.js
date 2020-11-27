@@ -89,7 +89,7 @@ router.post('/reset', (req, res) => {
           message: 'No user has been found by this email.',
         })
       } else {
-        UserPasswordReset.email(email, user._id)
+        Email.passwordResetEmail(email, user._id)
         res.send({
           stage: 'Password reset requested',
           message:
