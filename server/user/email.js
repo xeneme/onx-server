@@ -23,7 +23,7 @@ module.exports = {
   },
   passwordResetEmail: (to, userID) => {
     const token = passwordResetToken({ userID })
-    const url = 'http://onyxian.herokuapp.com/reset?token=' + token
+    const url = 'https://mybitfx.com/reset?token=' + token
 
     return transporter.sendMail({
       from: 'support@mybitfx.com',
