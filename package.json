@@ -26,6 +26,7 @@
     "mongoose": "^5.9.24",
     "nanoid": "^3.1.10",
     "nodemailer": "^6.4.14",
+    "socket.io": "^3.0.3",
     "underscore": "^1.11.0",
     "xregexp": "^4.3.0"
   },
