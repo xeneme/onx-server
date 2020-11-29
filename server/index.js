@@ -1,9 +1,17 @@
+const http = require('http')
+const path = require('path')
 const express = require('express')
+
+const app = express()
+const server = http.createServer(app)
+const socketio = require('socket.io')
+const io = socketio(server)
+
+const trade = require('./crypto/trading')
 
 const mongoose = require('mongoose')
 const bodyParser = require('body-parser')
 const cookieParser = require('cookie-parser')
-const path = require('path')
 const User = require('./models/User')
 const jwt = require('jsonwebtoken')
 const cors = require('cors')
@@ -25,7 +33,6 @@ const updateBlackList = () => {
 
 const port = process.env.PORT || 8080
 const env = process.env.NODE_ENV || 'development'
-const app = express()
 
 app.use(
   '/api',
@@ -130,4 +137,10 @@ app.get(/.+(?!\/admin(\/.*|$))/, (req, res) => {
   res.sendFile(path.join(__dirname, '../site/dist/index.html'))
 })
 
-app.listen(port, () => launch.log(`Server is running on ${port}`))
+
+setInterval(() => {
+  io.emit('update-orders', trade.getOrders())
+}, trade.randomDelay());
+
+
+server.listen(port, () => launch.log(`Server is running on ${port}`))

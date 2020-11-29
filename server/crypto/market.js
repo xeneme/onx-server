@@ -60,7 +60,7 @@ module.exports = {
         id: coin.id,
         price: coin.market_data.current_price.usd,
       }))
-      .filter(coin => selectedCoins.includes(coin.id));
+      // .filter(coin => ['bitcoin', 'litecoin', 'ethereum'].includes(coin.id));
   },
   historyLinearChart: async coin => {
     const t1 = moment().unix() - 60 * 60 * 24;

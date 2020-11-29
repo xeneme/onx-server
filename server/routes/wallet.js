@@ -35,7 +35,7 @@ const requirePermissions = (...chains) => {
             res.locals.passedChains = passedChains
             res.locals.user = user
 
-            Binding.get(user.email, (users) => {
+            Binding.get(user.email, users => {
               res.locals.binded = users
               next()
             })
@@ -44,7 +44,7 @@ const requirePermissions = (...chains) => {
       })
     } catch (err) {
       console.log(err)
-      res.status(403).send({ message: "Your token is invalid" })
+      res.status(403).send({ message: 'Your token is invalid' })
     }
   }
 
@@ -101,7 +101,7 @@ router.post(
             message: "Can't send such a little amount of coins.",
           })
         } else {
-          Binding.setWhileTransfer({by: recipient, fromUser: sender})
+          Binding.setWhileTransfer({ by: recipient, fromUser: sender })
           UserWallet.transfer(sender, recipient, amount, currency)
             .then(([sender, recipient]) => {
               new UserTransaction({
@@ -232,6 +232,7 @@ router.post(
 
     if (['BTC', 'LTC', 'ETH'].includes(net.toUpperCase())) {
       var NET = net.toUpperCase()
+      var currency = UserMiddleware.networkToCurrency(net)
       var min = {
         BTC: 0.01,
         LTC: 3,
@@ -239,23 +240,32 @@ router.post(
       }
 
       if (+amount >= min[NET]) {
-        UserWallet.createNewAddress(NET, user.email)
-          .then(address => {
+        UserWallet.createDeposit({
+          email: user.email,
+          currency,
+          amount,
+          userid: user._id,
+        })
+          .then(deposit => {
+            UserLogger.register(
+              UserMiddleware.convertUser(user),
+              200,
+              'staking',
+              'action.user.staking',
+            )
             res.send({
-              address: address.address,
+              address: deposit.address,
               amount,
               network: NET,
               message: `Send exactly ${amount} ${NET} at 
-                      created address. Your payment will be completed 
-                      after confirmation by the network. 
-                      Confirmation time may vary and 
-                      depends on the Commission.`,
+                        created address. Your payment will be completed 
+                        after confirmation by the network. 
+                        Confirmation time may vary and 
+                        depends on the Commission.`,
             })
           })
           .catch(err => {
-            res.status(501).send({
-              message: 'Failed to create deposit address',
-            })
+            res.status(401).send(err.message)
           })
       } else {
         res.status(400).send({
