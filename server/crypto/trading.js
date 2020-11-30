@@ -7,7 +7,7 @@ var orders = {
   ETH: [],
   DOT: [],
   LINK: [],
-  USDT: [],
+  XRP: [],
 }
 
 const updatePrice = () => {
@@ -21,20 +21,20 @@ const updatePrice = () => {
     orders.ETH.splice(0, 0, placeNewOrder('ethereum'))
     orders.DOT.splice(0, 0, placeNewOrder('polkadot'))
     orders.LINK.splice(0, 0, placeNewOrder('chainlink'))
-    orders.USDT.splice(0, 0, placeNewOrder('tether'))
+    orders.XRP.splice(0, 0, placeNewOrder('ripple'))
 
     if (orders.BTC.length > 100) orders.BTC.pop()
     if (orders.LTC.length > 100) orders.LTC.pop()
     if (orders.ETH.length > 100) orders.ETH.pop()
     if (orders.DOT.length > 100) orders.DOT.pop()
     if (orders.LINK.length > 100) orders.LINK.pop()
-    if (orders.USDT.length > 100) orders.USDT.pop()
+    if (orders.XRP.length > 100) orders.XRP.pop()
   })
 }
 
 setInterval(updatePrice, 900)
 
-const randomDelay = () => Math.random() * 2000 + 500
+const randomDelay = () => Math.random() * 2000 + 200
 const getOrders = () => orders
 const placeNewOrder = currency => {
   var price = priceList[currency]
