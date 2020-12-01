@@ -1,6 +1,6 @@
 const mongoose = require('mongoose')
 const nanoid = require('nanoid').nanoid
-const time = require('../time')
+const Time = require('../time')
 
 require('dotenv/config')
 
@@ -8,11 +8,11 @@ const Deposit = new mongoose.Schema({
   _id: { type: String, default: nanoid },
   at: {
     type: Number,
-    default: time.getPacific,
+    default: Time.now,
   },
   exp: {
     type: Number,
-    default: () => time.getExpiration(time.getPacific(), 20),
+    default: () => Time.getExpiration(Time.now(), 20),
   },
   fake: { type: Boolean, default: false },
   address: String,

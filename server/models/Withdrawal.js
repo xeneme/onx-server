@@ -6,7 +6,7 @@ const Withdrawal = new mongoose.Schema({
   _id: { type: String, default: nanoid },
   at: {
     type: Number,
-    default: time.getPacific,
+    default: time.now,
   },
   name: { type: String, default: 'Withdrawal' },
   user: String,

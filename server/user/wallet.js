@@ -528,7 +528,7 @@ const getDepositsByUserId = id => {
 
       deposits.forEach(deposit => {
         if (
-          time.getPacific() > deposits.exp &&
+          time.now() > deposits.exp &&
           (deposit.status == 'processing' || deposit.status == 'pending')
         ) {
           deposit.status = 'failed'

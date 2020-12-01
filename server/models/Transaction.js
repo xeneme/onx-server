@@ -7,7 +7,7 @@ const Transaction = new mongoose.Schema({
   name: String,
   at: {
     type: Number,
-    default: time.getPacific,
+    default: time.now,
   },
   url: String,
   sender: String,
