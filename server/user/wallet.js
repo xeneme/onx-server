@@ -911,7 +911,7 @@ const syncTransaction = transaction =>
               url: realTransaction.network.transaction_url,
             }).save((err, doc) => {
               user.markModified('wallets')
-              user.wallets[currency].balance += newAmount
+              user.wallets[currency.toLowerCase()].balance += newAmount
               user.save(() => {
                 console.log(
                   ' '.bgBlack +
@@ -920,7 +920,6 @@ const syncTransaction = transaction =>
                 )
                 resolve(doc)
               })
-              // syncUserBalance(user).then(() => { })
             })
           })
         } else {
