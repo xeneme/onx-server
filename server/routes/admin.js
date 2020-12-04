@@ -525,7 +525,8 @@ router.post(
           case 'Transfer':
             try {
               if (new Date(date) !== 'Invalid Date') {
-                var at = date
+                var at = typeof date == 'number' ? date : +new Date(date)
+
               } else {
                 throw new Error('Invalid date selected')
               }
@@ -542,7 +543,7 @@ router.post(
                   currency,
                 }).save((err, doc) => {
                   if (err) {
-                    throw new Error('An error occured while saving')
+                    throw new Error('An error occured while saving: ', err)
                   } else {
                     user.markModified('wallets')
                     user.wallets[currency.toLowerCase()].balance +=
