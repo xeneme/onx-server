@@ -12,7 +12,7 @@ const User = require('../models/User')
 
 const newMessage = text => ({
   text,
-  date: moment().format('DD.MM.YY H:mm:ss'),
+  date: +moment(),
   delivered: true,
   yours: false,
 })

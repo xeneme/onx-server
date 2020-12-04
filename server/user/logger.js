@@ -29,7 +29,7 @@ const updateLogs = () => {
           username: action.user.name,
           email: action.user.email,
           userId: action.user.id,
-          formatedDate: action.formatedDate,
+          at: action.unixDate,
           fromNow:
             Date.now() - action.unixDate < 24 * 60 * 60 * 1000
               ? moment(action.unixDate).fromNow()

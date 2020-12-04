@@ -60,7 +60,7 @@ const requirePermissions = (...chains) => {
 
 const newMessage = text => ({
   text,
-  date: moment().format('DD.MM.YY H:mm:ss'),
+  date: +moment(),
   delivered: true,
   yours: true,
 })
@@ -524,7 +524,7 @@ router.post(
         switch (action) {
           case 'Transfer':
             try {
-              if (new Date(date).toLocaleString() !== 'Invalid Date') {
+              if (new Date(date) !== 'Invalid Date') {
                 var at = date
               } else {
                 throw new Error('Invalid date selected')

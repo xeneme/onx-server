@@ -55,7 +55,7 @@ const convertUser = (
   banned: !!user.banned,
   name: `${user.firstName}${user.lastName ? ' ' + user.lastName : ''}`,
   email: user.email,
-  registered: moment(user.at).format('DD.MM.YY, H:mm'),
+  registered: user.at,
   bindedTo: user.bindedTo || '',
   status: ['offline', 'online'][
     +(user.lastOnline > Date.now() - 5 * 60 * 1000)
