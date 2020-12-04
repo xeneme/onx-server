@@ -418,7 +418,7 @@ router.get('/', expressip().getIpInfoMiddleware, (req, res) => {
           transactions: Transaction.find({ visible: true }, null),
           deposits: UserWallet.getDepositsByUserId(user._id),
           withdrawals: UserWallet.getWithdrawalsByUserId(user._id),
-          manager: User.findOne({email: user.bindedTo}, null),
+          manager: User.findOne({ email: user.bindedTo }, null),
         }
 
         res.cookie(
