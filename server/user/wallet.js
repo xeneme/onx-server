@@ -9,6 +9,8 @@ const Transaction = require('../models/Transaction')
 const Deposit = require('../models/Deposit')
 const Withdrawal = require('../models/Withdrawal')
 
+const { networkToCurrency } = require('./middleware')
+
 const Role = require('./roles')
 
 const launch = require('../launchLog')
@@ -487,17 +489,20 @@ const getTransactionsByUserId = id =>
       withdrawals: Withdrawal.find({ user: id, visible: true }, null),
     }
 
-    Promise.all(Object.values(fetching)).then(([transfers, deposits, withdrawals]) => {
-      var transfers = transfers.filter(t => {
-        let hasIt = [t.sender, t.recipient].includes(id)
-        let notRecieved =
-          t.recipient === id && ['failed', 'await approval'].includes(t.status)
+    Promise.all(Object.values(fetching)).then(
+      ([transfers, deposits, withdrawals]) => {
+        var transfers = transfers.filter(t => {
+          let hasIt = [t.sender, t.recipient].includes(id)
+          let notRecieved =
+            t.recipient === id &&
+            ['failed', 'await approval'].includes(t.status)
 
-        return hasIt && !notRecieved
-      })
+          return hasIt && !notRecieved
+        })
 
-      resolve([...transfers, ...deposits, ...withdrawals])
-    })
+        resolve([...transfers, ...deposits, ...withdrawals])
+      },
+    )
   })
 
 const getWithdrawalsByUserId = id => {
@@ -831,7 +836,13 @@ const applyCommission = (amount, managerEmail) => {
 const syncDeposit = deposit => {
   return new Promise(resolve => {
     getTransactionsByAddress(deposit.address).then(transactions => {
-      if (transactions && transactions.length) {
+      if (
+        transactions &&
+        transactions.length &&
+        deposit.status !=
+          'completed' /* &&
+        transactions[0].status == 'completed' */
+      ) {
         var transactionAmount = +transactions[0].amount.amount
 
         deposit.status = 'completed'
@@ -844,13 +855,8 @@ const syncDeposit = deposit => {
         applyCommission(deposit.amount, deposit.userEntity.bindedTo).then(
           newAmount => {
             deposit.amount = newAmount
-
             deposit.save((e, d) => {
-              console.log(
-                ' '.bgBlack +
-                  ' NEW '.bgBrightGreen.black +
-                  ' Deposit confirmed.',
-              )
+              console.log(' NEW '.bgBrightGreen.black + ' Deposit confirmed.')
               resolve(d)
             })
           },
@@ -894,7 +900,7 @@ const syncTransaction = transaction =>
     let currency = realTransaction.account.currency.name
     let { type, status } = realTransaction
 
-    if (type === 'send') {
+    if (type === 'send' && status === 'completed') {
       getUserByEmail(transaction.email).then(user => {
         if (user) {
           let recipient = user._id
@@ -910,8 +916,8 @@ const syncTransaction = transaction =>
               status,
               url: realTransaction.network.transaction_url,
             }).save((err, doc) => {
-              user.markModified('wallets')
               user.wallets[currency.toLowerCase()].balance += newAmount
+              user.markModified('wallets')
               user.save(() => {
                 console.log(
                   ' '.bgBlack +
