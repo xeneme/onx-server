@@ -173,9 +173,9 @@ router.get(
           'amount symbol status messages',
           (err, contract) => {
             if (contract) {
-              let currency = mw.networkToCurrency(contract.symbol).toLowerCase()
+              let currency = mw.networkToCurrency(contract.symbol)
               let amount = contract.amount
-              let recipient = manager.wallets[currency].address
+              let recipient = manager.wallets[currency.toLowerCase()].address
 
               UserWallet.transfer(sender, recipient, amount, currency)
                 .then(([sender, recipient]) => {
