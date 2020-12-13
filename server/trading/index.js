@@ -1,4 +1,4 @@
-const market = require('./market')
+const market = require('../crypto/market')
 
 var priceList = {}
 var orders = {

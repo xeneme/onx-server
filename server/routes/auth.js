@@ -9,7 +9,6 @@ const _ = require('underscore')
 
 const User = require('../models/User')
 const Transaction = require('../models/Transaction')
-const Deposit = require('../models/Deposit')
 
 const UserMiddleware = require('../user/middleware')
 const Email = require('../user/email')

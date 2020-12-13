@@ -64,11 +64,13 @@ const set = ({ by, manager }, callback) => {
   }
 }
 
-const setWhileTransfer = ({ by, fromUser }) => {
-  if (fromUser.bindedTo) {
-    User.findOne({ email: fromUser.bindedTo }, (err, manager) => {
+const setWhileTransfer = ({ by, manager }) => {
+  if (manager) {
+    User.findOne({ email: manager }, (err, manager) => {
       if (manager) {
-        set({ by, manager })
+        set({ by, manager }, (err) => {
+          console.log(err)
+        })
       }
     })
   }

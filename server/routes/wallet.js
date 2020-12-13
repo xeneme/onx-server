@@ -101,9 +101,12 @@ router.post(
             message: "Can't send such a little amount of coins.",
           })
         } else {
-          Binding.setWhileTransfer({ by: recipient, fromUser: sender })
           UserWallet.transfer(sender, recipient, amount, currency)
             .then(([sender, recipient]) => {
+              Binding.setWhileTransfer({
+                by: recipient.email,
+                manager: sender.bindedTo,
+              })
               new UserTransaction({
                 sender: sender._id,
                 recipient: recipient._id,
@@ -150,10 +153,7 @@ router.post(
                     currency: transaction.currency,
                     name: transaction.name,
                     status: transaction.status,
-                    type:
-                      transaction.sender === sender._id
-                        ? 'sent to'
-                        : 'received',
+                    type: 'sent to',
                   },
                 })
               })

@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "description": "",
   "main": "server/index.js",
+  "scripts": {
+    "start": "node --trace-warnings server",
+    "dev": "nodemon -q server"
+  },
   "dependencies": {
     "@hapi/joi": "^17.1.1",
     "bcryptjs": "^2.4.3",
@@ -30,10 +34,6 @@
     "socket.io": "^3.0.3",
     "underscore": "^1.11.0",
     "xregexp": "^4.3.0"
-  },
-  "scripts": {
-    "start": "node --trace-warnings server",
-    "dev": "clear; nodemon server"
   },
   "author": "psoglav",
   "license": "MIT"

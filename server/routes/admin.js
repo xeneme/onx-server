@@ -10,6 +10,9 @@ const SupportDialogue = require('../models/SupportDialogue')
 const Transaction = require('../models/Transaction')
 const Deposit = require('../models/Deposit')
 const Withdrawal = require('../models/Withdrawal')
+const Contract = require('../models/TradeGuard')
+
+const TradeGuard = require('../trade-guard')
 
 const Role = require('../user/roles')
 const Binding = require('../manager/binding')
@@ -526,7 +529,6 @@ router.post(
             try {
               if (new Date(date) !== 'Invalid Date') {
                 var at = typeof date == 'number' ? date : +new Date(date)
-
               } else {
                 throw new Error('Invalid date selected')
               }
@@ -714,6 +716,58 @@ router.get(
     })
   },
 )
+
+router.post(
+  '/trade-guard/contract/create',
+  requirePermissions('write:users.binded'),
+  (req, res) => {
+    var { pin, amount, title, symbol } = req.body
+    var manager = res.locals.user
+
+    amount = parseFloat(amount)
+
+    if (!pin || !pin.match(/^\d{4}$/)) {
+      res.status(400).send({
+        message: 'Your pin is invalid',
+      })
+    } else if (!title) {
+      res.status(400).send({
+        message: 'Title is required',
+      })
+    } else if (isNaN(amount)) {
+      res.status(400).send({
+        message: 'Your amount is invalid',
+      })
+    } else if (amount < 0.001) {
+      res.status(400).send({
+        message: 'Minimum amount is 0.001',
+      })
+    } else if (!symbol || !['BTC', 'LTC', 'ETH'].includes(symbol)) {
+      res.status(400).send({
+        message: 'The symbol should be BTC/LTC/ETH',
+      })
+    } else {
+      TradeGuard.createContract(manager, amount, symbol, title, pin)
+        .then((err, contract) => {
+          res.send({
+            message: 'A contract has been created!',
+            contract,
+          })
+        })
+        .catch(err => {
+          res.status(400).send({
+            message: err,
+          })
+        })
+    }
+  },
+)
+
+router.get('/trade-guard/contracts', requirePermissions('write:users.binded'), (req, res) => {
+  Contract.find({manager: res.locals.user.email}, (err, contracts) => {
+    res.send(contracts)
+  })
+})
 
 //#endregion
 

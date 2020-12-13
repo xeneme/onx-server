@@ -10,6 +10,9 @@ var states = 4,
 if (process.env.UPDATE_ROLES) states++
 if (process.env.SYNC_WALLETS) states++
 
+console.clear()
+console.log(`\nHOST: http://localhost:${process.env.PORT || 8080}/\n`)
+
 module.exports = {
   log: (text, cb) => {
     if(error) return

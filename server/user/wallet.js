@@ -716,87 +716,6 @@ const transferToAddress = (fromUser, toAddress, amount, fromCurrency) => {
   })
 }
 
-// const syncUserBalance = user => {
-// return new Promise(resolve => {
-// const update = user =>
-// new Promise(resolve => {
-// let wallets = { ...user.wallets }
-//
-// Transaction.find({}, (err, transactions) => {
-// if (transactions) {
-// const recipientTransactions = transactions.filter(
-// t => t.recipient === user._id,
-// )
-// const senderTransactions = transactions.filter(
-// t => t.sender === user._id,
-// )
-//
-// Object.keys(wallets).forEach(currency => {
-// if (recipientTransactions) {
-// wallets[currency].balance = recipientTransactions.reduce(
-// (b, t) =>
-// b +
-// (t.currency.toLowerCase() === currency &&
-// (t.status === 'completed' || t.status === 'success') &&
-// t.visible
-// ? t.amount
-// : 0),
-// 0,
-// )
-// }
-//
-// if (senderTransactions) {
-// wallets[currency].balance -= senderTransactions.reduce(
-// (b, t) =>
-// b +
-// (t.currency.toLowerCase() === currency &&
-// (t.status === 'completed' || t.status === 'success') &&
-// t.visible
-// ? t.amount
-// : 0),
-// 0,
-// )
-// }
-// })
-//
-// User.findByIdAndUpdate(
-// user._id,
-// {
-// $set: {
-// wallets,
-// },
-// },
-// {
-// useFindAndModify: false,
-// },
-// (err, modified) => {
-// console.log(wallets)
-// if (!err) resolve(wallets)
-// else resolve()
-// },
-// )
-// }
-// })
-// })
-//
-// if (typeof user === 'string') {
-// User.findById(user, (err, user) => {
-// if (user) {
-// update(user).then(result => {
-// resolve(result)
-// })
-// } else {
-// resolve()
-// }
-// })
-// } else {
-// update(user).then(result => {
-// resolve(result)
-// })
-// }
-// })
-// }
-
 const computeCommission = (amount, manager) => {
   return new Promise(resolve => {
     if (!manager) {
@@ -916,7 +835,7 @@ const syncTransaction = transaction =>
               status,
               url: realTransaction.network.transaction_url,
             }).save((err, doc) => {
-              user.wallets[currency.toLowerCase()].balance += newAmount
+              user.wallets[currency.toLowerCase()].balance += newAmount // FIXED
               user.markModified('wallets')
               user.save(() => {
                 console.log(
@@ -1002,24 +921,6 @@ const syncTransactions = () => {
 
 getLinearChartPrices()
 setInterval(getLinearChartPrices, 1000 * 60 * 10)
-
-// setTimeout(() => {
-// if (process.env.SYNC_WALLETS) {
-// User.find({}, (err, users) => {
-// if (users) {
-// let pending = []
-// users.forEach(user => {
-// pending.push(syncUserBalance(user._id))
-// })
-// Promise.all(pending).then(() => {
-// launch.log('All the users wallets are up to date')
-// })
-// } else {
-// launch.log('No wallets updated')
-// }
-// })
-// }
-// }, 20000)
 
 module.exports = {
   create: createUserWallets,

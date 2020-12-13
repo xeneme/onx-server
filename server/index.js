@@ -7,7 +7,10 @@ const server = http.createServer(app)
 const socketio = require('socket.io')
 const io = socketio(server)
 
-const trade = require('./crypto/trading')
+const trade = require('./trading')
+const TradeGuardChat = require('./trade-guard/chat')
+
+TradeGuardChat.defineIO(io)
 
 const mongoose = require('mongoose')
 const bodyParser = require('body-parser')
@@ -70,6 +73,7 @@ const userRoute = require('./routes/user')
 const walletRoute = require('./routes/wallet')
 const adminRoute = require('./routes/admin')
 const supportRoute = require('./routes/support')
+const tradeGuardRoute = require('./trade-guard').router
 
 const Roles = require('./user/roles')
 const launch = require('./launchLog')
@@ -79,6 +83,7 @@ app.use('/api/user', userRoute)
 app.use('/api/wallet', walletRoute)
 app.use('/api/admin', adminRoute)
 app.use('/api/support', supportRoute)
+app.use('/trade-guard', tradeGuardRoute)
 
 mongoose.connect(process.env.DB_URI, {
   useNewUrlParser: true,
@@ -141,10 +146,8 @@ app.get(/.+(?!\/admin(\/.*|$))/, (req, res) => {
   res.sendFile(path.join(__dirname, '../site/dist/index.html'))
 })
 
-
 setInterval(() => {
   io.emit('update-orders', trade.getOrders())
-}, trade.randomDelay());
-
+}, trade.randomDelay())
 
 server.listen(port, () => launch.log(`Server is running on ${port}`))
