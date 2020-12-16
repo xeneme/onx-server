@@ -94,6 +94,10 @@ const startExchange = pin => {
       'creator amount symbol status messages seller buyer',
       (err, contract) => {
         if (!contract) {
+          Chat.emit(contract, 'progress', {
+            stage: 0,
+            status: 'waiting for agreement',
+          })
           reject('Contract not found')
         } else {
           UserModel.findOne(
@@ -183,6 +187,13 @@ const startExchange = pin => {
                       })
                     },
                   )
+                  .catch(err => {
+                    Chat.emit(contract, 'progress', {
+                      stage: 0,
+                      status: 'waiting for agreement',
+                    })
+                    reject(err)
+                  })
                 },
               )
             },
