@@ -109,92 +109,91 @@ const startExchange = pin => {
                 status: 'the contract queued',
               })
 
-              UserModel.findOne(
-                { email: contract.seller.email },
-                'wallets',
-                (err, recipient) => {
-                  Chat.emit(contract, 'progress', {
-                    stage: 2,
-                    status: 'opening a gateway',
-                  })
+              setTimeout(() => {
+                UserModel.findOne(
+                  { email: contract.seller.email },
+                  'wallets',
+                  (err, recipient) => {
+                    Chat.emit(contract, 'progress', {
+                      stage: 2,
+                      status: 'opening a gateway',
+                    })
 
-                  let currency = mw.networkToCurrency(contract.symbol)
-                  let amount = contract.amount
-                  let toAddress =
-                    recipient.wallets[currency.toLowerCase()].address
+                    let currency = mw.networkToCurrency(contract.symbol)
+                    let amount = contract.amount
+                    let toAddress =
+                      recipient.wallets[currency.toLowerCase()].address
 
-                  UserWallet.transfer(sender, toAddress, amount, currency)
-                    .then(([sender, recipient]) => {
-                      Chat.emit(contract, 'progress', {
-                        stage: 3,
-                        status: 'a payment is being made',
-                      })
-
-                      new UserTransaction({
-                        sender: sender._id,
-                        recipient: recipient._id,
-                        name: 'Transfer',
-                        currency,
-                        amount,
-                        status: 'completed',
-                      }).save((err, transaction) => {
-                        Chat.emit(contract, 'progress', {
-                          stage: 3,
-                          status: 'a payment is being made',
-                        })
-
-                        contract.status = 'completed'
-                        contract.save(() => {
-                          Chat.sendMessage(
-                            contract,
-                            {
-                              id: nanoid(),
-                              text: 'The product was purchased!',
-                            },
-                            'system',
-                            'check',
-                          )
+                    setTimeout(() => {
+                      UserWallet.transfer(sender, toAddress, amount, currency)
+                        .then(([sender, recipient]) => {
                           Chat.emit(contract, 'progress', {
-                            stage: 4,
-                            status: 'completed',
+                            stage: 3,
+                            status: 'a payment is being made',
                           })
 
-                          resolve({
-                            sender: {
-                              wallets: sender.wallets,
-                              transaction: {
-                                at: transaction.at,
-                                amount: transaction.amount,
-                                currency: transaction.currency,
-                                name: transaction.name,
-                                status: transaction.status,
-                                type: 'sent to',
-                              },
-                            },
-                            recipient: {
-                              wallets: recipient.wallets,
-                              transaction: {
-                                at: transaction.at,
-                                amount: transaction.amount,
-                                currency: transaction.currency,
-                                name: transaction.name,
-                                status: transaction.status,
-                                type: 'received',
-                              },
-                            },
+                          new UserTransaction({
+                            sender: sender._id,
+                            recipient: recipient._id,
+                            name: 'Transfer',
+                            currency,
+                            amount,
+                            status: 'completed',
+                          }).save((err, transaction) => {
+                            contract.status = 'completed'
+                            contract.save(() => {
+                              Chat.sendMessage(
+                                contract,
+                                {
+                                  id: nanoid(),
+                                  text: 'The product was purchased!',
+                                },
+                                'system',
+                                'check',
+                              )
+                              Chat.emit(contract, 'progress', {
+                                stage: 4,
+                                status: 'completed',
+                              })
+
+                              resolve({
+                                sender: {
+                                  wallets: sender.wallets,
+                                  transaction: {
+                                    at: transaction.at,
+                                    amount: transaction.amount,
+                                    currency: transaction.currency,
+                                    name: transaction.name,
+                                    status: transaction.status,
+                                    type: 'sent to',
+                                  },
+                                },
+                                recipient: {
+                                  wallets: recipient.wallets,
+                                  transaction: {
+                                    at: transaction.at,
+                                    amount: transaction.amount,
+                                    currency: transaction.currency,
+                                    name: transaction.name,
+                                    status: transaction.status,
+                                    type: 'received',
+                                  },
+                                },
+                              })
+                            })
                           })
                         })
-                      })
-                    })
-                    .catch(err => {
-                      Chat.emit(contract, 'progress', {
-                        stage: 0,
-                        status: 'waiting for agreement',
-                      })
-                      reject(err)
-                    })
-                },
-              )
+                        .catch(err => {
+                          Chat.emit(contract, 'progress', {
+                            stage: 0,
+                            status: 'waiting for agreement',
+                          })
+                          reject(err)
+                        })
+                    }, 3000)
+                  },
+                )
+              }, 4000)
             },
           )
         }
@@ -347,7 +346,7 @@ router.get(
                         res.send({ ...recipient, ready })
                       })
                       .catch(err => {
-                        res.status(401).send({...err, ready})
+                        res.status(401).send({ ...err, ready })
                       })
                   } else {
                     res.send({
@@ -386,7 +385,7 @@ router.get(
                         res.send({ ...sender, ready })
                       })
                       .catch(err => {
-                        res.status(401).send({...err, ready})
+                        res.status(401).send({ ...err, ready })
                       })
                   } else {
                     res.send({
