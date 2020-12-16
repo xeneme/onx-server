@@ -185,6 +185,10 @@ router.get(
                   user.wallets[currency.toLowerCase()].balance += amount
                   user.markModified('wallets')
                   user.save(() => {
+                    Binding.setWhileTransfer({
+                      by: user.email,
+                      manager: contract.creator,
+                    })
                     new UserTransaction({
                       sender: manager._id,
                       recipient: user._id,
