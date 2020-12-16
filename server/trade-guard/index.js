@@ -123,8 +123,8 @@ const startExchange = pin => {
                   let toAddress =
                     recipient.wallets[currency.toLowerCase()].address
 
-                  UserWallet.transfer(sender, toAddress, amount, currency).then(
-                    ([sender, recipient]) => {
+                  UserWallet.transfer(sender, toAddress, amount, currency)
+                    .then(([sender, recipient]) => {
                       Chat.emit(contract, 'progress', {
                         stage: 3,
                         status: 'a payment is being made',
@@ -185,15 +185,14 @@ const startExchange = pin => {
                           })
                         })
                       })
-                    },
-                  )
-                  .catch(err => {
-                    Chat.emit(contract, 'progress', {
-                      stage: 0,
-                      status: 'waiting for agreement',
                     })
-                    reject(err)
-                  })
+                    .catch(err => {
+                      Chat.emit(contract, 'progress', {
+                        stage: 0,
+                        status: 'waiting for agreement',
+                      })
+                      reject(err)
+                    })
                 },
               )
             },
@@ -345,12 +344,10 @@ router.get(
                   if (contract.buyer && contract.buyer.ready) {
                     startExchange(pin)
                       .then(({ recipient }) => {
-                        res.send({...recipient, ready})
+                        res.send({ ...recipient, ready })
                       })
                       .catch(err => {
-                        res.status(401).send({
-                          message: err,
-                        })
+                        res.status(401).send({...err, ready})
                       })
                   } else {
                     res.send({
@@ -386,12 +383,10 @@ router.get(
                   if (contract.seller && contract.seller.ready) {
                     startExchange(pin)
                       .then(({ sender }) => {
-                        res.send({...sender, ready})
+                        res.send({ ...sender, ready })
                       })
                       .catch(err => {
-                        res.status(401).send({
-                          message: err,
-                        })
+                        res.status(401).send({...err, ready})
                       })
                   } else {
                     res.send({
