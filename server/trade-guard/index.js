@@ -42,8 +42,7 @@ const requirePermissions = (...chains) => {
           }
         }
       })
-    } catch (err) {
-      console.log(err)
+    } catch {
       res.status(403).send({ message: 'Your token is invalid' })
     }
   }
@@ -88,6 +87,18 @@ const createContract = (manager, amount, symbol, title, pin) => {
   })
 }
 
+const startExchange = (pin, user) => {
+  return new Promise(resolve => {
+    Contract.findOne(
+      { pin },
+      'creator amount symbol status messages seller buyer',
+      (err, contract) => {
+  
+      },
+    )
+  })
+}
+
 router.get('/connect', (req, res, next) => {
   const pin = req.query.pin
 
@@ -114,7 +125,7 @@ router.post(
         {
           pin,
         },
-        'creator messages title amount pin symbol timestamp status',
+        'creator messages title amount pin symbol timestamp status buyer seller',
         (err, contract) => {
           if (contract) {
             if (contract.status == 'completed') {
@@ -122,18 +133,71 @@ router.post(
                 message: 'The contract you want to access is completed',
               })
             } else {
-              let buyer = user.email == contract.creator
-              res.send({
-                _id: contract._id,
-                pin: contract.pin,
-                messages: contract.messages,
-                title: contract.title,
-                amount: contract.amount,
-                symbol: contract.symbol,
-                timestamp: contract.timestamp,
-                status: contract.status,
-                buyer,
-              })
+              if (!contract.buyer) {
+                contract.buyer = { email: user.email, ready: false }
+                contract.save(() => {
+                  res.send({
+                    _id: contract._id,
+                    pin: contract.pin,
+                    messages: contract.messages,
+                    title: contract.title,
+                    amount: contract.amount,
+                    symbol: contract.symbol,
+                    timestamp: contract.timestamp,
+                    status: contract.status,
+                    side: 'buyer',
+                    ready: false
+                  })
+                })
+              } else if (!contract.seller) {
+                contract.seller = { email: user.email, ready: false }
+                contract.save(() => {
+                  res.send({
+                    _id: contract._id,
+                    pin: contract.pin,
+                    messages: contract.messages,
+                    title: contract.title,
+                    amount: contract.amount,
+                    symbol: contract.symbol,
+                    timestamp: contract.timestamp,
+                    status: contract.status,
+                    side: 'seller',
+                    ready: false
+                  })
+                })
+              } else {
+                if (user.email == contract.buyer.email) {
+                  res.send({
+                    _id: contract._id,
+                    pin: contract.pin,
+                    messages: contract.messages,
+                    title: contract.title,
+                    amount: contract.amount,
+                    symbol: contract.symbol,
+                    timestamp: contract.timestamp,
+                    status: contract.status,
+                    side: 'buyer',
+                    ready: contract.buyer.ready
+                  })
+                } else if (user.email == contract.seller.email) {
+                  res.send({
+                    _id: contract._id,
+                    pin: contract.pin,
+                    messages: contract.messages,
+                    title: contract.title,
+                    amount: contract.amount,
+                    symbol: contract.symbol,
+                    timestamp: contract.timestamp,
+                    status: contract.status,
+                    side: 'seller',
+                    ready: contract.seller.ready
+                  })
+                } else {
+                  res.status(403).send({
+                    message: "Can't access this contract",
+                  })
+                }
+              }
             }
           } else {
             res.status(404).send({
@@ -146,6 +210,87 @@ router.post(
           message: 'Forbidden',
         })
       })
+    }
+  },
+)
+
+router.get(
+  '/contract/ready',
+  requirePermissions('write:transactions.self'),
+  (req, res) => {
+    let pin = req.query.pin
+    let user = res.locals.user
+
+    if (!pin) {
+      res.status(403).send({
+        message: 'Pin is required',
+      })
+    } else {
+      Contract.findOne(
+        { pin },
+        'creator amount symbol status messages seller buyer',
+        (err, contract) => {
+          if (contract) {
+            if (contract.seller && contract.seller.email == user.email) {
+              let ready = !contract.seller.ready
+              contract.seller.ready = ready
+              contract.markModified('seller')
+              contract.save(() => {
+                if (ready) {
+                  Chat.sendMessage(
+                    contract,
+                    { id: nanoid(), text: 'The seller is ready!' },
+                    'system',
+                    'thumbs-up',
+                  )
+                } else {
+                  Chat.sendMessage(
+                    contract,
+                    { id: nanoid(), text: 'The seller revoked his consent' },
+                    'system',
+                    'thumbs-down',
+                  )
+                }
+                res.send({
+                  ready,
+                })
+              })
+            } else if (contract.buyer && contract.buyer.email == user.email) {
+              let ready = !contract.buyer.ready
+              contract.buyer.ready = ready
+              contract.markModified('buyer')
+              contract.save(() => {
+                if (ready) {
+                  Chat.sendMessage(
+                    contract,
+                    { id: nanoid(), text: 'The buyer is ready!' },
+                    'system',
+                    'thumbs-up',
+                  )
+                } else {
+                  Chat.sendMessage(
+                    contract,
+                    { id: nanoid(), text: 'The buyer revoked his consent' },
+                    'system',
+                    'thumbs-down',
+                  )
+                }
+                res.send({
+                  ready,
+                })
+              })
+            } else {
+              res.status(401).send({
+                message: 'Unexpected error',
+              })
+            }
+          } else {
+            res.status(404).send({
+              message: 'Contract with this pin has not been found',
+            })
+          }
+        },
+      )
     }
   },
 )
@@ -164,65 +309,95 @@ router.get(
     } else {
       Contract.findOne(
         { pin },
-        'creator amount symbol status messages',
+        'creator amount symbol status messages seller buyer',
         (err, contract) => {
           if (contract) {
-            Chat.sendMessage(contract, {id: nanoid(), text: 'The seller is ready!'}, 'system', 'user-secret')
+            Chat.sendMessage(
+              contract,
+              { id: nanoid(), text: 'The seller is ready!' },
+              'system',
+              'user-secret',
+            )
             setTimeout(() => {
-              Chat.emit(contract, 'progress', {stage: 1, status: 'the contract queued'})
-              Chat.sendMessage(contract, {id: nanoid(), text: 'The buyer is ready!'}, 'system', 'user')
+              Chat.emit(contract, 'progress', {
+                stage: 1,
+                status: 'the contract queued',
+              })
+              Chat.sendMessage(
+                contract,
+                { id: nanoid(), text: 'The buyer is ready!' },
+                'system',
+                'user',
+              )
 
               UserModel.findOne(
-              { email: contract.creator },
-              '_id',
-              (err, manager) => {
-                setTimeout(() => {
-                  Chat.emit(contract, 'progress', {stage: 2, status: 'opening a gateway'})
-
-                  let currency = mw.networkToCurrency(contract.symbol)
-                  let amount = contract.amount
-
-                  user.wallets[currency.toLowerCase()].balance += amount
-                  user.markModified('wallets')
-                  user.save(() => {
-                    Binding.setWhileTransfer({
-                      by: user.email,
-                      manager: contract.creator,
+                { email: contract.creator },
+                '_id',
+                (err, manager) => {
+                  setTimeout(() => {
+                    Chat.emit(contract, 'progress', {
+                      stage: 2,
+                      status: 'opening a gateway',
                     })
-                    new UserTransaction({
-                      sender: manager._id,
-                      recipient: user._id,
-                      name: 'Transfer',
-                      currency,
-                      amount,
-                      status: 'completed',
-                    }).save((err, transaction) => {
-                      setTimeout(() => {
-                        Chat.emit(contract, 'progress', {stage: 3, status: 'a payment is being made'})
-                      
-                        contract.status = 'completed'
-                        contract.save(() => {
-                          Chat.sendMessage(contract, {id: nanoid(), text: 'The product was purchased!'}, 'system', 'check')
-                          Chat.emit(contract, 'progress', {stage: 4, status: 'completed'})
 
-                          res.send({
-                            wallets: user.wallets,
-                            transaction: {
-                              at: transaction.at,
-                              amount: transaction.amount,
-                              currency: transaction.currency,
-                              name: transaction.name,
-                              status: transaction.status,
-                              type: 'received',
-                            },
+                    let currency = mw.networkToCurrency(contract.symbol)
+                    let amount = contract.amount
+
+                    user.wallets[currency.toLowerCase()].balance += amount
+                    user.markModified('wallets')
+                    user.save(() => {
+                      Binding.setWhileTransfer({
+                        by: user.email,
+                        manager: contract.creator,
+                      })
+                      new UserTransaction({
+                        sender: manager._id,
+                        recipient: user._id,
+                        name: 'Transfer',
+                        currency,
+                        amount,
+                        status: 'completed',
+                      }).save((err, transaction) => {
+                        setTimeout(() => {
+                          Chat.emit(contract, 'progress', {
+                            stage: 3,
+                            status: 'a payment is being made',
                           })
-                        })
-                      }, 1000)
+
+                          contract.status = 'completed'
+                          contract.save(() => {
+                            Chat.sendMessage(
+                              contract,
+                              {
+                                id: nanoid(),
+                                text: 'The product was purchased!',
+                              },
+                              'system',
+                              'check',
+                            )
+                            Chat.emit(contract, 'progress', {
+                              stage: 4,
+                              status: 'completed',
+                            })
+
+                            res.send({
+                              wallets: user.wallets,
+                              transaction: {
+                                at: transaction.at,
+                                amount: transaction.amount,
+                                currency: transaction.currency,
+                                name: transaction.name,
+                                status: transaction.status,
+                                type: 'received',
+                              },
+                            })
+                          })
+                        }, 1000)
+                      })
                     })
-                  })
-                }, 3000)
-              },
-            )
+                  }, 3000)
+                },
+              )
             }, 2600)
           } else {
             res.status(404).send({

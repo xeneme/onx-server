@@ -10,10 +10,11 @@ const TradeGuard = new mongoose.Schema({
   creator: String,
   pin: String,
   title: String,
-  state: String,
   amount: Number,
   symbol: String,
   status: String,
+  seller: Object,
+  buyer: Object,
   messages: { type: Array, default: [] },
 })
 
