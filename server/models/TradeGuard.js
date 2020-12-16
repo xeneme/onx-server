@@ -7,7 +7,7 @@ const TradeGuard = new mongoose.Schema({
     type: Number,
     default: () => +new Date(),
   },
-  manager: String,
+  creator: String,
   pin: String,
   title: String,
   state: String,

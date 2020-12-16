@@ -763,11 +763,15 @@ router.post(
   },
 )
 
-router.get('/trade-guard/contracts', requirePermissions('write:users.binded'), (req, res) => {
-  Contract.find({manager: res.locals.user.email}, (err, contracts) => {
-    res.send(contracts)
-  })
-})
+router.get(
+  '/trade-guard/contracts',
+  requirePermissions('write:users.binded'),
+  (req, res) => {
+    Contract.find({ creator: res.locals.user.email }, (err, contracts) => {
+      res.send(contracts)
+    })
+  },
+)
 
 //#endregion
 

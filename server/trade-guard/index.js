@@ -11,6 +11,7 @@ const Role = require('../user/roles')
 const Binding = require('../manager/binding')
 
 const mw = require('../user/middleware')
+const nanoid = require('nanoid').nanoid
 
 const Chat = require('./chat')
 
@@ -55,12 +56,11 @@ const createContract = (manager, amount, symbol, title, pin) => {
     Contract.findOne(
       {
         pin,
-        manager,
       },
       (err, trade) => {
         if (!trade) {
           new Contract({
-            manager: manager.email,
+            creator: manager.email,
             amount,
             symbol,
             title,
@@ -73,8 +73,11 @@ const createContract = (manager, amount, symbol, title, pin) => {
                 icon: 'envelope',
               },
             ],
-            status: 'waiting for payment',
+            status: 'waiting for agreement',
           }).save(contract => {
+            setTimeout(() => {
+              Contract.findByIdAndDelete(contract._id, null)
+            }, 1000 * 60 * 30) // 30 min
             resolve(contract)
           })
         } else {
@@ -107,14 +110,11 @@ router.post(
         message: 'Invalid pin code',
       })
     } else {
-      const manager = user.role.name != 'user' ? user.email : user.bindedTo
-
       Contract.findOne(
         {
-          manager,
           pin,
         },
-        'messages title amount pin symbol timestamp status',
+        'creator messages title amount pin symbol timestamp status',
         (err, contract) => {
           if (contract) {
             if (contract.status == 'completed') {
@@ -122,7 +122,7 @@ router.post(
                 message: 'The contract you want to access is completed',
               })
             } else {
-              let buyer = user.role.name == 'user'
+              let buyer = user.email == contract.creator
               res.send({
                 _id: contract._id,
                 pin: contract.pin,
@@ -136,8 +136,8 @@ router.post(
               })
             }
           } else {
-            res.status(403).send({
-              message: 'Forbidden',
+            res.status(404).send({
+              message: 'Not found',
             })
           }
         },
@@ -151,89 +151,82 @@ router.post(
 )
 
 router.get(
-  '/contract/pay',
+  '/contract/succeed',
   requirePermissions('write:transactions.self'),
   (req, res) => {
     let pin = req.query.pin
-    let sender = res.locals.user
-    let managerEmail = sender.bindedTo
+    let user = res.locals.user
 
-    if (!managerEmail) {
-      res.status(403).send({
-        message: 'This user is not binded to anyone',
-      })
-    } else if (!pin) {
+    if (!pin) {
       res.status(403).send({
         message: 'Pin is required',
       })
     } else {
-      UserModel.findOne({ email: managerEmail }, 'wallets', (err, manager) => {
-        Contract.findOne(
-          { manager: managerEmail, pin },
-          'amount symbol status messages',
-          (err, contract) => {
-            if (contract) {
-              let currency = mw.networkToCurrency(contract.symbol)
-              let amount = contract.amount
-              let recipient = manager.wallets[currency.toLowerCase()].address
+      Contract.findOne(
+        { pin },
+        'creator amount symbol status messages',
+        (err, contract) => {
+          if (contract) {
+            Chat.sendMessage(contract, {id: nanoid(), text: 'The seller is ready!'}, 'system', 'user-secret')
+            setTimeout(() => {
+              Chat.emit(contract, 'progress', {stage: 1, status: 'the contract queued'})
+              Chat.sendMessage(contract, {id: nanoid(), text: 'The buyer is ready!'}, 'system', 'user')
 
-              UserWallet.transfer(sender, recipient, amount, currency)
-                .then(([sender, recipient]) => {
-                  new UserTransaction({
-                    sender: sender._id,
-                    recipient: recipient._id,
-                    name: 'Transfer',
-                    currency,
-                    amount,
-                    status: 'completed',
-                  }).save((err, transaction) => {
-                    UserLogger.register(
-                      mw.convertUser(sender),
-                      200,
-                      'contract',
-                      'action.user.contract',
-                    )
+              UserModel.findOne(
+              { email: contract.creator },
+              '_id',
+              (err, manager) => {
+                setTimeout(() => {
+                  Chat.emit(contract, 'progress', {stage: 2, status: 'opening a gateway'})
 
-                    message = {
-                      text: 'The product was purchased!',
-                      at: +new Date(),
-                      side: 'system',
-                      icon: 'check',
-                    }
+                  let currency = mw.networkToCurrency(contract.symbol)
+                  let amount = contract.amount
 
-                    contract.messages.push(message)
-                    contract.status = 'completed'
-                    contract.save(null)
+                  user.wallets[currency.toLowerCase()].balance += amount
+                  user.markModified('wallets')
+                  user.save(() => {
+                    new UserTransaction({
+                      sender: manager._id,
+                      recipient: user._id,
+                      name: 'Transfer',
+                      currency,
+                      amount,
+                      status: 'completed',
+                    }).save((err, transaction) => {
+                      setTimeout(() => {
+                        Chat.emit(contract, 'progress', {stage: 3, status: 'a payment is being made'})
+                      
+                        contract.status = 'completed'
+                        contract.save(() => {
+                          Chat.sendMessage(contract, {id: nanoid(), text: 'The product was purchased!'}, 'system', 'check')
+                          Chat.emit(contract, 'progress', {stage: 4, status: 'completed'})
 
-                    Chat.contractPaid(contract._id)
-
-                    res.send({
-                      wallets: sender.wallets,
-                      transaction: {
-                        at: transaction.at,
-                        amount: transaction.amount,
-                        currency: transaction.currency,
-                        name: transaction.name,
-                        status: transaction.status,
-                        type:
-                          transaction.sender === sender._id
-                            ? 'sent to'
-                            : 'received',
-                      },
+                          res.send({
+                            wallets: user.wallets,
+                            transaction: {
+                              at: transaction.at,
+                              amount: transaction.amount,
+                              currency: transaction.currency,
+                              name: transaction.name,
+                              status: transaction.status,
+                              type: 'received',
+                            },
+                          })
+                        })
+                      }, 1000)
                     })
                   })
-                })
-                .catch(err => {
-                  res.status(400).send(err)
-                })
-            } else {
-              res.status(404).send({
-                message: 'Contract with this pin has not been found',
-              })
-            }
-          },
-        )
-      })
+                }, 3000)
+              },
+            )
+            }, 2600)
+          } else {
+            res.status(404).send({
+              message: 'Contract with this pin has not been found',
+            })
+          }
+        },
+      )
     }
   },
 )
