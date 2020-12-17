@@ -63,7 +63,7 @@ const buildProfile = (
     newMessages: dialogue ? dialogue.unread : 0,
     transactions,
     settings: {
-      commission: manager ? manager.role.settings.commission : 1,
+      commission: manager && manager.role.name != 'user' ? manager.role.settings.commission : 1,
     },
     popup,
   }
