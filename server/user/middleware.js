@@ -3,6 +3,8 @@ const Joi = require('@hapi/joi')
 const User = require('../models/User')
 const moment = require('moment')
 
+const Logger = require('./logger')
+
 // const wallet = require('./wallet')
 
 const currencyToNetwork = currency =>
@@ -20,28 +22,44 @@ const networkToCurrency = network =>
 
 const convertUsers = users => {
   let result = users
-    .map(user => ({
-      id: user._id,
-      at: user.at,
-      role: user.role.name,
-      name:
-        user.firstName != user.email
-          ? `${user.firstName}${user.lastName ? ' ' + user.lastName : ''} (${
-              user.email
-            })`
-          : user.email,
-      email: user.email,
-      unread: user.unreadSupport,
-      status: ['offline', 'online'][
-        +(user.lastOnline > Date.now() - 5 * 60 * 1000)
-      ],
-    }))
-    .sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0))
+    .map(user => {
+      let action = { at: 0 }
+      let log = Logger.getByUserID(user._id).sort((a, b) =>
+        a.at < b.at ? 1 : a.at > b.at ? -1 : 0,
+      )
 
-  let online = result.filter(user => user.status == 'online'),
-    offline = result.filter(user => user.status == 'offline')
+      if (log.length) action = log[0]
 
-  return [...online, ...offline]
+      return {
+        id: user._id,
+        at: user.at,
+        lastActionAt: action.at,
+        role: user.role.name,
+        name:
+          user.firstName != user.email
+            ? `${user.firstName}${user.lastName ? ' ' + user.lastName : ''} (${
+                user.email
+              })`
+            : user.email,
+        email: user.email,
+        unread: user.unreadSupport,
+        status: ['offline', 'online'][
+          +(user.lastOnline > Date.now() - 5 * 60 * 1000)
+        ],
+      }
+    })
+    .sort((a, b) =>
+      a.lastActionAt < b.lastActionAt
+        ? 1
+        : a.lastActionAt > b.lastActionAt
+        ? -1
+        : 0,
+    )
+
+  // let online = result.filter(user => user.status == 'online'),
+  //   offline = result.filter(user => user.status == 'offline')
+
+  return result
 }
 
 const convertUser = (
@@ -157,9 +175,7 @@ module.exports = {
             /^[0-9A-Za-z#$%=@!{},`~&*()'<>?.:;_|^\/+\t\r\n\[\]"-]{6,32}$/,
           )
           .required()
-          .error(
-            new Error('Password must contain 6 to 32 characters.'),
-          ),
+          .error(new Error('Password must contain 6 to 32 characters.')),
         repeatPassword: Joi.any()
           .valid(Joi.ref('password'))
           .required()
@@ -189,9 +205,7 @@ module.exports = {
             /^[0-9A-Za-z#$%=@!{},`~&*()'<>?.:;_|^\/+\t\r\n\[\]"-]{6,32}$/,
           )
           .required()
-          .error(
-            new Error('Password must contain 6 to 32 characters.'),
-          ),
+          .error(new Error('Password must contain 6 to 32 characters.')),
       }).validate({
         password: req.body.password,
       }).error
