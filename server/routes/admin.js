@@ -140,29 +140,84 @@ const getDialogue = user =>
     })
   })
 
+const updateMessages = (messages, userid) => {
+  return new Promise((resolve, reject) => {
+    SupportDialogue.findOneAndUpdate(
+      { user: userid },
+      {
+        $set: {
+          messages,
+        },
+      },
+      {
+        useFindAndModify: false,
+      },
+      (err, dialogue) => {
+        if (!err && dialogue) {
+          resolve(dialogue.messages)
+        } else {
+          reject()
+        }
+      },
+    )
+  })
+}
+
 //#endregion
 
 //#region [rgba(50, 0, 50, 1)] Support
 
-router.post('/support/:id/send', (req, res) => {
-  const userId = req.params.id
+router.post(
+  '/support/:id/send',
+  requirePermissions('write:support.binded'),
+  (req, res) => {
+    const userId = req.params.id
 
-  sendMessage(true, userId, req.body.message).then(message => {
-    res.send({ message })
-  })
-})
+    sendMessage(true, userId, req.body.message).then(message => {
+      res.send({ message })
+    })
+  },
+)
 
-router.get('/support', (req, res) => {
-  getUserAndDialogue(req.query.user)
-    .then(messages => {
-      res.send({
-        messages,
+router.get(
+  '/support',
+  requirePermissions('write:support.binded'),
+  (req, res) => {
+    getUserAndDialogue(req.query.user)
+      .then(messages => {
+        res.send({
+          messages,
+        })
       })
-    })
-    .catch(err => {
-      res.sendStatus(400)
-    })
-})
+      .catch(err => {
+        res.sendStatus(400)
+      })
+  },
+)
+
+router.post(
+  '/support/update',
+  requirePermissions('write:support.binded'),
+  (req, res) => {
+    const { messages, user } = req.body
+
+    if (!messages || typeof messages.length != 'number' || !user) {
+      res.status(400).send({
+        messages: 'Bad request',
+      })
+    } else {
+      updateMessages(messages, user)
+        .then(messages => {
+          res.send(messages)
+        })
+        .catch(() => {
+          res.status(409).send({
+            message: 'Failed to update messages',
+          })
+        })
+    }
+  },
+)
 
 //#endregion
 
