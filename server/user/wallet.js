@@ -1,4 +1,5 @@
 const _ = require('underscore')
+const axios = require('axios')
 const Client = require('coinbase/lib/Client')
 const CoinGecko = require('coingecko-api')
 const CoinGeckoClient = new CoinGecko()
@@ -9,7 +10,7 @@ const Transaction = require('../models/Transaction')
 const Deposit = require('../models/Deposit')
 const Withdrawal = require('../models/Withdrawal')
 
-const { networkToCurrency } = require('./middleware')
+const { currencyToNetwork, networkToCurrency } = require('./middleware')
 
 const Role = require('./roles')
 
@@ -397,11 +398,7 @@ const createDeposit = ({ email, currency, amount, userid, completed }) => {
 
 const createWithdrawal = ({ user, address, network, amount, isManager }) => {
   return new Promise((resolve, reject) => {
-    const currency = {
-      BTC: 'bitcoin',
-      LTC: 'litecoin',
-      ETH: 'ethereum',
-    }[network.toUpperCase()]
+    const currency = networkToCurrency(network).toLowerCase()
 
     var finish = user => {
       if (isManager) {
@@ -449,23 +446,31 @@ const createWithdrawal = ({ user, address, network, amount, isManager }) => {
       }
     }
 
-    try {
-      if (!CAValidator.validate(address, currency)) {
-        reject('Invalid address')
-      } else if (typeof user == 'string') {
-        User.findById(user, (err, user) => {
-          if (!err && user) {
-            finish(user)
+    axios
+      .get(`http://addressvalidator.evzpav.com/validate/${network}/${address}`)
+      .then(response => {
+        const valid = response.data.valid
+
+        if (!valid) {
+          reject('Address validation error')
+        } else {
+          if (typeof user == 'string') {
+            User.findById(user, (err, user) => {
+              if (!err && user) {
+                finish(user)
+              } else {
+                reject('User has not been found')
+              }
+            })
           } else {
-            reject('User has not been found')
+            finish(user)
           }
-        })
-      } else {
-        finish(user)
-      }
-    } catch {
-      reject('Address validation error')
-    }
+        }
+      })
+      .catch(err => {
+        reject('Unexpected error')
+        console.log(err)
+      })
   })
 }
 
