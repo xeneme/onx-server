@@ -1170,23 +1170,14 @@ router.get(
           action: 'promote',
         })
       } else {
-        User.findByIdAndUpdate(
-          user._id,
-          {
-            $set: {
-              role: Role.promote(user.role.name),
-            },
-          },
-          {
-            useFindAndModify: false,
-          },
-          (err, modified) => {
-            res.send({
-              success: true,
-              action: 'promote',
-            })
-          },
-        )
+        user.role = Role.promote(user.role.name)
+        user.markModified('role')
+        user.save((err, modified) => {
+          res.send({
+            success: Boolean(modified),
+            action: 'promote',
+          })
+        })
       }
     })
   },
@@ -1203,23 +1194,14 @@ router.get(
           action: 'promote',
         })
       } else {
-        User.findByIdAndUpdate(
-          user._id,
-          {
-            $set: {
-              role: Role.demote(user.role.name),
-            },
-          },
-          {
-            useFindAndModify: false,
-          },
-          (err, modified) => {
-            res.send({
-              success: true,
-              action: 'demote',
-            })
-          },
-        )
+        user.role = Role.demote(user.role.name)
+        user.markModified('role')
+        user.save((err, modified) => {
+          res.send({
+            success: Boolean(modified),
+            action: 'demote',
+          })
+        })
       }
     })
   },
