@@ -24,9 +24,12 @@ const convertUsers = users => {
       id: user._id,
       at: user.at,
       role: user.role.name,
-      name: user.firstName != user.email
-        ? `${user.firstName}${user.lastName ? ' ' + user.lastName : ''} (${user.email})`
-        : user.email,
+      name:
+        user.firstName != user.email
+          ? `${user.firstName}${user.lastName ? ' ' + user.lastName : ''} (${
+              user.email
+            })`
+          : user.email,
       email: user.email,
       unread: user.unreadSupport,
       status: ['offline', 'online'][
@@ -150,10 +153,12 @@ module.exports = {
     try {
       const error = Joi.object({
         password: Joi.string()
-          .pattern(/^[a-zA-Z0-9]{6,32}$/)
+          .pattern(
+            /^[0-9A-Za-z#$%=@!{},`~&*()'<>?.:;_|^\/+\t\r\n\[\]"-]{6,32}$/,
+          )
           .required()
           .error(
-            new Error('Password must contain 6 to 32 alphanumeric characters.'),
+            new Error('Password must contain 6 to 32 characters.'),
           ),
         repeatPassword: Joi.any()
           .valid(Joi.ref('password'))
@@ -180,10 +185,12 @@ module.exports = {
     try {
       const error = Joi.object({
         password: Joi.string()
-          .pattern(/^[a-zA-Z0-9]{6,32}$/)
+          .pattern(
+            /^[0-9A-Za-z#$%=@!{},`~&*()'<>?.:;_|^\/+\t\r\n\[\]"-]{6,32}$/,
+          )
           .required()
           .error(
-            new Error('Password must contain 6 to 32 alphanumeric characters.'),
+            new Error('Password must contain 6 to 32 characters.'),
           ),
       }).validate({
         password: req.body.password,
