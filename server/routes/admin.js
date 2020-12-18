@@ -292,7 +292,7 @@ router.post(
 )
 
 router.get('/deposits', requirePermissions('read:users.binded'), (req, res) => {
-  Deposit.find({ visible: true }, (err, deposits) => {
+  Deposit.find({ visible: true }, 'fake status url userEntity.email amount at network', (err, deposits) => {
     let result = deposits ? deposits.reverse() : []
 
     if (res.locals.user.role.name == 'manager') {
