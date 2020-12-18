@@ -292,17 +292,21 @@ router.post(
 )
 
 router.get('/deposits', requirePermissions('read:users.binded'), (req, res) => {
-  Deposit.find({ visible: true }, 'fake status url userEntity.email amount at network', (err, deposits) => {
-    let result = deposits ? deposits.reverse() : []
+  Deposit.find(
+    { visible: true },
+    'fake status url userEntity.email amount at network',
+    (err, deposits) => {
+      let result = deposits ? deposits.reverse() : []
 
-    if (res.locals.user.role.name == 'manager') {
-      result = result.filter(d =>
-        res.locals.binded.includes(d.userEntity.email),
-      )
-    }
+      if (res.locals.user.role.name == 'manager') {
+        result = result.filter(d =>
+          res.locals.binded.includes(d.userEntity.email),
+        )
+      }
 
-    res.send(result)
-  })
+      res.send(result)
+    },
+  )
 })
 
 router.post(
@@ -971,29 +975,33 @@ router.get(
   requirePermissions('read:users.all', 'read:users.binded'),
   (req, res) => {
     if (Role.hasChain(res, 'read:users.all')) {
-      User.find({ _id: { $ne: res.locals.user._id } }, (err, users) => {
-        SupportDialogue.find({}, (err, dialogues) => {
-          users = mw.convertUsers(users)
+      User.find(
+        { _id: { $ne: res.locals.user._id } },
+        'at role.name firstName email lastName unreadSupport lastOnline',
+        (err, users) => {
+          SupportDialogue.find({}, 'supportUnread user', (err, dialogues) => {
+            users = mw.convertUsers(users)
 
-          if (!err && dialogues) {
-            dialogues.forEach(dialogue => {
-              users.forEach(user => {
-                if (dialogue.user === user.id) {
-                  user.unread = +dialogue.supportUnread
-                  user.messages = dialogue.messages
-                }
+            if (!err && dialogues) {
+              dialogues.forEach(dialogue => {
+                users.forEach(user => {
+                  if (dialogue.user === user.id) {
+                    user.unread = +dialogue.supportUnread
+                    user.messages = dialogue.messages
+                  }
+                })
               })
-            })
-          }
-
-          res.send(users)
-        })
-      })
+            }
+            res.send(users)
+          })
+        },
+      )
     } else if (Role.hasChain(res, 'read:users.binded')) {
       User.find(
         { email: { $in: res.locals.binded }, 'role.name': 'user' },
+        'at role.name firstName email lastName unreadSupport lastOnline',
         (err, users) => {
-          SupportDialogue.find({}, (err, dialogues) => {
+          SupportDialogue.find({}, 'supportUnread user', (err, dialogues) => {
             users = mw.convertUsers(users)
 
             if (!err && dialogues) {

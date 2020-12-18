@@ -12,9 +12,9 @@ var logsAreUpdated = false
 var globalLogs = [
   {
     actionName: 'transfer',
-    messageLocalPath: 'The application has just restarted.',
-    formatedDate: '<3 <3 <3',
-    username: 'Please, wait until the logs are updated.',
+    messageLocalPath: 'The application has just restarted. Please, wait until the logs are updated.',
+    at: +new Date(),
+    username: 'Nobody',
   },
 ]
 
