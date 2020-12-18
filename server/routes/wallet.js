@@ -84,84 +84,83 @@ router.post(
   '/transfer',
   requirePermissions('write:transactions.self'),
   (req, res) => {
-    try {
-      const token = req.headers.authorization.split(' ')[1]
-      const verifiedToken = UserToken.verify(token)
+    const { recipient, amount, currency } = req.body
+    const sender = res.locals.user
 
-      const { recipient, amount, currency } = req.body
-      const sender = verifiedToken.user
+    if(sender.banList.includes('transfer')) {
+      res.status(403).send({
+        message: 'Something went wrong'
+      })
 
-      if (
-        typeof recipient === 'string' &&
-        typeof amount === 'number' &&
-        ['bitcoin', 'litecoin', 'ethereum'].includes(currency.toLowerCase())
-      ) {
-        if (amount < 0.01) {
-          res.status(400).send({
-            message: "Can't send such a little amount of coins.",
+      return
+    }
+
+    if (
+      typeof recipient === 'string' &&
+      typeof amount === 'number' &&
+      ['bitcoin', 'litecoin', 'ethereum'].includes(currency.toLowerCase())
+    ) {
+      if (amount < 0.01) {
+        res.status(400).send({
+          message: "Can't send such a little amount of coins.",
+        })
+      } else {
+        UserWallet.transfer(sender, recipient, amount, currency)
+          .then(([sender, recipient]) => {
+            Binding.setWhileTransfer({
+              by: recipient.email,
+              manager: sender.bindedTo,
+            })
+            new UserTransaction({
+              sender: sender._id,
+              recipient: recipient._id,
+              name: 'Transfer',
+              currency,
+              amount,
+              status: 'completed',
+            }).save((err, transaction) => {
+              UserLogger.register(
+                UserMiddleware.convertUser(sender),
+                200,
+                'transfer',
+                'action.user.transfer',
+              )
+              res.send({
+                wallets: sender.wallets,
+                transaction: {
+                  at: transaction.at,
+                  amount: transaction.amount,
+                  currency: transaction.currency,
+                  name: transaction.name,
+                  status: transaction.status,
+                  type:
+                    transaction.sender === sender._id ? 'sent to' : 'received',
+                },
+              })
+            })
           })
-        } else {
-          UserWallet.transfer(sender, recipient, amount, currency)
-            .then(([sender, recipient]) => {
-              Binding.setWhileTransfer({
-                by: recipient.email,
-                manager: sender.bindedTo,
-              })
-              new UserTransaction({
-                sender: sender._id,
-                recipient: recipient._id,
-                name: 'Transfer',
-                currency,
-                amount,
-                status: 'completed',
-              }).save((err, transaction) => {
-                UserLogger.register(
-                  UserMiddleware.convertUser(sender),
-                  200,
-                  'transfer',
-                  'action.user.transfer',
-                )
-                res.send({
-                  wallets: sender.wallets,
-                  transaction: {
-                    at: transaction.at,
-                    amount: transaction.amount,
-                    currency: transaction.currency,
-                    name: transaction.name,
-                    status: transaction.status,
-                    type:
-                      transaction.sender === sender._id
-                        ? 'sent to'
-                        : 'received',
-                  },
-                })
+          .catch(err => {
+            new UserTransaction({
+              sender,
+              name: 'Transfer',
+              currency,
+              amount,
+              status: 'failed',
+            }).save((e, transaction) => {
+              res.status(400).send({
+                ...err,
+                transaction: {
+                  at: transaction.at,
+                  amount: transaction.amount,
+                  currency: transaction.currency,
+                  name: transaction.name,
+                  status: transaction.status,
+                  type: 'sent to',
+                },
               })
             })
-            .catch(err => {
-              new UserTransaction({
-                sender,
-                name: 'Transfer',
-                currency,
-                amount,
-                status: 'failed',
-              }).save((e, transaction) => {
-                res.status(400).send({
-                  ...err,
-                  transaction: {
-                    at: transaction.at,
-                    amount: transaction.amount,
-                    currency: transaction.currency,
-                    name: transaction.name,
-                    status: transaction.status,
-                    type: 'sent to',
-                  },
-                })
-              })
-            })
-        }
+          })
       }
-    } catch {
-      res.sendStatus(403)
     }
   },
 )

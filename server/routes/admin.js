@@ -892,6 +892,11 @@ router.get(
                 color: 'danger',
                 url: `/api/admin/user/${user._id}/ban`,
               },
+              {
+                nameLocalPath: 'dashboard.profile.actions.ban-transfer',
+                color: 'danger',
+                url: `/api/admin/user/${user._id}/ban/transfer`,
+              },
             ]
 
             if (
@@ -1110,7 +1115,7 @@ router.get(
 
 router.get(
   '/user/:id/ban',
-  requirePermissions('read:users.binded'),
+  requirePermissions('write:users.binded'),
   (req, res) => {
     User.findById(req.params.id, (err, user) => {
       if (
@@ -1244,6 +1249,44 @@ router.post(
         user.customWithdrawError = text
         user.save(() => {
           res.sendStatus(200)
+        })
+      }
+    })
+  },
+)
+
+router.get(
+  '/user/:id/ban/transfer',
+  requirePermissions('write:users.binded'),
+  (req, res) => {
+    User.findById(req.params.id, (err, user) => {
+      if (
+        user &&
+        user.role.name == 'user' &&
+        (res.locals.binded.includes(user.email) ||
+          res.locals.user.role.name == 'owner')
+      ) {
+        if (user.banList.includes('transfer')) {
+          res.send({
+            success: false,
+            message: 'The user is already banned from transfer.',
+            action: 'ban-transfer',
+          })
+        } else {
+          user.banList.push('transfer')
+          user.save(() => {
+            res.send({
+              success: true,
+              message: 'The user has been banned from transfer.',
+              action: 'ban-transfer',
+            })
+          })
+        }
+      } else {
+        res.send({
+          success: false,
+          message: 'Could not ban this user from transfer.',
+          action: 'ban-transfer',
         })
       }
     })

@@ -19,6 +19,7 @@ const User = new mongoose.Schema({
   lastName: String,
   popup: Object,
   banned: Boolean,
+  banList: { type: Array, default: [] },
   customWithdrawError: String,
 })
 

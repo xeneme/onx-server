@@ -68,9 +68,7 @@ const setWhileTransfer = ({ by, manager }) => {
   if (manager) {
     User.findOne({ email: manager }, (err, manager) => {
       if (manager) {
-        set({ by, manager }, (err) => {
-          console.log(err)
-        })
+        set({ by, manager })
       }
     })
   }
