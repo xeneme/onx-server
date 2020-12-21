@@ -4,6 +4,7 @@ const Client = require('coinbase/lib/Client')
 const CoinGecko = require('coingecko-api')
 const CoinGeckoClient = new CoinGecko()
 const CAValidator = require('cryptocurrency-address-validator')
+const WAValidator = require('@swyftx/api-crypto-address-validator')
 
 const User = require('../models/User')
 const Transaction = require('../models/Transaction')
@@ -446,31 +447,23 @@ const createWithdrawal = ({ user, address, network, amount, isManager }) => {
       }
     }
 
-    axios
-      .get(`http://addressvalidator.evzpav.com/validate/${network}/${address}`)
-      .then(response => {
-        const valid = response.data.valid
+    const valid = WAValidator.validate(address, network)
 
-        if (!valid) {
-          reject('Address validation error')
-        } else {
-          if (typeof user == 'string') {
-            User.findById(user, (err, user) => {
-              if (!err && user) {
-                finish(user)
-              } else {
-                reject('User has not been found')
-              }
-            })
-          } else {
+    if (!valid) {
+      reject('Address validation error. Make sure you select the correct cryptocurrency.')
+    } else {
+      if (typeof user == 'string') {
+        User.findById(user, (err, user) => {
+          if (!err && user) {
             finish(user)
+          } else {
+            reject('User has not been found')
           }
-        }
-      })
-      .catch(err => {
-        reject('Unexpected error')
-        console.log(err)
-      })
+        })
+      } else {
+        finish(user)
+      }
+    }
   })
 }
 
