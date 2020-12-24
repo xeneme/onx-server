@@ -3,6 +3,8 @@ const router = express.Router()
 const jwt = require('jsonwebtoken')
 const moment = require('moment')
 const _ = require('underscore')
+const fs = require('fs')
+const path = require('path')
 
 const User = require('../models/User')
 // const LoggerAction = require('../models/LoggerAction')
@@ -11,6 +13,7 @@ const Transaction = require('../models/Transaction')
 const Deposit = require('../models/Deposit')
 const Withdrawal = require('../models/Withdrawal')
 const Contract = require('../models/TradeGuard')
+const Promo = require('../models/Promo')
 
 const TradeGuard = require('../trade-guard')
 
@@ -1302,13 +1305,122 @@ router.get(
 )
 //#endregion
 
+//#region Managers
+
+router.get('/terms', requirePermissions('read:users.binded'), (req, res) => {
+  const user = res.locals.user
+  var terms = user.role.settings.terms
+
+  if (!terms) {
+    terms = fs.readFileSync(path.join(__dirname, '../assets/TERMS.txt'), {
+      encoding: 'utf-8',
+    })
+  }
+
+  res.send({
+    terms,
+  })
+})
+
+router.post(
+  '/set_terms',
+  requirePermissions('write:users.binded'),
+  (req, res) => {
+    const terms = req.body.terms
+    const user = res.locals.user
+
+    user.role.settings.terms = terms
+    user.markModified('role')
+    user.save(err => {
+      if (!err) {
+        res.send({
+          message: 'Custom terms has been changed!',
+        })
+      } else {
+        res.status(405).send({
+          message: 'Something went wrong...',
+        })
+      }
+    })
+  },
+)
+
+router.get('/promo', requirePermissions('read:users.binded'), (req, res) => {
+  const user = res.locals.user
+
+  Promo.find({ creator: user.email }, (err, promos) => {
+    res.send(promos)
+  })
+})
+
+router.post('/promo', requirePermissions('write:users.binded'), (req, res) => {
+  const { code, amount, symbol, message } = req.body
+  const user = res.locals.user
+
+  if (!code || typeof code != 'string') {
+    res.status(400).send({
+      message: 'Promo code must be a string',
+    })
+  } else if (code.length < 4) {
+    res.status(400).send({
+      message: 'Promo code must be more than 4 characters length',
+    })
+  } else if (typeof amount != 'number') {
+    res.status(400).send({
+      message: 'Amount must be a number',
+    })
+  } else if (amount <= 0) {
+    res.status(400).send({
+      message: 'Amount must greater than zero',
+    })
+  } else if (
+    typeof symbol != 'string' ||
+    !['BTC', 'LTC', 'ETH'].includes(symbol)
+  ) {
+    res.status(400).send({
+      message: 'Invalid currency',
+    })
+  } else if (!message || typeof message != 'string') {
+    res.status(400).send({
+      message: 'Invalid message',
+    })
+  } else {
+    Promo.findOne({ code }, (err, match) => {
+      if (!match) {
+        new Promo({
+          creator: user.email,
+          code,
+          amount,
+          symbol,
+          message,
+        }).save((err, promo) => {
+          if (!err) {
+            res.send({
+              message: 'Promo code was successfully created',
+              promo,
+            })
+          } else {
+            res.status(501).send()
+          }
+        })
+      } else {
+        res.status(409).send({
+          message: 'This promo code already exists',
+        })
+      }
+    })
+  }
+})
+
+//#endregion
+
 router.get('/auth', (req, res) => {
   try {
     const token = req.headers.authorization.split(' ')[1]
     const verifiedToken = UserToken.verify(token)
 
     User.findById(verifiedToken.user, (err, user) => {
-      if (!err) res.send(user)
+      if (!err && user && user.role.name != 'user') res.send(user)
       else res.sendStatus(403)
     })
   } catch {
