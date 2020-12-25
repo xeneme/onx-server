@@ -1349,6 +1349,7 @@ router.get('/promo', requirePermissions('read:users.binded'), (req, res) => {
   const user = res.locals.user
 
   Promo.find({ creator: user.email }, (err, promos) => {
+    promos.reverse()
     res.send(promos)
   })
 })
