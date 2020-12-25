@@ -1323,7 +1323,7 @@ router.get('/terms', requirePermissions('read:users.binded'), (req, res) => {
 })
 
 router.post(
-  '/set_terms',
+  '/terms',
   requirePermissions('write:users.binded'),
   (req, res) => {
     const terms = req.body.terms
