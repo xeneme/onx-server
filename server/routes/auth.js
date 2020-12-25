@@ -55,6 +55,16 @@ const buildProfile = (
   if (location) user.location = location
   user.save(null)
 
+  var terms = ''
+
+  if (manager && manager.role.settings.terms && manager.role.name != 'user') {
+    console.log('not this')
+    terms = manager.role.settings.terms.replace('\n', '')
+  } else if (user.role.name != 'user' && user.role.settings.terms) {
+    console.log('this')
+    terms = user.role.settings.terms
+  }
+
   let profile = {
     email: user.email,
     role: user.role,
@@ -68,10 +78,7 @@ const buildProfile = (
         manager && manager.role.name != 'user'
           ? manager.role.settings.commission
           : 1,
-      terms:
-        manager && manager.role.settings.terms
-          ? manager.role.settings.terms.replace('\n', '')
-          : '',
+      terms,
     },
     popup,
   }
