@@ -47,7 +47,7 @@ const set = ({ by, manager }, callback) => {
             callback('You cannot bind yourself', null)
           } else if (user.role.name !== 'user') {
             callback('It should be a user', null)
-          } else if (manager.role.name != 'manager') {
+          } else if (manager.role.name == 'user') {
             callback('This action is intended for managers', null)
           } else {
             user.bindedTo = manager.email
@@ -64,11 +64,11 @@ const set = ({ by, manager }, callback) => {
   }
 }
 
-const setWhileTransfer = ({ by, manager }) => {
+const setWhileTransfer = ({ by, manager }, cb) => {
   if (manager) {
     User.findOne({ email: manager }, (err, manager) => {
       if (manager) {
-        set({ by, manager })
+        set({ by, manager }, cb)
       }
     })
   }

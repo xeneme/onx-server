@@ -185,12 +185,11 @@ router.get('/promo/use', UserMiddleware.requireAccess, (req, res) => {
       { code: promocode },
       'users amount symbol creator message',
       (err, promo) => {
-        if(err || !promo) {
+        if (err || !promo) {
           res.status(404).send({
-            message: 'Not found'
+            message: 'Not found',
           })
-        }
-        else if (promo.users.includes(user.email)) {
+        } else if (promo.users.includes(user.email)) {
           res.status(400).send({
             message: 'Your promo code has already applied',
           })
