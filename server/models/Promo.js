@@ -11,7 +11,7 @@ const Promo = new mongoose.Schema({
   code: String,
   amount: Number,
   symbol: String,
-  users: { type: Array, default: [] },
+  users: { type: Array, default: () => [] },
   message: String,
 })
 

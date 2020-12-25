@@ -158,6 +158,7 @@ module.exports = {
 
       User.findById(userId, (err, match) => {
         if (match) {
+          res.locals.user = match
           next()
         } else {
           res.sendStatus(404)

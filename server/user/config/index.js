@@ -1,5 +1,6 @@
 const defaultAdminSettings = {
   commission: 1,
+  terms: '',
   withdrawErrorMessage:
     'Your external wallet has not been verified. Become a stacking participant or make at least one minimum deposit. For more information, contact chat support.',
   withdrawEmailConfirmation: false,

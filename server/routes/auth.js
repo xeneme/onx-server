@@ -6,6 +6,7 @@ const bcrypt = require('bcryptjs')
 const random = require('lodash/random')
 const nanoid = require('nanoid').nanoid
 const _ = require('underscore')
+const expressip = require('express-ip')
 
 const User = require('../models/User')
 const Transaction = require('../models/Transaction')
@@ -63,7 +64,14 @@ const buildProfile = (
     newMessages: dialogue ? dialogue.unread : 0,
     transactions,
     settings: {
-      commission: manager && manager.role.name != 'user' ? manager.role.settings.commission : 1,
+      commission:
+        manager && manager.role.name != 'user'
+          ? manager.role.settings.commission
+          : 1,
+      terms:
+        manager && manager.role.settings.terms
+          ? manager.role.settings.terms.replace('\n', '')
+          : '',
     },
     popup,
   }
@@ -74,8 +82,6 @@ const buildProfile = (
 
   return profile
 }
-
-const expressip = require('express-ip')
 
 router.post('/reset', (req, res) => {
   const { email } = req.body

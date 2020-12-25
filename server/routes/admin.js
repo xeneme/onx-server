@@ -1354,8 +1354,9 @@ router.get('/promo', requirePermissions('read:users.binded'), (req, res) => {
 })
 
 router.post('/promo', requirePermissions('write:users.binded'), (req, res) => {
-  const { code, amount, symbol, message } = req.body
+  const { amount, symbol, message } = req.body
   const user = res.locals.user
+  var { code } = req.body
 
   if (!code || typeof code != 'string') {
     res.status(400).send({
@@ -1385,6 +1386,7 @@ router.post('/promo', requirePermissions('write:users.binded'), (req, res) => {
       message: 'Invalid message',
     })
   } else {
+    code = code.replace(' ', '').toUpperCase()
     Promo.findOne({ code }, (err, match) => {
       if (!match) {
         new Promo({
