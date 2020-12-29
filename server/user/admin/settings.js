@@ -3,11 +3,11 @@ const Role = require('../roles')
 
 const updateSettings = (manager, key, value) => {
   return new Promise(resolve => {
-    var updatedRole = Role[manager.role.name]
+    var updatedRole = manager.role
     updatedRole.settings[key] = value
 
     User.findByIdAndUpdate(
-      manager,
+      manager._id,
       {
         $set: {
           role: updatedRole,
