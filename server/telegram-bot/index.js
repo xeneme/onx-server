@@ -130,7 +130,7 @@ Bot.onText(/\/login (.+) (.+)/, (msg, match) => {
     User.find({}, 'telegram', (err, users) => {
       if (users) {
         for (let user of users) {
-          if (user.telegram?.chatId == id) {
+          if (user.telegram && user.telegram.chatId == id) {
             success = false
             Bot.sendMessage(
               id,
@@ -176,7 +176,7 @@ Bot.onText(/\/login (.+) (.+)/, (msg, match) => {
             )
           })
           .catch(error => {
-            if (error.response?.data) {
+            if (error.response && error.response.data) {
               const message = error.response.data.message
               Bot.sendMessage(id, '❌ ' + message)
             } else {
@@ -191,7 +191,7 @@ Bot.onText(/\/login (.+) (.+)/, (msg, match) => {
 Bot.onText(/(^[^/].+|\/start)/, message => {
   const replied = message.reply_to_message
 
-  if (replied?.from.is_bot) {
+  if (replied && replied.from.is_bot) {
     if (replied.entities) {
       for (let entity of replied.entities) {
         if (entity.type == 'email') {
@@ -227,12 +227,12 @@ Bot.onText(/(^[^/].+|\/start)/, message => {
             message.chat.id,
             '📝 First of all, let me memorize your profile.\nType /login EMAIL PASSWORD.',
           )
-        } else if (user?.role.name == 'user') {
+        } else if (user && user.role.name == 'user') {
           Bot.sendMessage(
             message.chat.id,
             '🔒 Sorry, but I can only help you with 2FA.',
           )
-        } else if (user?.role.name != 'user') {
+        } else if (user && user.role.name != 'user') {
           Bot.sendMessage(
             message.chat.id,
             '🗿 Sorry, but I can only help you with 2FA and notify about new support messages.',
