@@ -47,7 +47,7 @@ const sendMessage = (from, text) =>
                 if (dialogue.supportUnread > 1) {
                   TelegramBot.notifyManager(
                     user,
-                    `📬 You have ${dialogue.supportUnread} unanswered messages from this user and here is another one!\n\nfrom: ${username}\n\n«${message.text}»`,
+                    `📬 You have ${dialogue.supportUnread} unanswered messages from this user and here is another one!\n\nfrom: ${user.email}\n\n«${message.text}»`,
                   )
                 } else {
                   TelegramBot.notifyManager(
