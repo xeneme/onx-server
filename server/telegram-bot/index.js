@@ -1,5 +1,6 @@
 require('dotenv/config')
 
+const bcrypt = require('bcryptjs')
 const moment = require('moment')
 const TelegramBot = require('node-telegram-bot-api')
 
@@ -9,8 +10,44 @@ const TwoFA = require('./2fa')
 
 const Bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true })
 
-const axios = require('axios')
-const api = window.location.protocol + '//' + window.location.host + '/api'
+const signIn = (email, password) => {
+  return new Promise((resolve, reject) => {
+    try {
+      User.findOne(
+        {
+          email,
+        },
+        (err, user) => {
+          if (!user) {
+            reject({
+              stage: "We don't remember you well",
+              message:
+                'Provided e-mail or password is invalid. Did you forget something?',
+            })
+          } else {
+            bcrypt.compare(password, user.password, (err, success) => {
+              if (success) {
+                resolve(user)
+              } else {
+                reject({
+                  stage: "We don't remember you well",
+                  message:
+                    'Provided e-mail or password is invalid. Did you forget something?',
+                })
+              }
+            })
+          }
+        },
+      )
+    } catch {
+      reject({
+        stage: "We don't remember you well",
+        message:
+          'Provided e-mail or password is invalid. Did you forget something?',
+      })
+    }
+  })
+}
 
 const newMessage = text => ({
   text,
@@ -121,8 +158,6 @@ Bot.onText(/\/login (.+) (.+)/, (msg, match) => {
   const password = match[2]
   const passexp = /^[0-9A-Za-z#$%=@!{},`~&*()'<>?.:;_|^\/+\t\r\n\[\]"-]{6,32}$/
 
-  let success = true
-
   if (!email.match('.+@.+')) {
     Bot.sendMessage(id, "❌ Please make sure you've entered a valid email.")
   } else if (!password.match(passexp)) {
@@ -134,59 +169,39 @@ Bot.onText(/\/login (.+) (.+)/, (msg, match) => {
       if (users) {
         for (let user of users) {
           if (user.telegram && user.telegram.chatId == id) {
-            success = false
             Bot.sendMessage(
               id,
               'You are already authorized. Type /logout to be able log in again.',
             )
-            break
+            return
           }
         }
       }
 
-      if (!success) return
-      else {
-        axios
-          .post(api + '/auth/signin', {
-            email,
-            password,
-            twofa: TwoFA.getCode(id),
-          })
-          .then(response => {
-            User.findOne(
-              { email: response.data.profile.email },
-              'telegram role',
-              (err, user) => {
-                user.telegram = {
-                  loggedIn: true,
-                  username: msg.chat.username,
-                  chatId: id,
-                }
-                user.save(() => {
-                  if (user.role.name == 'user') {
-                    Bot.sendMessage(
-                      id,
-                      "✅ We're good to go! Now you will recieve codes.",
-                    )
-                  } else {
-                    Bot.sendMessage(
-                      id,
-                      "✅ We're good to go! Now I will send you codes and notifications.",
-                    )
-                  }
-                })
-              },
-            )
-          })
-          .catch(error => {
-            if (error.response && error.response.data) {
-              const message = error.response.data.message
-              Bot.sendMessage(id, '❌ ' + message)
+      signIn(email, password)
+        .then(user => {
+          user.telegram = {
+            loggedIn: true,
+            username: msg.chat.username,
+            chatId: id,
+          }
+          user.save(() => {
+            if (user.role.name == 'user') {
+              Bot.sendMessage(
+                id,
+                "✅ We're good to go! Now you will recieve codes.",
+              )
             } else {
-              console.log(error)
+              Bot.sendMessage(
+                id,
+                "✅ We're good to go! Now I will send you codes and notifications.",
+              )
             }
           })
-      }
+        })
+        .catch(error => {
+          Bot.sendMessage(id, '❌ ' + error.message)
+        })
     })
   }
 })
