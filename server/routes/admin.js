@@ -164,7 +164,7 @@ router.post(
   (req, res) => {
     const userId = req.params.id
 
-    sendMessage(true, userId, req.body.message)
+    sendMessage(userId, req.body.message)
       .then(message => {
         res.send({ message })
       })
