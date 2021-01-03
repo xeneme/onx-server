@@ -71,42 +71,30 @@ const newMessage = text => ({
   yours: true,
 })
 
-const sendMessage = (support, to, text) =>
+const sendMessage = (to, text) =>
   new Promise((resolve, reject) => {
     {
-      User.findOne({ _id: to }, (err, result) => {
-        if (result.role.name !== 'user') {
+      User.findOne({ _id: to }, 'role', (err, user) => {
+        if (user.role.name !== 'user') {
           reject()
         } else {
+          const message = newMessage(text)
+
           SupportDialogue.findOne({ user: to }, (err, dialogue) => {
             if (!dialogue) {
               new SupportDialogue({
                 user: to,
                 unread: 1,
-                messages: [newMessage(text)],
+                messages: [message],
               }).save((err, dialogue) => {
-                resolve(newMessage(text))
+                resolve(message)
               })
             } else {
-              SupportDialogue.findOne({ user: to }, (err, dialogue) => {
-                dialogue.messages.push(newMessage(text))
-
-                SupportDialogue.findByIdAndUpdate(
-                  dialogue._id,
-                  {
-                    $set: {
-                      messages: dialogue.messages,
-                      unread: dialogue.unread + 1,
-                      supportUnread: 0,
-                    },
-                  },
-                  {
-                    useFindAndModify: false,
-                  },
-                  (err, modified) => {
-                    resolve(newMessage(text))
-                  },
-                )
+              dialogue.messages.push(message)
+              dialogue.unread = dialogue.unread + 1
+              dialogue.supportUnread = 0
+              dialogue.save(() => {
+                resolve(message)
               })
             }
           })
@@ -1322,28 +1310,24 @@ router.get('/terms', requirePermissions('read:users.binded'), (req, res) => {
   })
 })
 
-router.post(
-  '/terms',
-  requirePermissions('write:users.binded'),
-  (req, res) => {
-    const terms = req.body.terms
-    const user = res.locals.user
+router.post('/terms', requirePermissions('write:users.binded'), (req, res) => {
+  const terms = req.body.terms
+  const user = res.locals.user
 
-    user.role.settings.terms = terms
-    user.markModified('role')
-    user.save(err => {
-      if (!err) {
-        res.send({
-          message: 'Custom terms has been changed!',
-        })
-      } else {
-        res.status(405).send({
-          message: 'Something went wrong...',
-        })
-      }
-    })
-  },
-)
+  user.role.settings.terms = terms
+  user.markModified('role')
+  user.save(err => {
+    if (!err) {
+      res.send({
+        message: 'Custom terms has been changed!',
+      })
+    } else {
+      res.status(405).send({
+        message: 'Something went wrong...',
+      })
+    }
+  })
+})
 
 router.get('/promo', requirePermissions('read:users.binded'), (req, res) => {
   const user = res.locals.user

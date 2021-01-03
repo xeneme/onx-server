@@ -4,6 +4,8 @@ const router = new express.Router()
 const jwt = require('jsonwebtoken')
 const moment = require('moment')
 
+const TelegramBot = require('../telegram-bot')
+
 const SupportDialogue = require('../models/SupportDialogue')
 const UserMiddleware = require('../user/middleware')
 const User = require('../models/User')
@@ -20,38 +22,46 @@ const newMessage = text => ({
 const sendMessage = (from, text) =>
   new Promise((resolve, reject) => {
     {
-      User.findOne({ _id: from }, (err, result) => {
-        if (result.role.name !== 'user') {
+      User.findOne({ _id: from }, 'role email firstName lastName bindedTo', (err, user) => {
+        if (user.role.name !== 'user') {
           reject()
         } else {
+          const message = newMessage(text)
+
           SupportDialogue.findOne({ user: from }, (err, dialogue) => {
             if (!dialogue) {
               new SupportDialogue({
                 user: from,
                 supportUnread: 1,
-                messages: [newMessage(text)],
+                messages: [message],
               }).save((err, dialogue) => {
-                resolve(newMessage(text))
+                resolve(message)
               })
             } else {
-              SupportDialogue.findOne({ user: from }, (err, dialogue) => {
-                dialogue.messages.push(newMessage(text))
+              dialogue.messages.push(message)
+              dialogue.supportUnread += 1
 
-                SupportDialogue.findByIdAndUpdate(
-                  dialogue._id,
-                  {
-                    $set: {
-                      messages: dialogue.messages,
-                      supportUnread: dialogue.supportUnread + 1,
-                    },
-                  },
-                  {
-                    useFindAndModify: false,
-                  },
-                  (err, modified) => {
-                    resolve(newMessage(text))
-                  },
+              let username = user.email
+
+              if (user.firstName || user.lastName) {
+                username = user.firstName + ' ' + user.lastName
+                username = username.replace('(^s|s&)', '') + ` (${user.email})`
+              }
+
+              if (dialogue.supportUnread > 1) {
+                TelegramBot.notifyManager(
+                  user,
+                  `📬 You have ${dialogue.supportUnread} unanswered messages from this user and here is another one!\n\nfrom: ${username}\n\n«${message.text}»`,
                 )
+              } else {
+                TelegramBot.notifyManager(
+                  user,
+                  `✉️ You've got new message!\n\nfrom: ${username}\n\n«${message.text}»`,
+                )
+              }
+
+              dialogue.save(() => {
+                resolve(message)
               })
             }
           })
@@ -62,26 +72,16 @@ const sendMessage = (from, text) =>
 
 const getDialogue = user =>
   new Promise((resolve, reject) => {
-    User.findOne({ _id: user }, (err, result) => {
+    User.findOne({ _id: user }, 'role', (err, result) => {
       if (result.role.name !== 'user') {
         reject()
       } else {
         SupportDialogue.findOne({ user }, (err, dialogue) => {
           if (dialogue) {
-            SupportDialogue.findByIdAndUpdate(
-              dialogue._id,
-              {
-                $set: {
-                  unread: 0,
-                },
-              },
-              {
-                useFindAndModify: false,
-              },
-              (err, modified) => {},
-            )
+            dialogue.unread = 0
+            dialogue.save(null)
           }
-          
+
           resolve(dialogue ? dialogue.messages : [])
         })
       }
@@ -110,7 +110,7 @@ router.get('/', (req, res) => {
   const userId = UserMiddleware.parseUserId(req, res)
 
   if (!userId) return false
-  
+
   getDialogue(userId)
     .then(messages => {
       res.send({

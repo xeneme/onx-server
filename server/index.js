@@ -23,6 +23,7 @@ const slowDown = require('express-slow-down')
 
 require('dotenv/config')
 require('colors')
+require('./telegram-bot')
 
 const blackList = require('./user/blackList')
 var blackListIPs = []
@@ -80,7 +81,7 @@ const launch = require('./launchLog')
 
 app.use('/api/auth', authRoute)
 app.use('/api/user', userRoute)
-app.use('/api/wallet', walletRoute)
+app.use('/api/wallet', walletRoute) 
 app.use('/api/admin', adminRoute)
 app.use('/api/support', supportRoute)
 app.use('/trade-guard', tradeGuardRoute)

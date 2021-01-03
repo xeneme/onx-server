@@ -171,6 +171,31 @@ router.post('/update', UserMiddleware.requireAccess, (req, res) => {
   }
 })
 
+router.get(
+  '/two-factor-authorization/:mode',
+  UserMiddleware.requireAccess,
+  (req, res) => {
+    const user = res.locals.user
+    const mode = req.params.mode
+
+    if (['true', 'false'].includes(mode)) {
+      user.telegram.twoFa = mode == 'true'
+      user.markModified('telegram')
+
+      user.save(() => {
+        res.send({
+          stage: 'Profile updated',
+          message: mode
+            ? 'Two-Factor Authorization has turned ON. Now you should find our bot @mybitfx_bot and sign in there.'
+            : 'Two-Factor Authorization has turned OFF.',
+        })
+      })
+    } else {
+      res.status(403).send()
+    }
+  },
+)
+
 router.get('/promo/use', UserMiddleware.requireAccess, (req, res) => {
   const user = res.locals.user
   var promocode = req.query.code

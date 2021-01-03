@@ -10,7 +10,7 @@
   "dependencies": {
     "@hapi/joi": "^17.1.1",
     "@swyftx/api-crypto-address-validator": "^1.13.1",
-    "axios": "^0.21.0",
+    "axios": "^0.21.1",
     "bcryptjs": "^2.4.3",
     "body-parser": "^1.19.0",
     "coinbase": "^2.0.8",
@@ -31,6 +31,7 @@
     "momentjs": "^2.0.0",
     "mongoose": "^5.9.24",
     "nanoid": "^3.1.10",
+    "node-telegram-bot-api": "^0.51.0",
     "nodemailer": "^6.4.14",
     "public-ip": "^4.0.3",
     "socket.io": "^3.0.3",

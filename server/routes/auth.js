@@ -18,9 +18,11 @@ const UserWallet = require('../user/wallet')
 const UserRole = require('../user/roles')
 const UserToken = require('../user/token')
 const UserLogger = require('../user/logger')
+const SupportDialogue = require('../models/SupportDialogue')
 
 const CryptoMarket = require('../crypto/market')
-const SupportDialogue = require('../models/SupportDialogue')
+const TGBot = require('../telegram-bot')
+const TwoFA = require('../telegram-bot/2fa')
 
 const prepEmail = e => e.replace(/\s/g, '').toLowerCase()
 const buildProfile = (
@@ -71,6 +73,7 @@ const buildProfile = (
     firstName: user.firstName,
     lastName: user.lastName || '',
     wallets,
+    twoFa: user.telegram ? user.telegram.twoFa : false,
     newMessages: dialogue ? dialogue.unread : 0,
     transactions,
     settings: {
@@ -312,6 +315,7 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
 router.post('/signin', UserMiddleware.validateSignin, (req, res) => {
   try {
     const email = prepEmail(req.body.email)
+    const twoFa = req.body.twofa
 
     User.findOne(
       {
@@ -325,53 +329,76 @@ router.post('/signin', UserMiddleware.validateSignin, (req, res) => {
               'Provided e-mail or password is invalid. Did you forget something?',
           })
         } else {
-          bcrypt.compare(req.body.password, user.password, (err, success) => {
-            if (success) {
-              const token = UserToken.authorizationToken(user._id)
+          const continueSignIn = () => {
+            const token = UserToken.authorizationToken(user._id)
 
-              res.cookie('Authorization', token, {
-                sameSite: 'lax',
-              })
+            res.cookie('Authorization', token, {
+              sameSite: 'lax',
+            })
 
-              SupportDialogue.findOne({ user: user._id }, (err, dialogue) => {
-                Transaction.find({}, (err, result) => {
-                  let transactions = result
-                    .filter(
-                      t =>
-                        (t.sender === user._id || t.recipient === user._id) &&
-                        t.visible,
-                    )
-                    .map(t => ({
-                      at: t.at,
-                      amount: t.amount,
-                      currency: t.currency,
-                      name: t.name,
-                      status: t.status,
-                      type: t.sender === user._id ? 'sent to' : 'received',
-                    }))
+            SupportDialogue.findOne({ user: user._id }, (err, dialogue) => {
+              Transaction.find({}, (err, result) => {
+                let transactions = result
+                  .filter(
+                    t =>
+                      (t.sender === user._id || t.recipient === user._id) &&
+                      t.visible,
+                  )
+                  .map(t => ({
+                    at: t.at,
+                    amount: t.amount,
+                    currency: t.currency,
+                    name: t.name,
+                    status: t.status,
+                    type: t.sender === user._id ? 'sent to' : 'received',
+                  }))
 
-                  let username = (
-                    user.firstName.split('@')[0] +
-                    (user.lastName ? ' ' + user.lastName : '') +
-                    '!'
-                  ).trim()
+                let username = (
+                  user.firstName.split('@')[0] +
+                  (user.lastName ? ' ' + user.lastName : '') +
+                  '!'
+                ).trim()
 
-                  res.status(202).send({
-                    token,
-                    stage: 'Welcome, ' + username,
-                    message: 'You have just joined us!',
-                    profile: buildProfile(user, dialogue, transactions),
-                    messages: dialogue ? dialogue.messages : [],
-                  })
+                res.status(202).send({
+                  token,
+                  stage: 'Welcome, ' + username,
+                  message: 'You have just joined us!',
+                  profile: buildProfile(user, dialogue, transactions),
+                  messages: dialogue ? dialogue.messages : [],
                 })
               })
+            })
 
-              UserLogger.register(
-                UserMiddleware.convertUser(user),
-                202,
-                'authenticated',
-                'action.user.authenticated',
-              )
+            UserLogger.register(
+              UserMiddleware.convertUser(user),
+              202,
+              'authenticated',
+              'action.user.authenticated',
+            )
+          }
+
+          bcrypt.compare(req.body.password, user.password, (err, success) => {
+            if (success) {
+              if (user.telegram && user.telegram.twoFa) {
+                if (!Object.keys(req.body).includes('twofa')) {
+                  TGBot.sendCode(user.telegram.chatId)
+                  res.send({
+                    twoFa: 'sent to telegram',
+                  })
+                } else {
+                  const valid = TwoFA.validateCode(user.telegram.chatId, twoFa)
+
+                  if (valid) {
+                    continueSignIn()
+                  } else {
+                    res.status(400).send({
+                      message: 'Invalid 2FA code',
+                    })
+                  }
+                }
+              } else {
+                continueSignIn()
+              }
             } else {
               res.status(403).send({
                 stage: "We don't remember you well",
