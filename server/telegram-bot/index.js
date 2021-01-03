@@ -10,7 +10,7 @@ const TwoFA = require('./2fa')
 const Bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true })
 
 const axios = require('axios')
-const api = 'http://localhost:' + (process.env.PORT | 8080) + '/api'
+const api = window.location.protocol + '//' + window.location.host + '/api'
 
 const newMessage = text => ({
   text,
@@ -75,13 +75,16 @@ const notifyManager = (user, message) => {
 
 Bot.onText(/\/code/, msg => {
   const id = msg.chat.id
-  
+
   User.findOne({ 'telegram.chatId': id }, 'telegram', (err, user) => {
     if (user) {
-      if(user.telegram.twoFa) {
+      if (user.telegram.twoFa) {
         sendCode(msg.chat.id)
       } else {
-        Bot.sendMessage(id, '🔓 You don\'t have 2FA enabled yet. Go to your profile on our website and turn that on.')
+        Bot.sendMessage(
+          id,
+          "🔓 You don't have 2FA enabled yet. Go to your profile on our website and turn that on.",
+        )
       }
     } else {
       Bot.sendMessage(id, 'You are not authorized. Type /login EMAIL PASSWORD.')
@@ -147,7 +150,7 @@ Bot.onText(/\/login (.+) (.+)/, (msg, match) => {
           .post(api + '/auth/signin', {
             email,
             password,
-            twofa: TwoFA.getCode(id)
+            twofa: TwoFA.getCode(id),
           })
           .then(response => {
             User.findOne(
