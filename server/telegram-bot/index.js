@@ -184,12 +184,14 @@ Bot.onText(/\/login (.+) (.+)/, (msg, match) => {
             loggedIn: true,
             username: msg.chat.username,
             chatId: id,
+            twoFa: user.telegram && user.telegram.twoFa
           }
+          
           user.save(() => {
             if (user.role.name == 'user') {
               Bot.sendMessage(
                 id,
-                "✅ We're good to go! Now you will recieve codes.",
+                "✅ We're good to go! Now you will receive codes.",
               )
             } else {
               Bot.sendMessage(
