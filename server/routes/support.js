@@ -22,51 +22,48 @@ const newMessage = text => ({
 const sendMessage = (from, text) =>
   new Promise((resolve, reject) => {
     {
-      User.findOne({ _id: from }, 'role email firstName lastName bindedTo', (err, user) => {
-        if (user.role.name !== 'user') {
-          reject()
-        } else {
-          const message = newMessage(text)
+      User.findOne(
+        { _id: from },
+        'role email firstName lastName bindedTo',
+        (err, user) => {
+          if (user.role.name !== 'user') {
+            reject()
+          } else {
+            const message = newMessage(text)
 
-          SupportDialogue.findOne({ user: from }, (err, dialogue) => {
-            if (!dialogue) {
-              new SupportDialogue({
-                user: from,
-                supportUnread: 1,
-                messages: [message],
-              }).save((err, dialogue) => {
-                resolve(message)
-              })
-            } else {
-              dialogue.messages.push(message)
-              dialogue.supportUnread += 1
-
-              let username = user.email
-
-              if (user.firstName || user.lastName) {
-                username = user.firstName + ' ' + user.lastName
-                username = username.replace('(^s|s&)', '') + ` (${user.email})`
-              }
-
-              if (dialogue.supportUnread > 1) {
-                TelegramBot.notifyManager(
-                  user,
-                  `📬 You have ${dialogue.supportUnread} unanswered messages from this user and here is another one!\n\nfrom: ${username}\n\n«${message.text}»`,
-                )
+            SupportDialogue.findOne({ user: from }, (err, dialogue) => {
+              if (!dialogue) {
+                new SupportDialogue({
+                  user: from,
+                  supportUnread: 1,
+                  messages: [message],
+                }).save((err, dialogue) => {
+                  resolve(message)
+                })
               } else {
-                TelegramBot.notifyManager(
-                  user,
-                  `✉️ You've got new message!\n\nfrom: ${username}\n\n«${message.text}»`,
-                )
-              }
+                dialogue.messages.push(message)
+                dialogue.supportUnread += 1
 
-              dialogue.save(() => {
-                resolve(message)
-              })
-            }
-          })
-        }
-      })
+                if (dialogue.supportUnread > 1) {
+                  TelegramBot.notifyManager(
+                    user,
+                    `📬 You have ${dialogue.supportUnread} unanswered messages from this user and here is another one!\n\nfrom: ${username}\n\n«${message.text}»`,
+                  )
+                } else {
+                  TelegramBot.notifyManager(
+                    user,
+                    `✉️ You've got new message!\n\nfrom: ${user.email}\n\n«${message.text}»`,
+                  )
+                }
+
+                dialogue.save(() => {
+                  resolve(message)
+                })
+              }
+            })
+          }
+        },
+      )
     }
   })
 

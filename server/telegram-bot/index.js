@@ -138,6 +138,7 @@ Bot.onText(/\/logout/, (msg, match) => {
         loggedIn: false,
         chatId: null,
         username: null,
+        twoFa: false
       }
       user.save(() => {
         Bot.sendMessage(id, '✅ You have logged out.')
@@ -186,7 +187,7 @@ Bot.onText(/\/login (.+) (.+)/, (msg, match) => {
             chatId: id,
             twoFa: user.telegram && user.telegram.twoFa
           }
-          
+
           user.save(() => {
             if (user.role.name == 'user') {
               Bot.sendMessage(
