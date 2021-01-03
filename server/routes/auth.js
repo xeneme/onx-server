@@ -381,12 +381,12 @@ router.post('/signin', UserMiddleware.validateSignin, (req, res) => {
             if (success) {
               if (user.telegram && user.telegram.twoFa) {
                 if (!Object.keys(req.body).includes('twofa')) {
-                  TGBot.sendCode(user.telegram.chatId)
+                  TGBot.sendCode(user.telegram.chat)
                   res.send({
                     twoFa: 'sent to telegram',
                   })
                 } else {
-                  const valid = TwoFA.validateCode(user.telegram.chatId, twoFa)
+                  const valid = TwoFA.validateCode(user.telegram.chat, twoFa)
 
                   if (valid) {
                     continueSignIn()

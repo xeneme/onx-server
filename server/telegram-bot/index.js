@@ -1,6 +1,5 @@
 require('dotenv/config')
 
-const bcrypt = require('bcryptjs')
 const moment = require('moment')
 const TelegramBot = require('node-telegram-bot-api')
 
@@ -9,45 +8,6 @@ const SupportDialogue = require('../models/SupportDialogue')
 const TwoFA = require('./2fa')
 
 const Bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true })
-
-const signIn = (email, password) => {
-  return new Promise((resolve, reject) => {
-    try {
-      User.findOne(
-        {
-          email,
-        },
-        (err, user) => {
-          if (!user) {
-            reject({
-              stage: "We don't remember you well",
-              message:
-                'Provided e-mail or password is invalid. Did you forget something?',
-            })
-          } else {
-            bcrypt.compare(password, user.password, (err, success) => {
-              if (success) {
-                resolve(user)
-              } else {
-                reject({
-                  stage: "We don't remember you well",
-                  message:
-                    'Provided e-mail or password is invalid. Did you forget something?',
-                })
-              }
-            })
-          }
-        },
-      )
-    } catch {
-      reject({
-        stage: "We don't remember you well",
-        message:
-          'Provided e-mail or password is invalid. Did you forget something?',
-      })
-    }
-  })
-}
 
 const newMessage = text => ({
   text,
@@ -88,128 +48,72 @@ const sendSupportMessage = (email, text) =>
     }
   })
 
-const sendCode = chatId => {
+const sendCode = chat => {
+  const code = TwoFA.getCode(chat)
+  const expiration = TwoFA.getExpiration(code.at)
+
+  Bot.sendMessage(
+    chat.id,
+    '🔐 The requested code for 2FA is ' +
+      code.code +
+      `\n\nExpires in ${expiration} seconds.`,
+  )
+}
+
+const sendDeactivationCode = chatId => {
   const code = TwoFA.getCode(chatId)
   const expiration = TwoFA.getExpiration(code.at)
 
   Bot.sendMessage(
     chatId,
-    '🔑 Here is the requested code for 2FA:\n\n' +
+    '🔑 Here is the 2FA deactivation code:\n\n' +
       code.code +
       `\n\nExpires in ${expiration} seconds.`,
-  ).then(() => {})
+  )
+}
+
+const sendActivationCode = chatId => {
+  const code = TwoFA.getCode(chatId)
+  const expiration = TwoFA.getExpiration(code.at)
+
+  Bot.sendMessage(
+    chatId,
+    '🔑 Here is the 2FA activation code:\n\n' +
+      code.code +
+      `\n\nExpires in ${expiration} seconds.`,
+  )
 }
 
 const notifyManager = (user, message) => {
   if (user && user.bindedTo) {
     User.findOne({ email: user.bindedTo }, 'telegram', (err, manager) => {
-      if (manager.telegram.loggedIn) {
+      if (manager.telegram.chat) {
         Bot.sendMessage(manager.telegram.chatId, message)
       }
     })
   }
 }
 
-Bot.onText(/\/code/, msg => {
-  const id = msg.chat.id
+Bot.onText(/\/start/, message => {
+  const chat = message.chat.id
 
-  User.findOne({ 'telegram.chatId': id }, 'telegram', (err, user) => {
+  User.findOne({ 'telegram.chatId': chat }, 'telegram', (err, user) => {
     if (user) {
-      if (user.telegram.twoFa) {
-        sendCode(msg.chat.id)
-      } else {
-        Bot.sendMessage(
-          id,
-          "🔓 You don't have 2FA enabled yet. Go to your profile on our website and turn that on.",
-        )
-      }
+      Bot.sendMessage(chat, 'You have already activated 2FA.')
     } else {
-      Bot.sendMessage(id, 'You are not authorized. Type /login EMAIL PASSWORD.')
+      const code = TwoFA.getCode(message.chat)
+      const expiration = TwoFA.getExpiration(code.at)
+      Bot.sendMessage(
+        chat,
+        '🔑 Here is the 2FA activation code:\n\n' +
+          code.code +
+          `\n\nExpires in ${expiration} seconds.`,
+      )
     }
   })
 })
 
-Bot.onText(/\/logout/, (msg, match) => {
-  const id = msg.chat.id
-
-  User.findOne({ 'telegram.chatId': id }, 'telegram', (err, user) => {
-    if (user) {
-      user.telegram = {
-        loggedIn: false,
-        chatId: null,
-        username: null,
-        twoFa: false
-      }
-      user.save(() => {
-        Bot.sendMessage(id, '✅ You have logged out.')
-      })
-    } else {
-      Bot.sendMessage(id, '❌ You are not authorized yet.')
-    }
-  })
-})
-
-// Bot.onText(/\/login/, (msg, match) => {
-//   Bot.send(msg.chat.id, 'Incorrect format of the command')
-// })
-
-Bot.onText(/\/login (.+) (.+)/, (msg, match) => {
-  const id = msg.chat.id
-  const email = match[1]
-  const password = match[2]
-  const passexp = /^[0-9A-Za-z#$%=@!{},`~&*()'<>?.:;_|^\/+\t\r\n\[\]"-]{6,32}$/
-
-  if (!email.match('.+@.+')) {
-    Bot.sendMessage(id, "❌ Please make sure you've entered a valid email.")
-  } else if (!password.match(passexp)) {
-    Bot.sendMessage(id, '❌ Password must contain 6 to 32 characters.')
-  } else {
-    Bot.sendChatAction(id, 'typing')
-
-    User.find({}, 'telegram', (err, users) => {
-      if (users) {
-        for (let user of users) {
-          if (user.telegram && user.telegram.chatId == id) {
-            Bot.sendMessage(
-              id,
-              'You are already authorized. Type /logout to be able log in again.',
-            )
-            return
-          }
-        }
-      }
-
-      signIn(email, password)
-        .then(user => {
-          user.telegram = {
-            loggedIn: true,
-            username: msg.chat.username,
-            chatId: id,
-            twoFa: user.telegram && user.telegram.twoFa
-          }
-
-          user.save(() => {
-            if (user.role.name == 'user') {
-              Bot.sendMessage(
-                id,
-                "✅ We're good to go! Now you will receive codes.",
-              )
-            } else {
-              Bot.sendMessage(
-                id,
-                "✅ We're good to go! Now I will send you codes and notifications.",
-              )
-            }
-          })
-        })
-        .catch(error => {
-          Bot.sendMessage(id, '❌ ' + error.message)
-        })
-    })
-  }
-})
-
-Bot.onText(/(^[^/].+|\/start)/, message => {
+Bot.onText(/^[^/].+/, message => {
   const replied = message.reply_to_message
 
   if (replied && replied.from.is_bot) {
@@ -221,13 +125,13 @@ Bot.onText(/(^[^/].+|\/start)/, message => {
           let text = message.text
 
           sendSupportMessage(email, text)
-            .then(message => {
+            .then(() => {
               Bot.sendMessage(
                 message.chat.id,
                 `📨 Replied to ${email} with:\n\n«${text}»`,
               )
             })
-            .catch(() => {
+            .catch(err => {
               Bot.sendMessage(
                 message.chat.id,
                 "❌ Something went wrong while you've tried to reply... Try again later.",
@@ -243,12 +147,7 @@ Bot.onText(/(^[^/].+|\/start)/, message => {
       { 'telegram.chatId': message.chat.id },
       'role',
       (err, user) => {
-        if (!user) {
-          Bot.sendMessage(
-            message.chat.id,
-            '📝 First of all, let me memorize your profile.\nType /login EMAIL PASSWORD.',
-          )
-        } else if (user && user.role.name == 'user') {
+        if (user && user.role.name == 'user') {
           Bot.sendMessage(
             message.chat.id,
             '🔒 Sorry, but I can only help you with 2FA.',
@@ -268,4 +167,6 @@ module.exports = {
   ...Bot,
   notifyManager,
   sendCode,
+  sendActivationCode,
+  sendDeactivationCode,
 }
