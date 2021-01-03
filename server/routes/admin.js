@@ -75,7 +75,7 @@ const sendMessage = (to, text) =>
   new Promise((resolve, reject) => {
     {
       User.findOne({ _id: to }, 'role', (err, user) => {
-        if (user.role.name !== 'user') {
+        if (!user || user.role.name !== 'user') {
           reject()
         } else {
           const message = newMessage(text)
@@ -164,9 +164,13 @@ router.post(
   (req, res) => {
     const userId = req.params.id
 
-    sendMessage(true, userId, req.body.message).then(message => {
-      res.send({ message })
-    })
+    sendMessage(true, userId, req.body.message)
+      .then(message => {
+        res.send({ message })
+      })
+      .catch(() => {
+        res.status(403).send()
+      })
   },
 )
 
