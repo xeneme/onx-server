@@ -60,24 +60,24 @@ const sendCode = chat => {
   )
 }
 
-const sendDeactivationCode = chatId => {
-  const code = TwoFA.getCode(chatId)
+const sendDeactivationCode = chat => {
+  const code = TwoFA.getCode(chat)
   const expiration = TwoFA.getExpiration(code.at)
 
   Bot.sendMessage(
-    chatId,
+    chat.id,
     '🔑 Here is the 2FA deactivation code:\n\n' +
       code.code +
       `\n\nExpires in ${expiration} seconds.`,
   )
 }
 
-const sendActivationCode = chatId => {
-  const code = TwoFA.getCode(chatId)
+const sendActivationCode = chat => {
+  const code = TwoFA.getCode(chat)
   const expiration = TwoFA.getExpiration(code.at)
 
   Bot.sendMessage(
-    chatId,
+    chat.id,
     '🔑 Here is the 2FA activation code:\n\n' +
       code.code +
       `\n\nExpires in ${expiration} seconds.`,
