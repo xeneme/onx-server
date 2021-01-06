@@ -49,6 +49,8 @@ const sendSupportMessage = (email, text) =>
   })
 
 const sendCode = chat => {
+  if(!chat || !chat.id) return
+
   const code = TwoFA.getCode(chat)
   const expiration = TwoFA.getExpiration(code.at)
 
@@ -61,6 +63,8 @@ const sendCode = chat => {
 }
 
 const sendDeactivationCode = chat => {
+  if(!chat || !chat.id) return
+
   const code = TwoFA.getCode(chat)
   const expiration = TwoFA.getExpiration(code.at)
 
@@ -73,6 +77,8 @@ const sendDeactivationCode = chat => {
 }
 
 const sendActivationCode = chat => {
+  if(!chat || !chat.id) return
+
   const code = TwoFA.getCode(chat)
   const expiration = TwoFA.getExpiration(code.at)
 
@@ -101,6 +107,8 @@ Bot.onText(/\/start/, message => {
     if (user) {
       Bot.sendMessage(chat, 'You have already activated 2FA.')
     } else {
+      if(!message.chat || !message.chat.id) return
+
       const code = TwoFA.getCode(message.chat)
       const expiration = TwoFA.getExpiration(code.at)
       Bot.sendMessage(

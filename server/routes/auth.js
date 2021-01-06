@@ -73,7 +73,7 @@ const buildProfile = (
     firstName: user.firstName,
     lastName: user.lastName || '',
     wallets,
-    twoFa: user.telegram ? user.telegram.twoFa : false,
+    twoFa: user.telegram && user.telegram.chat ? user.telegram.twoFa : false,
     newMessages: dialogue ? dialogue.unread : 0,
     transactions,
     settings: {
@@ -379,7 +379,7 @@ router.post('/signin', UserMiddleware.validateSignin, (req, res) => {
 
           bcrypt.compare(req.body.password, user.password, (err, success) => {
             if (success) {
-              if (user.telegram && user.telegram.twoFa) {
+              if (user.telegram && user.telegram.twoFa && user.telegram.chat) {
                 if (!Object.keys(req.body).includes('twofa')) {
                   TGBot.sendCode(user.telegram.chat)
                   res.send({

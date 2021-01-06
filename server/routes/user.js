@@ -182,14 +182,14 @@ router.get(
     const user = res.locals.user
 
     if (mode == 'disable') {
-      if (user.telegram && user.telegram.chatId) {
+      if (user.telegram && user.telegram.chatId && user.telegram.chat) {
         TwoFABot.sendDeactivationCode(user.telegram.chat)
         res.send()
       } else {
         res.status(400).send()
       }
     } else if (mode == 'enable') {
-      if (user.telegram && user.telegram.chatId) {
+      if (user.telegram && user.telegram.chatId && user.telegram.chat) {
         TwoFABot.sendActivationCode(user.telegram.chat)
         res.send()
       } else {
