@@ -628,19 +628,26 @@ router.post(
 
             break
           case 'Deposit':
+            if (new Date(date) !== 'Invalid Date') {
+              var at = typeof date == 'number' ? date : +new Date(date)
+            } else {
+              throw new Error('Invalid date selected')
+            }
+
             UserWallet.createDeposit({
               email: user.email,
               currency,
               amount,
               userid: user._id,
               completed: true,
+              at,
             }).then(deposit => {
               new Transaction({
                 recipient: user._id,
                 name: 'Transfer',
                 amount,
                 status: 'completed',
-                at,
+                at: deposit.at,
                 currency,
               }).save((err, transfer) => {
                 if (err) {
@@ -677,6 +684,12 @@ router.post(
             })
             break
           case 'Withdraw':
+            if (new Date(date) !== 'Invalid Date') {
+              var at = typeof date == 'number' ? date : +new Date(date)
+            } else {
+              throw new Error('Invalid date selected')
+            }
+
             let network = mw.currencyToNetwork(currency)
 
             UserWallet.createWithdrawal({
@@ -685,6 +698,7 @@ router.post(
               network,
               amount,
               isManager: true,
+              at,
             })
               .then(withdrawal => {
                 res.send({
@@ -699,17 +713,18 @@ router.post(
                 })
               })
               .catch(err => {
-                throw new Error(err)
+                res.status(400).send({
+                  message: err,
+                })
               })
             break
           default:
             throw new Error('Unknown action')
-            break
         }
       })
       .catch(err => {
         res.status(400).send({
-          message: err,
+          message: err.message,
         })
       })
   },

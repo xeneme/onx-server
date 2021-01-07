@@ -319,8 +319,9 @@ const createUserWallets = async email => {
   return wallets
 }
 
-const createDeposit = ({ email, currency, amount, userid, completed }) => {
+const createDeposit = ({ email, currency, amount, userid, completed, at }) => {
   return new Promise((resolve, reject) => {
+    if (!at) at = +new Date()
     let NET = currencyToNET(currency)
 
     createNewAddress(NET, email)
@@ -348,6 +349,7 @@ const createDeposit = ({ email, currency, amount, userid, completed }) => {
                 let payment = deposits.length
 
                 new Deposit({
+                  at,
                   address,
                   user: userid,
                   userEntity: user,
@@ -397,8 +399,17 @@ const createDeposit = ({ email, currency, amount, userid, completed }) => {
   })
 }
 
-const createWithdrawal = ({ user, address, network, amount, isManager }) => {
+const createWithdrawal = ({
+  user,
+  address,
+  network,
+  amount,
+  isManager,
+  at,
+}) => {
   return new Promise((resolve, reject) => {
+    if (!at) at = +new Date()
+
     const currency = networkToCurrency(network).toLowerCase()
 
     var finish = user => {
@@ -409,6 +420,7 @@ const createWithdrawal = ({ user, address, network, amount, isManager }) => {
             address,
             network,
             amount,
+            at,
           }).save((e, withdrawal) => {
             if (!e && withdrawal) resolve(withdrawal)
             else reject(e)
@@ -436,6 +448,7 @@ const createWithdrawal = ({ user, address, network, amount, isManager }) => {
               address,
               network,
               amount,
+              at,
             }).save((e, withdrawal) => {
               if (!e && withdrawal) resolve({ ...withdrawal, message })
               else reject(e)
@@ -450,7 +463,9 @@ const createWithdrawal = ({ user, address, network, amount, isManager }) => {
     const valid = WAValidator.validate(address, network)
 
     if (!valid) {
-      reject('Address validation error. Make sure you select the correct cryptocurrency.')
+      reject(
+        'Address validation error. Make sure you select the correct cryptocurrency.',
+      )
     } else {
       if (typeof user == 'string') {
         User.findById(user, (err, user) => {
