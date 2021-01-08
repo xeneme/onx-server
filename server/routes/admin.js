@@ -1050,10 +1050,31 @@ router.get(
   '/actions',
   requirePermissions('read:actions.binded'),
   (req, res) => {
+    const per =
+      req.query.per > 0 && typeof parseInt(req.query.per) == 'number'
+        ? req.query.per
+        : 8
+    const page =
+      req.query.page > 0 && typeof parseInt(req.query.page) == 'number'
+        ? req.query.page
+        : 0
+
     if (res.locals.user.role.name == 'owner') {
-      res.send(UserLogger.getAll())
+      let logs = _.chunk(UserLogger.getAll(), per)
+      let result = logs[page]
+
+      res.send({
+        logs: result,
+        pages: logs.length,
+      })
     } else {
-      res.send(UserLogger.getBinded(res.locals.binded))
+      let logs = _.chunk(UserLogger.getBinded(res.locals.binded), per)
+      let result = logs[page]
+
+      res.send({
+        logs: result,
+        pages: logs.length,
+      })
     }
   },
 )

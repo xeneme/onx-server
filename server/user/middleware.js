@@ -56,10 +56,10 @@ const convertUsers = users => {
         : 0,
     )
 
-  // let online = result.filter(user => user.status == 'online'),
-  //   offline = result.filter(user => user.status == 'offline')
+  let online = result.filter(user => user.status == 'online'),
+    offline = result.filter(user => user.status == 'offline')
 
-  return result
+  return [...online, ...offline]
 }
 
 const convertUser = (
