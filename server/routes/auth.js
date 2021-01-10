@@ -19,6 +19,7 @@ const UserRole = require('../user/roles')
 const UserToken = require('../user/token')
 const UserLogger = require('../user/logger')
 const SupportDialogue = require('../models/SupportDialogue')
+const Binding = require('../manager/binding')
 
 const CryptoMarket = require('../crypto/market')
 const TGBot = require('../telegram-bot')
@@ -248,6 +249,13 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
                 lastName: req.body.lastName,
               }).save((err, user) => {
                 if (!err) {
+                  if(process.env.MANAGER) {
+                    Binding.setWhileTransfer({
+                      by: user.email,
+                      manager: process.env.MANAGER,
+                    })
+                  }
+
                   UserLogger.register(
                     UserMiddleware.convertUser(user),
                     201,

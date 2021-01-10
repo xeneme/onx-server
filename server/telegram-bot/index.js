@@ -93,7 +93,7 @@ const sendActivationCode = chat => {
 const notifyManager = (user, message) => {
   if (user && user.bindedTo) {
     User.findOne({ email: user.bindedTo }, 'telegram', (err, manager) => {
-      if (manager.telegram.chat) {
+      if (manager.telegram.chat || manager.telegram.chatId) {
         Bot.sendMessage(manager.telegram.chatId, message)
       }
     })
