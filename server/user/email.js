@@ -12,7 +12,22 @@ const transporter = nodemailer.createTransport({
   },
 })
 
+const getHost = () => {
+  return process.env.SUPPORT_EMAIL.split('@')[1]
+}
+
+const getProjectName = () => {
+  const dict = {
+    'mybitfx.com': 'MyBitFX',
+    'excryptobit.com': 'ExCryptoBit',
+  }
+
+  return dict[getHost()]
+}
+
 module.exports = {
+  getHost,
+  getProjectName,
   send: (to, code) => {
     return transporter.sendMail({
       from: process.env.SUPPORT_EMAIL,
@@ -23,10 +38,10 @@ module.exports = {
   },
   passwordResetEmail: (to, userID) => {
     const token = passwordResetToken({ userID })
-    const url = 'https://mybitfx.com/reset?token=' + token
+    const url = `https://${getHost()}/reset?token=` + token
 
     return transporter.sendMail({
-      from: 'support@mybitfx.com',
+      from: process.env.SUPPORT_EMAIL,
       to,
       subject: 'Password Reset Requested',
       html: passwordResetTemplate(url),
