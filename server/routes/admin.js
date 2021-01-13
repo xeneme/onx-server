@@ -3,8 +3,6 @@ const router = express.Router()
 const jwt = require('jsonwebtoken')
 const moment = require('moment')
 const _ = require('underscore')
-const fs = require('fs')
-const path = require('path')
 
 const User = require('../models/User')
 // const LoggerAction = require('../models/LoggerAction')
@@ -24,6 +22,7 @@ const UserToken = require('../user/token')
 const mw = require('../user/middleware')
 const UserWallet = require('../user/wallet')
 const UserLogger = require('../user/logger')
+const UserConfig = require('../user/config')
 
 require('colors')
 
@@ -1340,9 +1339,7 @@ router.get('/terms', requirePermissions('read:users.binded'), (req, res) => {
   var terms = user.role.settings.terms
 
   if (!terms) {
-    terms = fs.readFileSync(path.join(__dirname, '../assets/TERMS.txt'), {
-      encoding: 'utf-8',
-    })
+    terms = UserConfig.getDefaultTerms()
   }
 
   res.send({

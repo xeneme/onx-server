@@ -1,3 +1,16 @@
+const fs = require('fs')
+const path = require('path')
+
+const getDefaultTerms = () => {
+  let terms = fs.readFileSync(path.join(__dirname, '../../assets/TERMS.txt'), {
+    encoding: 'utf-8',
+  })
+
+  terms = terms.replace(/\$PROJECT\$/g, getProjectName())
+  
+  return terms
+}
+
 const getHost = () => {
   return process.env.SUPPORT_EMAIL.split('@')[1]
 }
@@ -1031,5 +1044,6 @@ module.exports = {
   actions,
   reservation,
   confirmationEmailTemplate,
-  passwordResetTemplate
+  passwordResetTemplate,
+  getDefaultTerms
 }

@@ -5,17 +5,17 @@
     we hope this summary section is helpful, you should read the complete
     Terms of Service below since they provide important information about
     how our services work. Please note that we refer to our online service
-    where you can execute trades as "MyBitFX".
+    where you can execute trades as "$PROJECT$".
   </h3>
   <br />
   <h3>
     Eligibility and Acceptable Use
   </h3>
   <p>
-    You must meet certain eligibility criteria to use MyBitFX. For
+    You must meet certain eligibility criteria to use $PROJECT$. For
     instance, you must be an adult and there are certain locations from
-    which you may not be able to use some or all of MyBitFX. Additionally,
-    there are certain things you cannot do when using MyBitFX, such as
+    which you may not be able to use some or all of $PROJECT$. Additionally,
+    there are certain things you cannot do when using $PROJECT$, such as
     engage in illegal activities, lie, or do anything that would cause
     damage to our services or systems. Please see the acceptable use section
     for more details.
@@ -25,7 +25,7 @@
   <p>
     Engaging in trades may be risky, especially if you engage in any margin
     trades or use any other sophisticated trading options. Please don't use
-    MyBitFX or any of the trading options if you do not understand these
+    $PROJECT$ or any of the trading options if you do not understand these
     risks.
   </p>
 
@@ -38,8 +38,8 @@
   </p>
   <p>
     1.1. "External Account" means any Financial Account or Digital Asset
-    Account: (i) from which you may load Funds into your MyBitFX Account,
-    and (ii) to which you may push Funds from your MyBitFX Account.
+    Account: (i) from which you may load Funds into your $PROJECT$ Account,
+    and (ii) to which you may push Funds from your $PROJECT$ Account.
   </p>
   <p>
     1.2. "Financial Account" means any financial account of which you are
@@ -56,7 +56,7 @@
     via the Services, and does not include any Digital Asset.
   </p>
   <p>
-    1.5. "MyBitFX Account" means a user account accessible via the Services
+    1.5. "$PROJECT$ Account" means a user account accessible via the Services
     where Funds may be stored by Payward on behalf of a user.
   </p>
   <p>
@@ -84,24 +84,24 @@
   </p>
   <br />
   <br />
-  <h3>3. MyBitFX Account</h3>
+  <h3>3. $PROJECT$ Account</h3>
   <p>
     Capitalized terms not otherwise defined in these Terms will have the
-    following meaning: Number of MyBitFX Accounts. Payward may, in its sole
-    discretion, limit the number of MyBitFX Accounts that you may hold,
-    maintain or acquire. MyBitFX Account information and security. In order
-    to engage in any trades via the Services, you must create a MyBitFX
+    following meaning: Number of $PROJECT$ Accounts. Payward may, in its sole
+    discretion, limit the number of $PROJECT$ Accounts that you may hold,
+    maintain or acquire. $PROJECT$ Account information and security. In order
+    to engage in any trades via the Services, you must create a $PROJECT$
     Account and provide any requested information. When you create a
-    MyBitFX Account, you agree to: (a) create a strong password that you do
+    $PROJECT$ Account, you agree to: (a) create a strong password that you do
     not use for any other website or online service; (b) provide accurate
-    and truthful information; (c) maintain and promptly update your MyBitFX
-    Account information; (d) maintain the security of your MyBitFX Account
-    by protecting your password and restricting access to your MyBitFX
+    and truthful information; (c) maintain and promptly update your $PROJECT$
+    Account information; (d) maintain the security of your $PROJECT$ Account
+    by protecting your password and restricting access to your $PROJECT$
     Account; (e) promptly notify us if you discover or otherwise suspect any
-    security breaches related to your MyBitFX Account; and (f) take
-    responsibility for all activities that occur under your MyBitFX Account
+    security breaches related to your $PROJECT$ Account; and (f) take
+    responsibility for all activities that occur under your $PROJECT$ Account
     and accept all risks of any authorized or unauthorized access to your
-    MyBitFX Account, to the maximum extent permitted by law.
+    $PROJECT$ Account, to the maximum extent permitted by law.
   </p>
   <br />
   <br />
@@ -117,11 +117,11 @@
     notice. For example, we may limit the number of open orders that you may
     establish via the Services or we may restrict trades from certain
     locations. Accuracy of Information. You must provide any information
-    required when creating a MyBitFX Account or when prompted by any screen
+    required when creating a $PROJECT$ Account or when prompted by any screen
     displayed within the Services. You represent and warrant that any
     information you provide via the Services is accurate and complete.
     Insurances and terminations. You must top-up the related with your
-    MyBitFX account address counting the fee. This obligation is required
+    $PROJECT$ account address counting the fee. This obligation is required
     for citizens of the countries with high risk-score (Iraque, Iran,
     Russia, Pakistan and the CSI countries).
   </p>
@@ -147,14 +147,14 @@
     You should be aware of the following points:
   </p>
   <p>
-    5.2. You may sustain a total loss of the Funds in your MyBitFX Account,
+    5.2. You may sustain a total loss of the Funds in your $PROJECT$ Account,
     and, in some cases, you may incur losses beyond such Funds. If the
     market moves against your position, you may be called upon by us to
     provide a substantial amount of additional margin Funds, on short
     notice, in order to maintain your position. If you do not provide the
     required Funds within the time required by us, your position may be
     liquidated at a loss, and you will be liable for any resulting deficit
-    in your MyBitFX Account.
+    in your $PROJECT$ Account.
   </p>
   <p>
     5.3. Under certain market conditions, you may find it difficult or
@@ -206,7 +206,7 @@
   </p>
   <p>
     6.3. Payment of Fees. You authorize us, or our designated payment
-    processor, to charge or deduct your MyBitFX Account Funds for any
+    processor, to charge or deduct your $PROJECT$ Account Funds for any
     applicable Fees owed in connection with trades you complete via the
     Services.
   </p>
@@ -228,7 +228,7 @@
   <h3>7. Unclaimed Property</h3>
   <p></p>
   <p>
-    7.1 If for any reason Payward is holding Funds in your MyBitFX Account
+    7.1 If for any reason Payward is holding Funds in your $PROJECT$ Account
     on your behalf, and Payward is unable to return your Funds to your
     designated External Account after a period of inactivity, then Payward
     may report and remit such Funds in accordance with applicable state
@@ -317,7 +317,7 @@
     Intellectual Property Rights Unless otherwise indicated by us, all
     copyright and other intellectual property rights in all content and
     other materials contained on our website or provided in connection with
-    the Services, including, without limitation, the Payward or MyBitFX
+    the Services, including, without limitation, the Payward or $PROJECT$
     logo and all designs, text, graphics, pictures, information, data,
     software, sound files, other files and the selection and arrangement
     thereof (collectively, "Payward Materials") are the proprietary property
@@ -338,7 +338,7 @@
   <br />
   <h3>11. Trademarks</h3>
   <p>
-    "Payward," "MyBitFX," the MyBitFX logo, the Payward logo and any other
+    "Payward," "$PROJECT$," the $PROJECT$ logo, the Payward logo and any other
     Payward product or service names, logos or slogans that may appear on
     our Services are trademarks of Payward, in the United States and in
     other countries, and may not be copied, imitated or used, in whole or in
@@ -368,10 +368,10 @@
     suspend your access to all or a portion of our Services. We may
     terminate your access to the Services in our sole discretion,
     immediately and without prior notice, and delete or deactivate your
-    MyBitFX Account and all related information and files in such account
+    $PROJECT$ Account and all related information and files in such account
     without liability to you, including, for instance, in the event that you
     breach any term of these Terms. In the event of termination, Payward
-    will not attempt to return any Funds stored in your MyBitFX Account not
+    will not attempt to return any Funds stored in your $PROJECT$ Account not
     otherwise owed to Payward, unless Payward believes you have committed
     fraud, negligence or other misconduct.
   </p>
