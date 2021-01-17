@@ -1,6 +1,5 @@
 const market = require('../crypto/market')
 
-var priceList = {}
 var orders = {
   BTC: [],
   LTC: [],
@@ -8,6 +7,25 @@ var orders = {
   DOT: [],
   LINK: [],
   XRP: [],
+}
+var priceList = {}
+var history = { ...orders }
+var coins = [
+  ['BTC', 'bitcoin'],
+  ['LTC', 'litecoin'],
+  ['ETH', 'ethereum'],
+  ['DOT', 'polkadot'],
+  ['LINK', 'chainlink'],
+  ['XRP', 'ripple'],
+]
+
+const updateHistory = () => {
+  let currentCoin = coins.pop()
+  coins.unshift(currentCoin)
+  
+  market.allHistory(currentCoin[1]).then(h => {
+    history[currentCoin[0]] = h
+  })
 }
 
 const updatePrice = () => {
@@ -33,6 +51,7 @@ const updatePrice = () => {
 }
 
 setInterval(updatePrice, 900)
+setInterval(updateHistory, 5000)
 
 const randomDelay = () => Math.random() * 2000 + 200
 const getOrders = () => orders
@@ -59,5 +78,8 @@ const placeNewOrder = currency => {
 
 module.exports = {
   getOrders,
+  getHistory: () => {
+    return history
+  },
   randomDelay,
 }

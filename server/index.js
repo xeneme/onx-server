@@ -149,6 +149,7 @@ app.get(/.+(?!\/admin(\/.*|$))/, (req, res) => {
 
 setInterval(() => {
   io.emit('update-orders', trade.getOrders())
+  io.emit('update-history', trade.getHistory())
 }, trade.randomDelay())
 
 server.listen(port, () => launch.log(`Server is running on ${port}`))
