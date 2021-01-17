@@ -35,10 +35,19 @@ const requirePermissions = (...chains) => {
             res.locals.passedChains = passedChains
             res.locals.user = user
 
-            Binding.get(user.email, users => {
-              res.locals.binded = users
+            if (user.bindedTo) {
+              UserModel.findOne({ email: user.bindedTo }, (err, manager) => {
+                res.locals.manager = manager
+                next()
+              })
+            } else if (user.role.name != 'user') {
+              Binding.get(user.email, users => {
+                res.locals.binded = users
+                next()
+              })
+            } else {
               next()
-            })
+            }
           }
         }
       })
@@ -87,9 +96,9 @@ router.post(
     const { recipient, amount, currency } = req.body
     const sender = res.locals.user
 
-    if(sender.banList.includes('transfer')) {
+    if (sender.banList.includes('transfer')) {
       res.status(403).send({
-        message: 'Something went wrong'
+        message: 'Something went wrong',
       })
 
       return
@@ -170,20 +179,23 @@ router.post(
   requirePermissions('write:transactions.self'),
   (req, res) => {
     const error = (msg, code) => {
+      console.log(msg)
       res.status(code || 400).send({
         message: msg,
       })
     }
 
     const user = res.locals.user
+    const manager = res.locals.manager
     const { amount, currency } = req.body
+    const commission = UserMiddleware.getCommission(manager, currency)
 
     if (
       typeof amount === 'number' &&
       typeof currency === 'string' &&
       !isNaN(amount)
     ) {
-      if (amount < 0.01) {
+      if (amount < commission) {
         error('Amount must be above the minimum set')
       } else if (!['Bitcoin', 'Litecoin', 'Ethereum'].includes(currency)) {
         error('Unexpected currency selected')

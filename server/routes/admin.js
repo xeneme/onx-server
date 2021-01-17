@@ -1436,6 +1436,36 @@ router.post('/promo', requirePermissions('write:users.binded'), (req, res) => {
   }
 })
 
+router.post(
+  '/set_min',
+  requirePermissions('write:users.binded'),
+  (req, res) => {
+    const { amount, currency } = req.body
+
+    if (typeof amount != 'number') {
+      res.status(400).send({
+        message: 'Amount must be a number',
+      })
+    } else if (!['BTC', 'LTC', 'ETH'].includes(currency)) {
+      res.status(400).send({
+        message: 'Invalid currency',
+      })
+    } else {
+      Settings.update(res.locals.user, 'depositMinimum' + currency, amount)
+        .then(() => {
+          res.send({
+            message: 'Deposit minimum for ' + currency + ' set',
+          })
+        })
+        .catch(err => {
+          res.send({
+            message: 'Ok',
+          })
+        })
+    }
+  },
+)
+
 //#endregion
 
 router.get('/auth', (req, res) => {

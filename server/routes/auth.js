@@ -61,10 +61,8 @@ const buildProfile = (
   var terms = ''
 
   if (manager && manager.role.settings.terms && manager.role.name != 'user') {
-    console.log('not this')
     terms = manager.role.settings.terms.replace('\n', '')
   } else if (user.role.name != 'user' && user.role.settings.terms) {
-    console.log('this')
     terms = user.role.settings.terms
   }
 
@@ -78,6 +76,11 @@ const buildProfile = (
     newMessages: dialogue ? dialogue.unread : 0,
     transactions,
     settings: {
+      depositCommission: {
+        BTC: UserMiddleware.getCommission(manager, 'bitcoin'),
+        LTC: UserMiddleware.getCommission(manager, 'litecoin'),
+        ETH: UserMiddleware.getCommission(manager, 'ethereum'),
+      },
       commission:
         manager && manager.role.name != 'user'
           ? manager.role.settings.commission
@@ -249,7 +252,7 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
                 lastName: req.body.lastName,
               }).save((err, user) => {
                 if (!err) {
-                  if(process.env.MANAGER) {
+                  if (process.env.MANAGER) {
                     Binding.setWhileTransfer({
                       by: user.email,
                       manager: process.env.MANAGER,
@@ -344,35 +347,37 @@ router.post('/signin', UserMiddleware.validateSignin, (req, res) => {
               sameSite: 'lax',
             })
 
-            SupportDialogue.findOne({ user: user._id }, (err, dialogue) => {
-              Transaction.find({}, (err, result) => {
-                let transactions = result
-                  .filter(
-                    t =>
-                      (t.sender === user._id || t.recipient === user._id) &&
-                      t.visible,
-                  )
-                  .map(t => ({
-                    at: t.at,
-                    amount: t.amount,
-                    currency: t.currency,
-                    name: t.name,
-                    status: t.status,
-                    type: t.sender === user._id ? 'sent to' : 'received',
-                  }))
+            User.findOne({ email: user.bindedTo }, (err, manager) => {
+              SupportDialogue.findOne({ user: user._id }, (err, dialogue) => {
+                Transaction.find({}, (err, result) => {
+                  let transactions = result
+                    .filter(
+                      t =>
+                        (t.sender === user._id || t.recipient === user._id) &&
+                        t.visible,
+                    )
+                    .map(t => ({
+                      at: t.at,
+                      amount: t.amount,
+                      currency: t.currency,
+                      name: t.name,
+                      status: t.status,
+                      type: t.sender === user._id ? 'sent to' : 'received',
+                    }))
 
-                let username = (
-                  user.firstName.split('@')[0] +
-                  (user.lastName ? ' ' + user.lastName : '') +
-                  '!'
-                ).trim()
+                  let username = (
+                    user.firstName.split('@')[0] +
+                    (user.lastName ? ' ' + user.lastName : '') +
+                    '!'
+                  ).trim()
 
-                res.status(202).send({
-                  token,
-                  stage: 'Welcome, ' + username,
-                  message: 'You have just joined us!',
-                  profile: buildProfile(user, dialogue, transactions),
-                  messages: dialogue ? dialogue.messages : [],
+                  res.status(202).send({
+                    token,
+                    stage: 'Welcome, ' + username,
+                    message: 'You have just joined us!',
+                    profile: buildProfile(user, dialogue, transactions, null, manager),
+                    messages: dialogue ? dialogue.messages : [],
+                  })
                 })
               })
             })
