@@ -19,6 +19,7 @@ const getProjectName = () => {
   const dict = {
     'mybitfx.com': 'MyBitFX',
     'excryptobit.com': 'ExCryptoBit',
+    'feelcryptobit.com': 'FeelCryptoBit'
   }
 
   return dict[getHost()]
