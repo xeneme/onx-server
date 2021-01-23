@@ -497,22 +497,28 @@ const getTransactionsByAddress = address => {
 const getTransactionsByUserId = id =>
   new Promise(resolve => {
     var fetching = {
-      transfers: Transaction.find({ visible: true }, null),
-      deposits: Deposit.find({ user: id, visible: true }, null),
-      withdrawals: Withdrawal.find({ user: id, visible: true }, null),
+      transfers: Transaction.find(
+        {
+          visible: true,
+          $or: [{ sender: id }, { recipient: id, status: 'completed' }],
+        },
+        'fake status sender recipient name currency amount at',
+        null,
+      ),
+      deposits: Deposit.find(
+        { user: id, visible: true },
+        'name status network at exp url amount user address',
+        null,
+      ),
+      withdrawals: Withdrawal.find(
+        { user: id, visible: true },
+        'name status amount at network user address',
+        null,
+      ),
     }
 
     Promise.all(Object.values(fetching)).then(
       ([transfers, deposits, withdrawals]) => {
-        var transfers = transfers.filter(t => {
-          let hasIt = [t.sender, t.recipient].includes(id)
-          let notRecieved =
-            t.recipient === id &&
-            ['failed', 'await approval'].includes(t.status)
-
-          return hasIt && !notRecieved
-        })
-
         resolve([...transfers, ...deposits, ...withdrawals])
       },
     )
