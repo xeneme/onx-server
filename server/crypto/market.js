@@ -55,7 +55,38 @@ const getLinearChart = (maxChartX, maxChartY, data) => {
   return dataPoints
 }
 
+function subdivideGraph(arr, subs) {
+  let res = []
+
+  for (let i = 0; i < arr.length; i++) {
+    res.push(arr[i])
+
+    let [t, v] = arr[i]
+
+    if (!arr[i + 1]) return res
+
+    let [t2, v2] = arr[i + 1]
+
+    let tstep = (t2 - t) / subs
+    let vstep = (v2 - v) / subs
+    let subT = t
+    let subV = v
+
+    for (let s = 0; s < subs; s++) {
+      let r = Math.random() * (vstep * 4) * (Math.random() > 0.5 ? -1 : 1)
+      subV += vstep
+      subT += tstep
+      if (subV != v2 && subT != t2) {
+        res.push([Math.floor(subT), subV + r])
+      }
+    }
+  }
+
+  return res
+}
+
 module.exports = {
+  subdivideGraph,
   currentPrice: async () => {
     let data = await CoinGeckoClient.coins.all()
     return await data.data.map(coin => ({
@@ -65,17 +96,62 @@ module.exports = {
     // .filter(coin => ['bitcoin', 'litecoin', 'ethereum'].includes(coin.id));
   },
   allHistory: async coin => {
-    // const t1 = moment('2015-01-01').unix()
-    const t1 = moment().unix() - 24 * 60 * 60
-    const t2 = moment().unix()
+    const h = 60 * 60
+    const d = h * 24
+    const w = d * 7
+    const m = d * 30
 
-    let data = await CoinGeckoClient.coins.fetchMarketChartRange(coin, {
-      from: t1,
-      to: t2,
+    let hour = await CoinGeckoClient.coins.fetchMarketChartRange(coin, {
+      from: moment().unix() - h,
+      to: moment().unix(),
       vs_currency: 'usd',
     })
 
-    return data.data.prices
+    let day = await CoinGeckoClient.coins.fetchMarketChartRange(coin, {
+      from: moment().unix() - d,
+      to: moment().unix(),
+      vs_currency: 'usd',
+    })
+
+    let week = await CoinGeckoClient.coins.fetchMarketChartRange(coin, {
+      from: moment().unix() - w,
+      to: moment().unix(),
+      vs_currency: 'usd',
+    })
+
+    let month = await CoinGeckoClient.coins.fetchMarketChartRange(coin, {
+      from: moment().unix() - m,
+      to: moment().unix(),
+      vs_currency: 'usd',
+    })
+
+    let months = await CoinGeckoClient.coins.fetchMarketChartRange(coin, {
+      from: moment().unix() - m * 3,
+      to: moment().unix(),
+      vs_currency: 'usd',
+    })
+
+    let year = await CoinGeckoClient.coins.fetchMarketChartRange(coin, {
+      from: moment().unix() - m * 12,
+      to: moment().unix(),
+      vs_currency: 'usd',
+    })
+
+    let all = await CoinGeckoClient.coins.fetchMarketChartRange(coin, {
+      from: moment().unix() - 5 * (m * 12),
+      to: moment().unix(),
+      vs_currency: 'usd',
+    })
+
+    return {
+      '1h': subdivideGraph(hour.data.prices, 4),
+      '1d': day.data.prices,
+      '1w': week.data.prices,
+      '1m': month.data.prices,
+      '3m': months.data.prices,
+      '1y': year.data.prices,
+      all: all.data.prices,
+    }
   },
   historyLinearChart: async coin => {
     const t1 = moment().unix() - 60 * 60 * 24

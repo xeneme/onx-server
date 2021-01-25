@@ -14,6 +14,7 @@ const Contract = require('../models/TradeGuard')
 const Promo = require('../models/Promo')
 
 const TradeGuard = require('../trade-guard')
+const Trading = require('../trading')
 
 const Role = require('../user/roles')
 const Binding = require('../manager/binding')
@@ -838,6 +839,40 @@ router.get(
     Contract.find({ creator: res.locals.user.email }, (err, contracts) => {
       res.send(contracts)
     })
+  },
+)
+
+//#endregion
+
+//#region Trading
+
+router.post(
+  '/trading/change',
+  requirePermissions('write:users.all'),
+  (req, res) => {
+    const { percent, currency, direction } = req.body
+
+    if (typeof percent != 'number' || percent < 1) {
+      res.status(400).send({
+        message: 'Invalid percent',
+      })
+    } else if (
+      !['BTC', 'ETH', 'LTC', 'XRP', 'LINK', 'DOT'].includes(currency)
+    ) {
+      res.status(400).send({
+        message: 'Invalid currency',
+      })
+    } else if (!['up', 'down'].includes(direction)) {
+      res.status(400).send({
+        message: 'Invalid direction',
+      })
+    } else {
+      Trading.addPriceToQueue(currency, direction, percent)
+
+      res.send({
+        message: `The change percent for ${currency} has queued!`,
+      })
+    }
   },
 )
 

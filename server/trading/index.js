@@ -1,4 +1,4 @@
-const market = require('../crypto/market')
+const Market = require('../crypto/market')
 
 var orders = {
   BTC: [],
@@ -19,17 +19,76 @@ var coins = [
   ['XRP', 'ripple'],
 ]
 
-const updateHistory = () => {
-  let currentCoin = coins.pop()
-  coins.unshift(currentCoin)
-  
-  market.allHistory(currentCoin[1]).then(h => {
-    history[currentCoin[0]] = h
+var graphPricesQeue = {
+  BTC: [],
+  LTC: [],
+  ETH: [],
+  DOT: [],
+  LINK: [],
+  XRP: [],
+}
+
+function addPriceToQueue(coin, direction, CHANGE_PERCENT) {
+  CHANGE_PERCENT += (Math.random() / 2) * (Math.random() > 0.5 ? 1 : -1)
+
+  const hist = history[coin]['1h']
+
+  const qeue = graphPricesQeue[coin]
+  const firstQeued = qeue.length ? qeue[qeue.length - 1] : null
+
+  let last = firstQeued || hist[hist.length - 1][1]
+
+  let change = last * (CHANGE_PERCENT / 100)
+  let newVal = direction == 'up' ? last + change : last - change
+
+  graphPricesQeue[coin].push(newVal)
+}
+
+function applyFakedHistory() {
+  const canBeFaked = coins.map(c => c[0]).filter(c => history[c])
+
+  canBeFaked.forEach(c => {
+    const h = history[c]['1h']
+
+    if (!h) return
+
+    const lastTs = h[h.length - 1][0]
+
+    if (!graphPricesQeue[c].length || lastTs + 113598 > +new Date()) return
+
+    const fakePrice = graphPricesQeue[c].shift()
+
+    const el = [lastTs + 113598, fakePrice]
+
+    Object.keys(history[c]).forEach(range => {
+      history[c][range].shift()
+      history[c][range].push(el)
+    })
   })
 }
 
-const updatePrice = () => {
-  market.currentPrice().then(data => {
+async function updateHistory() {
+  for (let [net, currency] of coins) {
+    const data = await Market.allHistory(currency)
+
+    if (!history[net]['1h']) {
+      history[net] = data
+    } else {
+      const h = history[net]['1h']
+      const lastTs = h[h.length - 1][0]
+
+      Object.keys(data).forEach(range => {
+        const newPoints = data[range].filter(point => point[0] > lastTs)
+        history[net][range].push(...newPoints)
+      })
+    }
+  }
+
+  setTimeout(updateHistory, 30000)
+}
+
+function updatePrice() {
+  Market.currentPrice().then(data => {
     data.forEach(coin => {
       priceList[coin.id] = coin.price
     })
@@ -50,12 +109,19 @@ const updatePrice = () => {
   })
 }
 
+updateHistory()
 setInterval(updatePrice, 900)
-setInterval(updateHistory, 5000)
+setInterval(applyFakedHistory, 4000)
 
-const randomDelay = () => Math.random() * 2000 + 200
-const getOrders = () => orders
-const placeNewOrder = currency => {
+function randomDelay() {
+  return Math.random() * 2000 + 200
+}
+
+function getOrders() {
+  return orders
+}
+
+function placeNewOrder(currency) {
   var price = priceList[currency]
   var amount = (Math.random() * Math.random()) / 10
   var t = new Date()
@@ -78,6 +144,7 @@ const placeNewOrder = currency => {
 
 module.exports = {
   getOrders,
+  addPriceToQueue,
   getHistory: () => {
     return history
   },
