@@ -84,7 +84,7 @@ async function updateHistory() {
     }
   }
 
-  setTimeout(updateHistory, 30000)
+  setTimeout(updateHistory, 3 * 60000)
 }
 
 function updatePrice() {
