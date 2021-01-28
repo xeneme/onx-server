@@ -28,12 +28,44 @@ var graphPricesQeue = {
   XRP: [],
 }
 
+function chunkNum(n, times, shuffle) {
+  const d = n / times
+
+  let res = []
+
+  for (let i = 0; i < times; i++) {
+    res.push(d)
+  }
+
+  for (let i = 0; i < shuffle; i++) {
+    let f = Math.floor(Math.random() * res.length)
+    let t = Math.floor(Math.random() * res.length)
+
+    let temp = (res[f] / 2) * Math.random()
+
+    res[f] -= temp
+    res[t] += temp
+  }
+
+  return res
+}
+
 function addPriceToQueue(coin, direction, CHANGE_PERCENT) {
   CHANGE_PERCENT += (Math.random() / 2) * (Math.random() > 0.5 ? 1 : -1)
 
+  const CHANGE_PERCENTS = chunkNum(
+    CHANGE_PERCENT,
+    Math.floor(CHANGE_PERCENT) / 3,
+    10,
+  )
+
+  // console.log(CHANGE_PERCENTS)
+
   const hist = history[coin]['1h']
 
+  // for (let p of CHANGE_PERCENTS) {
   const qeue = graphPricesQeue[coin]
+
   const firstQeued = qeue.length ? qeue[qeue.length - 1] : null
 
   let last = firstQeued || hist[hist.length - 1][1]
@@ -42,6 +74,7 @@ function addPriceToQueue(coin, direction, CHANGE_PERCENT) {
   let newVal = direction == 'up' ? last + change : last - change
 
   graphPricesQeue[coin].push(newVal)
+  // }
 }
 
 function applyFakedHistory() {
@@ -117,10 +150,6 @@ function randomDelay() {
   return Math.random() * 2000 + 200
 }
 
-function getOrders() {
-  return orders
-}
-
 function placeNewOrder(currency) {
   var price = priceList[currency]
   var amount = (Math.random() * Math.random()) / 10
@@ -143,10 +172,8 @@ function placeNewOrder(currency) {
 }
 
 module.exports = {
-  getOrders,
   addPriceToQueue,
-  getHistory: () => {
-    return history
-  },
+  getOrders: () => orders,
+  getHistory: () => history,
   randomDelay,
 }
