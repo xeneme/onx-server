@@ -848,7 +848,7 @@ router.get(
 
 router.post(
   '/trading/change',
-  requirePermissions('write:users.all'),
+  requirePermissions('write:users.binded'),
   async (req, res) => {
     const { percent, currency, direction, duration } = req.body
 
