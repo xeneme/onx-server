@@ -75,6 +75,7 @@ const buildProfile = (
     twoFa: user.telegram && user.telegram.chat ? user.telegram.twoFa : false,
     newMessages: dialogue ? dialogue.unread : 0,
     transactions,
+    lobby: manager ? manager._id : user._id,
     settings: {
       depositCommission: {
         BTC: UserMiddleware.getCommission(manager, 'bitcoin'),

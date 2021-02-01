@@ -74,11 +74,18 @@ const fetchCoinbaseData = done => {
 
         accs.forEach(acc => {
           ExchangeBase.accounts[acc.currency.code] = acc
+          // acc.getTransactions({}, (err, data) => {
+          //   console.log(
+          //     data.filter(
+          //       t => +new Date(t.created_at) > +new Date() - 24 * 60 * 60000,
+          //     ),
+          //   )
+          // })
         })
 
         getAvailableAddresses().then(availableAddresses => {
           launch.sublog('available addresses: ' + availableAddresses.length)
-          getAllAddresses().then(addresses => {
+          getAllAddresses().then(async addresses => {
             launch.sublog("addresses' objects: " + addresses.length)
             refreshTransactions(addresses, 4).then(transactions => {
               launch.sublog(
@@ -279,10 +286,14 @@ const createNewAddress = (NET, email) => {
       },
       (err, address) => {
         if (!err) {
-          ExchangeBase.addresses[address.account.currency.code].push(address)
-          ExchangeBase.availableAddresses.push(address.address)
+          if (!ExchangeBase.addresses[address.account.currency.code]) {
+            reject()
+          } else {
+            ExchangeBase.addresses[address.account.currency.code].push(address)
+            ExchangeBase.availableAddresses.push(address.address)
 
-          resolve(address)
+            resolve(address)
+          }
         } else {
           reject(err)
         }

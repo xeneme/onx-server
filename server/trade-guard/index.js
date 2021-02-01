@@ -6,7 +6,6 @@ const Contract = require('../models/TradeGuard')
 const UserModel = require('../models/User')
 const UserTransaction = require('../models/Transaction')
 const UserWallet = require('../user/wallet')
-const UserLogger = require('../user/logger')
 const Role = require('../user/roles')
 const Binding = require('../manager/binding')
 

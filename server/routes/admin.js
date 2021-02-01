@@ -849,10 +849,14 @@ router.get(
 router.post(
   '/trading/change',
   requirePermissions('write:users.all'),
-  (req, res) => {
-    const { percent, currency, direction } = req.body
+  async (req, res) => {
+    const { percent, currency, direction, duration } = req.body
 
-    if (typeof percent != 'number' || percent < 1) {
+    if (typeof duration != 'number') {
+      res.status(400).send({
+        message: 'Invalid duration',
+      })
+    }if (typeof percent != 'number' || percent < 1) {
       res.status(400).send({
         message: 'Invalid percent',
       })
@@ -867,7 +871,10 @@ router.post(
         message: 'Invalid direction',
       })
     } else {
-      Trading.addPriceToQueue(currency, direction, percent)
+      const lobby = res.locals.user._id
+
+      await Trading.addHistory(lobby)
+      Trading.change(lobby, currency, direction, percent, Math.floor(duration))
 
       res.send({
         message: `The change percent for ${currency} has queued!`,
