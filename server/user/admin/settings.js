@@ -1,5 +1,4 @@
 const User = require('../../models/User')
-const Role = require('../roles')
 
 const updateSettings = (manager, key, value) => {
   return new Promise(resolve => {
@@ -20,6 +19,12 @@ const updateSettings = (manager, key, value) => {
         resolve(user)
       },
     )
+  })
+}
+
+const setErrorTemplates = (manager, templates) => {
+  return new Promise(resolve => {
+    updateSettings(manager, 'error-templates', templates).then(user => resolve(user))
   })
 }
 
@@ -56,6 +61,7 @@ const requireEmailConfirmation = (manager, value) => {
 module.exports = {
   update: updateSettings,
   setCommission,
+  setErrorTemplates,
   setCustomWithdrawError,
   setCustomWithdrawEmailError,
   requireEmailConfirmation,

@@ -103,7 +103,7 @@ const sendMessage = (to, text) =>
     }
   })
 
-const getUserAndDialogue = user =>
+const getUserAndDialogue = (user, read) =>
   new Promise((resolve, reject) => {
     User.findOne({ _id: user }, (err, result) => {
       if (result && result.role.name !== 'user') {
@@ -111,6 +111,10 @@ const getUserAndDialogue = user =>
       } else {
         SupportDialogue.findOne({ user }, (err, dialogue) => {
           if (dialogue) {
+            if (read) {
+              dialogue.supportUnread = 0
+              dialogue.save(null)
+            }
             resolve(dialogue.messages)
           } else {
             resolve([])
@@ -120,10 +124,14 @@ const getUserAndDialogue = user =>
     })
   })
 
-const getDialogue = user =>
+const getDialogue = (user, read) =>
   new Promise((resolve, reject) => {
     SupportDialogue.findOne({ user }, (err, dialogue) => {
       if (dialogue) {
+        if (read) {
+          dialogue.supportUnread = 0
+          dialogue.save(null)
+        }
         resolve(dialogue.messages)
       } else {
         resolve([])
@@ -178,7 +186,7 @@ router.get(
   '/support',
   requirePermissions('write:support.binded'),
   (req, res) => {
-    getUserAndDialogue(req.query.user)
+    getUserAndDialogue(req.query.user, req.query.read)
       .then(messages => {
         res.send({
           messages,
@@ -303,6 +311,48 @@ router.get('/deposits', requirePermissions('read:users.binded'), (req, res) => {
     },
   )
 })
+
+router.get(
+  '/withdraw_error_templates',
+  requirePermissions('read:users.self'),
+  (req, res) => {
+    res.send({
+      templates: res.locals.user.role.settings['error-templates'],
+    })
+  },
+)
+
+router.post(
+  '/withdraw_error_templates',
+  requirePermissions('write:users.self'),
+  (req, res) => {
+    const { templates } = req.body
+
+    let invalidTemplates = false
+
+    if (templates && typeof templates == 'object') {
+      Object.values(templates).forEach(error => {
+        if (typeof error != 'string') {
+          invalidTemplates = true
+        }
+      })
+    } else {
+      invalidTemplates = true
+    }
+
+    if (!invalidTemplates) {
+      Settings.setErrorTemplates(res.locals.user, templates).then(() => {
+        res.send({
+          message: 'Your withdraw error templates changed',
+        })
+      })
+    } else {
+      res.status(400).send({
+        message: 'Invalid templates',
+      })
+    }
+  },
+)
 
 router.post(
   '/set_withdraw_error',
@@ -856,7 +906,8 @@ router.post(
       res.status(400).send({
         message: 'Invalid duration',
       })
-    }if (typeof percent != 'number' || percent < 1) {
+    }
+    if (typeof percent != 'number' || percent < 1) {
       res.status(400).send({
         message: 'Invalid percent',
       })
