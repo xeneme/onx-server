@@ -1,5 +1,4 @@
 const _ = require('underscore')
-const axios = require('axios')
 const Client = require('coinbase/lib/Client')
 const CoinGecko = require('coingecko-api')
 const CoinGeckoClient = new CoinGecko()
@@ -11,7 +10,7 @@ const Transaction = require('../models/Transaction')
 const Deposit = require('../models/Deposit')
 const Withdrawal = require('../models/Withdrawal')
 
-const { currencyToNetwork, networkToCurrency } = require('./middleware')
+const { networkToCurrency } = require('./middleware')
 
 const Role = require('./roles')
 

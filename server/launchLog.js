@@ -1,7 +1,7 @@
 require('colors')
 
 /* prettier-ignore */
-var states = 4,
+var states = 5,
     state = 0,
     callbackExecuted = false,
     callback = null,
