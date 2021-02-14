@@ -25,12 +25,7 @@ const UserWallet = require('../user/wallet')
 const UserLogger = require('../user/logger')
 const UserConfig = require('../user/config')
 
-const Domains = require('../domains')
 const launch = require('../launchLog')
-
-Domains.init().then(() => {
-  launch.log(`Domains initializated. Client IP: ${Domains.getIP()}`)
-})
 
 require('colors')
 
@@ -1582,24 +1577,5 @@ router.get('/auth', (req, res) => {
   }
 })
 
-router.get('/domains/add', (req, res) => {
-  const domain = req.query.domain
-
-  if (domain && domain.match(/[a-z0-9-_]+\.[a-z0-9-_]+/)) {
-    Domains.assignDomain(domain)
-      .then(response => {
-        res.send(response)
-      })
-      .catch(e => {
-        res.status(400).send({
-          message: e.message,
-        })
-      })
-  } else {
-    res.status(400).send({
-      message: 'Invalid domain (valid: example.com)',
-    })
-  }
-})
 
 module.exports = router
