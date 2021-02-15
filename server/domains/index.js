@@ -51,17 +51,15 @@ async function assignDomain(domain, email) {
     ])
 
     const manager = await getManager(domain)
-
+    
     if (manager == 'Nobody') {
       await new Domain({
         name: domain,
         manager: email,
       }).save(null)
     } else {
-      const domainObject = await Domain.findOne({ manager: email })
-
+      const domainObject = await Domain.findOne({ name: domain })
       domainObject.manager = email
-
       await domainObject.save(null)
     }
 
