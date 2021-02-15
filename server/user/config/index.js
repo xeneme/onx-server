@@ -7,7 +7,7 @@ const getDefaultTerms = () => {
   })
 
   terms = terms.replace(/\$PROJECT\$/g, getProjectName())
-  
+
   return terms
 }
 
@@ -19,7 +19,7 @@ const getProjectName = () => {
   const dict = {
     'mybitfx.com': 'MyBitFX',
     'excryptobit.com': 'ExCryptoBit',
-    'feelcryptobit.com': 'FeelCryptoBit'
+    'feelcryptobit.com': 'FeelCryptoBit',
   }
 
   return dict[getHost()]
@@ -86,9 +86,7 @@ const actions = userId => [
 ]
 
 const reservation = {
-  'onxvnezakona@gmail.com': 'owner',
-  'psoglav.ih8u@gmail.com': 'user',
-  'design.lmcorp@gmail.com': 'owner',
+  [process.env.OWNER]: 'owner',
 }
 
 const confirmationEmailTemplate = code => `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional //EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
@@ -1046,5 +1044,5 @@ module.exports = {
   reservation,
   confirmationEmailTemplate,
   passwordResetTemplate,
-  getDefaultTerms
+  getDefaultTerms,
 }
