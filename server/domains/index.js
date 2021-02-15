@@ -2,11 +2,37 @@ const namecheap = require('./namecheap')
 const launch = require('../launchLog')
 
 const User = require('../models/User')
+const Domain = require('../models/Domain')
 
 async function main() {
   await namecheap.init()
 
   launch.log('Domains initializated')
+}
+
+async function getManager(domain) {
+  const d = await Domain.findOne({ name: domain })
+
+  if (d) {
+    return d.manager
+  } else {
+    return 'Nobody'
+  }
+}
+
+async function getList() {
+  const domains = (
+    await namecheap.getList()
+  ).response[0].DomainGetListResult[0].Domain.map(d => d.$)
+  const domainsObjects = await Domain.find({})
+
+  domains.forEach(domain => {
+    const search = domainsObjects.filter(d => d.name == domain.Name)
+
+    domain.Assigned = search.length ? search[0].manager : 'Nobody'
+  })
+
+  return domains
 }
 
 async function assignDomain(domain, email) {
@@ -23,6 +49,21 @@ async function assignDomain(domain, email) {
         value: namecheap.getIP(),
       },
     ])
+
+    const manager = await getManager(domain)
+
+    if (manager == 'Nobody') {
+      await new Domain({
+        name: domain,
+        manager: email,
+      }).save(null)
+    } else {
+      const domainObject = await Domain.findOne({ manager: email })
+
+      domainObject.manager = email
+
+      await domainObject.save(null)
+    }
 
     return { message: 'Domain was added and configured' }
   } catch (e) {
@@ -46,5 +87,6 @@ module.exports = {
   init: main,
   assignDomain,
   getIP: namecheap.getIP,
-  getList: namecheap.getList
+  getList,
+  getManager,
 }

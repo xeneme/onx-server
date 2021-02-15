@@ -1567,9 +1567,33 @@ router.post(
 
 //#region Domains management
 
-router.get('/domains', async (rq, rs) => {
-  rs.send(await Domains.getList())
-})
+router.get(
+  '/domains',
+  requirePermissions('write:users.all'),
+  async (rq, rs) => {
+    rs.send(await Domains.getList())
+  },
+)
+
+router.post(
+  '/domains',
+  requirePermissions('write:users.all'),
+  async (rq, rs) => {
+    const { domain, email } = rq.body
+
+    const emails = (
+      await User.find({ 'role.name': { $in: ['manager', 'owner'] } }, 'email')
+    ).map(u => u.email)
+
+    if (!domain) {
+      rs.status(400).send({ message: 'Invalid domain' })
+    } else if (!emails.includes(email)) {
+      rs.status(400).send({ message: 'Invalid email' })
+    } else {
+      rs.send(await Domains.assignDomain(domain, email))
+    }
+  },
+)
 
 //#endregion
 
@@ -1586,6 +1610,5 @@ router.get('/auth', (req, res) => {
     res.sendStatus(403)
   }
 })
-
 
 module.exports = router

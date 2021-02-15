@@ -43,8 +43,6 @@ async function getProfile() {
   ).response[0].GetAddressInfoResult[0]
 }
 
-async function checkDomains(domain)
-
 async function registerNewDomain(domain, years) {
   const profile = await getProfile()
   const res = await query(
@@ -135,4 +133,5 @@ module.exports = {
   getIP: () => CLIENT_IP,
   setCustomNameservers,
   setDNSRecords,
+  registerNewDomain,
 }
