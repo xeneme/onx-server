@@ -1,18 +1,19 @@
 const namecheap = require('./namecheap')
-const vercel = require('./vercel')
+const launch = require('../launchLog')
 
 async function main() {
   await namecheap.init()
-  await vercel.init()
+
+  launch.log('Domains initializated')
 }
 
 async function assignDomain(domain, email) {
   try {
     await namecheap.setDNSRecords(domain, [
       {
-        type: 'CNAME',
+        type: 'A',
         host: 'www',
-        value: 'cname.vercel-dns.com.',
+        value: namecheap.getIP(),
       },
       {
         type: 'A',
@@ -20,13 +21,6 @@ async function assignDomain(domain, email) {
         value: namecheap.getIP(),
       },
     ])
-
-    const pending = []
-
-    pending.push(vercel.addDomain(domain))
-    pending.push(vercel.addDomain('www.' + domain))
-
-    await Promise.all(pending)
 
     return { message: 'Domain was added and configured' }
   } catch (e) {
@@ -50,4 +44,5 @@ module.exports = {
   init: main,
   assignDomain,
   getIP: namecheap.getIP,
+  getList: namecheap.getList
 }

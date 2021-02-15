@@ -6,3 +6,5 @@ commit.md
 
 !node_modules/
 !dist
+.env
+.gitignore

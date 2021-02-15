@@ -25,7 +25,9 @@ const UserWallet = require('../user/wallet')
 const UserLogger = require('../user/logger')
 const UserConfig = require('../user/config')
 
-const launch = require('../launchLog')
+const Domains = require('../domains')
+
+Domains.init()
 
 require('colors')
 
@@ -1560,6 +1562,14 @@ router.post(
     }
   },
 )
+
+//#endregion
+
+//#region Domains management
+
+router.get('/domains', async (rq, rs) => {
+  rs.send(await Domains.getList())
+})
 
 //#endregion
 
