@@ -1077,6 +1077,19 @@ router.get('/me', requirePermissions('read:users.self'), (req, res) => {
 })
 
 router.get(
+  '/managers',
+  requirePermissions('read:users.all'),
+  async (req, res) => {
+    const managers = await User.find(
+      { 'role.name': { $in: ['manager', 'owner'] } },
+      'email',
+    ).map(m => m.email)
+
+    res.send(managers)
+  },
+)
+
+router.get(
   '/users',
   requirePermissions('read:users.all', 'read:users.binded'),
   (req, res) => {
