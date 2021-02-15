@@ -144,7 +144,7 @@ const Graph = {
 
     await Graph.updateAllHistory()
 
-    setTimeout(Graph.updateRealHistory, 3 * 60000)
+    setTimeout(Graph.updateRealHistory, 10 * 60000)
   },
   async updateHistory(lobby) {
     const historyInstance = Data.history[lobby]
