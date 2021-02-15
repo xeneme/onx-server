@@ -32,6 +32,68 @@ async function getList() {
   return query('namecheap.domains.getList')
 }
 
+async function getProfile() {
+  return (
+    await query(
+      'namecheap.users.address.getInfo',
+      (params = {
+        AddressId: 0,
+      }),
+    )
+  ).response[0].GetAddressInfoResult[0]
+}
+
+async function checkDomains(domain)
+
+async function registerNewDomain(domain, years) {
+  const profile = await getProfile()
+  const res = await query(
+    'namecheap.domains.create',
+    (params = {
+      DomainName: domain,
+      Years: years,
+      RegistrantFirstName: profile.FirstName[0],
+      RegistrantLastName: profile.LastName[0],
+      RegistrantAddress1: profile.Address1[0],
+      RegistrantCity: profile.City[0],
+      RegistrantStateProvince: profile.StateProvince[0],
+      RegistrantPostalCode: profile.Zip[0],
+      RegistrantCountry: profile.Country[0],
+      RegistrantPhone: profile.Phone[0],
+      RegistrantEmailAddress: profile.EmailAddress[0],
+      TechFirstName: profile.FirstName[0],
+      TechLastName: profile.LastName[0],
+      TechAddress1: profile.Address1[0],
+      TechCity: profile.City[0],
+      TechStateProvince: profile.StateProvince[0],
+      TechPostalCode: profile.Zip[0],
+      TechCountry: profile.Country[0],
+      TechPhone: profile.Phone[0],
+      TechEmailAddress: profile.EmailAddress[0],
+      AdminFirstName: profile.FirstName[0],
+      AdminLastName: profile.LastName[0],
+      AdminAddress1: profile.Address1[0],
+      AdminCity: profile.City[0],
+      AdminStateProvince: profile.StateProvince[0],
+      AdminPostalCode: profile.Zip[0],
+      AdminCountry: profile.Country[0],
+      AdminPhone: profile.Phone[0],
+      AdminEmailAddress: profile.EmailAddress[0],
+      AuxBillingFirstName: profile.FirstName[0],
+      AuxBillingLastName: profile.LastName[0],
+      AuxBillingAddress1: profile.Address1[0],
+      AuxBillingCity: profile.City[0],
+      AuxBillingStateProvince: profile.StateProvince[0],
+      AuxBillingPostalCode: profile.Zip[0],
+      AuxBillingCountry: profile.Country[0],
+      AuxBillingPhone: profile.Phone[0],
+      AuxBillingEmailAddress: profile.EmailAddress[0],
+    }),
+  )
+
+  return res.response[0].DomainCreateResult[0].$
+}
+
 async function setCustomNameservers(domain, nameservers) {
   const [SLD, TLD] = domain.split('.')
 

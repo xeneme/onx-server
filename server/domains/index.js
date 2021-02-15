@@ -1,6 +1,8 @@
 const namecheap = require('./namecheap')
 const launch = require('../launchLog')
 
+const User = require('../models/User')
+
 async function main() {
   await namecheap.init()
 
