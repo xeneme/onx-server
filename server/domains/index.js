@@ -51,7 +51,7 @@ async function assignDomain(domain, email) {
     ])
 
     const manager = await getManager(domain)
-    
+
     if (manager == 'Nobody') {
       await new Domain({
         name: domain,
@@ -81,10 +81,33 @@ async function assignDomain(domain, email) {
   }
 }
 
+const parseDomain = url => {
+  return new URL(url).hostname.replace('www.', '')
+}
+
+const getProjectName = url => {
+  const capitalize = (str, lower = false) =>
+    (lower ? str.toLowerCase() : str).replace(/(?:^|\s|["'([{])+\S/g, match =>
+      match.toUpperCase(),
+    )
+
+  let name = parseDomain(url)
+    .replace(/www\./, '')
+    .replace(new RegExp('(.\\w+)$', 'g'), '')
+
+  return name
+    .replace(new RegExp('[_-]', 'g'), ' ')
+    .split(' ')
+    .map(w => capitalize(w))
+    .join('')
+}
+
 module.exports = {
   init: main,
   assignDomain,
   getIP: namecheap.getIP,
   getList,
   getManager,
+  parseDomain,
+  getProjectName,
 }

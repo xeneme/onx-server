@@ -1,16 +1,8 @@
 const { passwordResetToken } = require('./token')
 const { confirmationEmailTemplate, passwordResetTemplate } = require('./config')
+const { parseDomain } = require('../domains')
 
 const nodemailer = require('nodemailer')
-const transporter = nodemailer.createTransport({
-  host: 'mail.privateemail.com',
-  port: 465,
-  secure: true,
-  auth: {
-    user: process.env.SUPPORT_EMAIL,
-    pass: process.env.SUPPORT_PASS,
-  },
-})
 
 const getHost = () => {
   return process.env.SUPPORT_EMAIL.split('@')[1]
@@ -28,9 +20,23 @@ const getProjectName = () => {
 module.exports = {
   getHost,
   getProjectName,
-  send: (to, code) => {
+  send: (url, to, code) => {
+    const user = 'admin@' + parseDomain(url)
+    console.log(user)
+    const { SUPPORT_PASS: pass } = process.env
+
+    const transporter = nodemailer.createTransport({
+      host: 'mail.privateemail.com',
+      port: 465,
+      secure: true,
+      auth: {
+        user,
+        pass,
+      },
+    })
+
     return transporter.sendMail({
-      from: process.env.SUPPORT_EMAIL,
+      from: user,
       to,
       subject: 'Email Confirmation',
       html: confirmationEmailTemplate(code),

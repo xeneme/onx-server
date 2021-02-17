@@ -151,7 +151,7 @@ router.post('/confirmation/send', (req, res) => {
       } else {
         const code = random(100000, 999999, false)
 
-        Email.send(email, code)
+        Email.send('http://' + req.headers.host, email, code)
           .then(() => {
             res.status(200).send({
               token: UserToken.confirmationToken(code, email),
