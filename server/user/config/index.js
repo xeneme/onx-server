@@ -1,6 +1,8 @@
 const fs = require('fs')
 const path = require('path')
 
+require('dotenv/config')
+
 const getDefaultTerms = () => {
   let terms = fs.readFileSync(path.join(__dirname, '../../assets/TERMS.txt'), {
     encoding: 'utf-8',
