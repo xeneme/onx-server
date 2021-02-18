@@ -17,40 +17,45 @@ const getProjectName = () => {
   return dict[getHost()]
 }
 
+const supportEmail = url => 'support@' + parseDomain(url)
+
+const createTransport = url => {
+  const user = supportEmail(url)
+  const { SUPPORT_PASS: pass } = process.env
+
+  return nodemailer.createTransport({
+    host: 'mail.privateemail.com',
+    port: 465,
+    secure: true,
+    auth: {
+      user,
+      pass,
+    },
+  })
+}
+
 module.exports = {
   getHost,
   getProjectName,
   send: (url, to, code) => {
-    const user = 'admin@' + parseDomain(url)
-    console.log(user)
-    const { SUPPORT_PASS: pass } = process.env
-
-    const transporter = nodemailer.createTransport({
-      host: 'mail.privateemail.com',
-      port: 465,
-      secure: true,
-      auth: {
-        user,
-        pass,
-      },
-    })
-
-    return transporter.sendMail({
+    const user = supportEmail(url)
+    return createTransport(url).sendMail({
       from: user,
       to,
       subject: 'Email Confirmation',
       html: confirmationEmailTemplate(code),
     })
   },
-  passwordResetEmail: (to, userID) => {
+  passwordResetEmail: (url, to, userID) => {
+    const user = supportEmail(url)
     const token = passwordResetToken({ userID })
-    const url = `https://${getHost()}/reset?token=` + token
+    const resetUrl = `${url}/reset?token=` + token
 
-    return transporter.sendMail({
-      from: process.env.SUPPORT_EMAIL,
+    return createTransport(url).sendMail({
+      from: user,
       to,
       subject: 'Password Reset Requested',
-      html: passwordResetTemplate(url),
+      html: passwordResetTemplate(resetUrl),
     })
   },
 }
