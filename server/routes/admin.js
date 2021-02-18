@@ -1602,7 +1602,15 @@ router.post(
     } else if (!emails.includes(email)) {
       rs.status(400).send({ message: 'Invalid email' })
     } else {
-      rs.send(await Domains.assignDomain(domain, email))
+      Domains.assignDomain(domain, email)
+        .then(data => {
+          rs.send(data)
+        })
+        .catch(err => {
+          rs.send({
+            message: err.message,
+          })
+        })
     }
   },
 )
