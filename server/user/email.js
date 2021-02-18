@@ -4,19 +4,6 @@ const { parseDomain } = require('../domains')
 
 const nodemailer = require('nodemailer')
 
-const getHost = () => {
-  return process.env.SUPPORT_EMAIL.split('@')[1]
-}
-
-const getProjectName = () => {
-  const dict = {
-    'mybitfx.com': 'MyBitFX',
-    'excryptobit.com': 'ExCryptoBit',
-  }
-
-  return dict[getHost()]
-}
-
 const supportEmail = url => 'support@' + parseDomain(url)
 
 const createTransport = url => {
@@ -35,8 +22,6 @@ const createTransport = url => {
 }
 
 module.exports = {
-  getHost,
-  getProjectName,
   send: (url, to, code) => {
     const user = supportEmail(url)
     return createTransport(url).sendMail({
