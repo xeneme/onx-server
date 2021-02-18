@@ -16,7 +16,7 @@ async function main() {
   namecheapApi.config.set('ClientIp', CLIENT_IP)
 }
 
-async function query(command, params = {}, sandbox = true) {
+async function query(command, params = {}, sandbox) {
   try {
     return await namecheapApi.apiCall(command, params, sandbox)
   } catch (err) {
