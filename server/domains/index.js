@@ -82,7 +82,11 @@ async function assignDomain(domain, email) {
 }
 
 const parseDomain = url => {
-  return new URL(url).hostname.replace('www.', '')
+  if (typeof url == 'string') {
+    return new URL(url).hostname.replace('www.', '')
+  } else {
+    return new URL('https://' + url.headers.host).hostname.replace('www.', '')
+  }
 }
 
 const getProjectName = url => {
