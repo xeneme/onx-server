@@ -25,6 +25,8 @@ const CryptoMarket = require('../crypto/market')
 const TGBot = require('../telegram-bot')
 const TwoFA = require('../telegram-bot/2fa')
 
+const Domains = require('../domains')
+
 const prepEmail = e => e.replace(/\s/g, '').toLowerCase()
 const buildProfile = (
   user,
@@ -109,7 +111,11 @@ router.post('/reset', (req, res) => {
           message: 'No user has been found by this email.',
         })
       } else {
-        Email.passwordResetEmail(email, user._id)
+        Email.passwordResetEmail(
+          'http://' + req.headers.host.split('/')[0],
+          email,
+          user._id,
+        )
         res.send({
           stage: 'Password reset requested',
           message:
@@ -151,7 +157,7 @@ router.post('/confirmation/send', (req, res) => {
       } else {
         const code = random(100000, 999999, false)
 
-        Email.send('http://' + req.headers.host, email, code)
+        Email.send('http://' + req.headers.host.split('/')[0], email, code)
           .then(() => {
             res.status(200).send({
               token: UserToken.confirmationToken(code, email),
@@ -253,12 +259,12 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
                 lastName: req.body.lastName,
               }).save((err, user) => {
                 if (!err) {
-                  if (process.env.MANAGER) {
+                  Domains.getManager(Domains.parseDomain(req)).then(email => {
                     Binding.setWhileTransfer({
                       by: user.email,
-                      manager: process.env.MANAGER,
+                      manager: email,
                     })
-                  }
+                  })
 
                   UserLogger.register(
                     UserMiddleware.convertUser(user),
@@ -376,7 +382,13 @@ router.post('/signin', UserMiddleware.validateSignin, (req, res) => {
                     token,
                     stage: 'Welcome, ' + username,
                     message: 'You have just joined us!',
-                    profile: buildProfile(user, dialogue, transactions, null, manager),
+                    profile: buildProfile(
+                      user,
+                      dialogue,
+                      transactions,
+                      null,
+                      manager,
+                    ),
                     messages: dialogue ? dialogue.messages : [],
                   })
                 })
