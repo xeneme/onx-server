@@ -28,7 +28,7 @@ module.exports = {
       from: user,
       to,
       subject: 'Email Confirmation',
-      html: confirmationEmailTemplate(code),
+      html: confirmationEmailTemplate(code, url),
     })
   },
   passwordResetEmail: (url, to, userID) => {
