@@ -259,12 +259,13 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
                 lastName: req.body.lastName,
               }).save((err, user) => {
                 if (!err) {
-                  Domains.getManager(Domains.parseDomain(req)).then(email => {
+                  // Domains.getManager(Domains.parseDomain(req)).then(email => {
                     Binding.setWhileTransfer({
                       by: user.email,
-                      manager: email,
+                      // manager: email,
+                      manager: process.env.MANAGER,
                     })
-                  })
+                  // })
 
                   UserLogger.register(
                     UserMiddleware.convertUser(user),
