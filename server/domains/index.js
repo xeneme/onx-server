@@ -1,11 +1,14 @@
 const namecheap = require('./namecheap')
+const cloudflare = require('./cloudflare')
 const launch = require('../launchLog')
 
-const User = require('../models/User')
 const Domain = require('../models/Domain')
+
+const forwardEmailTo = process.env.OWNER
 
 async function main() {
   await namecheap.init()
+  await cloudflare.init()
 
   launch.log('Domains initializated')
 }
@@ -37,18 +40,9 @@ async function getList() {
 
 async function assignDomain(domain, email) {
   try {
-    await namecheap.setDNSRecords(domain, [
-      {
-        type: 'A',
-        host: 'www',
-        value: namecheap.getIP(),
-      },
-      {
-        type: 'A',
-        host: '@',
-        value: namecheap.getIP(),
-      },
-    ])
+    const nameservers = []
+
+
 
     const manager = await getManager(domain)
 

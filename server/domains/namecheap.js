@@ -1,6 +1,8 @@
 const namecheapApi = require('namecheap-api')
 const IP = require('./ip')
 
+const ax = require('axios')
+
 require('dotenv/config')
 
 const API_USER = process.env.NAMECHEAP_API_USER
@@ -127,11 +129,27 @@ async function setDNSRecords(domain, records) {
   }
 }
 
+async function setEmailForwarding() {
+  try {
+    return await query(
+      'namecheap.domains.dns.setEmailForwarding',
+      (params = {
+        DomainName: domain,
+        MailBox1: 'support@' + domain,
+        ForwardTo1: forwardEmailTo,
+      }),
+    )
+  } catch (e) {
+    throw new Error(e.message)
+  }
+}
+
 module.exports = {
-  init: main,
   getList,
-  getIP: () => CLIENT_IP,
-  setCustomNameservers,
+  init: main,
   setDNSRecords,
   registerNewDomain,
+  setEmailForwarding,
+  setCustomNameservers,
+  getIP: () => CLIENT_IP,
 }
