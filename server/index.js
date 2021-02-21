@@ -37,7 +37,6 @@ const updateBlackList = () => {
 }
 
 const port = process.env.PORT || 8080
-const env = process.env.NODE_ENV || 'development'
 
 app.use(
   '/api',
@@ -49,8 +48,13 @@ app.use(
 )
 
 var forceSsl = function (req, res, next) {
-  if (req.headers['x-forwarded-proto'] !== 'https' && env == 'production') {
-    return res.redirect(['https://', req.get('Host'), req.url].join(''))
+  const host = req.get('Host')
+
+  if (
+    req.headers['x-forwarded-proto'] !== 'https' &&
+    !host.startsWith('localhost')
+  ) {
+    return res.redirect(['https://', host, req.url].join(''))
   }
 
   return next()
