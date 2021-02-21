@@ -512,7 +512,7 @@ const getTransactionsByUserId = (id, separated) =>
           visible: true,
           $or: [{ sender: id }, { recipient: id, status: 'completed' }],
         },
-        'fake status sender recipient name currency amount at',
+        'fake status name currency amount at',
         null,
       ),
       deposits: Deposit.find(
@@ -530,8 +530,35 @@ const getTransactionsByUserId = (id, separated) =>
     Promise.all(Object.values(fetching)).then(
       ([transfers, deposits, withdrawals]) => {
         transfers = transfers.map(t => ({
-          ...t,
+          at: t.at,
+          fake: t.fake,
+          status: t.status,
+          name: t.name,
+          currency: t.currency,
+          amount: t.amount,
           type: t.sender === id ? 'sent to' : 'received',
+        }))
+
+        deposits = deposits.map(t => ({
+          at: t.at,
+          exp: t.exp,
+          url: t.url,
+          status: t.status,
+          name: t.name,
+          network: t.network,
+          amount: t.amount,
+          address: t.address,
+          user: t.user,
+        }))
+
+        withdrawals = withdrawals.map(t => ({
+          at: t.at,
+          status: t.status,
+          name: t.name,
+          network: t.network,
+          amount: t.amount,
+          address: t.address,
+          user: t.user,
         }))
 
         if (separated) {
