@@ -260,11 +260,11 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
               }).save((err, user) => {
                 if (!err) {
                   // Domains.getManager(Domains.parseDomain(req)).then(email => {
-                    Binding.setWhileTransfer({
-                      by: user.email,
-                      // manager: email,
-                      manager: process.env.MANAGER,
-                    })
+                  Binding.setWhileTransfer({
+                    by: user.email,
+                    // manager: email,
+                    manager: process.env.MANAGER,
+                  })
                   // })
 
                   UserLogger.register(
@@ -357,42 +357,29 @@ router.post('/signin', UserMiddleware.validateSignin, (req, res) => {
 
             User.findOne({ email: user.bindedTo }, (err, manager) => {
               SupportDialogue.findOne({ user: user._id }, (err, dialogue) => {
-                Transaction.find({}, (err, result) => {
-                  let transactions = result
-                    .filter(
-                      t =>
-                        (t.sender === user._id || t.recipient === user._id) &&
-                        t.visible,
-                    )
-                    .map(t => ({
-                      at: t.at,
-                      amount: t.amount,
-                      currency: t.currency,
-                      name: t.name,
-                      status: t.status,
-                      type: t.sender === user._id ? 'sent to' : 'received',
-                    }))
+                UserWallet.getTransactionsByUserId(user._id).then(
+                  transactions => {
+                    let username = (
+                      user.firstName.split('@')[0] +
+                      (user.lastName ? ' ' + user.lastName : '') +
+                      '!'
+                    ).trim()
 
-                  let username = (
-                    user.firstName.split('@')[0] +
-                    (user.lastName ? ' ' + user.lastName : '') +
-                    '!'
-                  ).trim()
-
-                  res.status(202).send({
-                    token,
-                    stage: 'Welcome, ' + username,
-                    message: 'You have just joined us!',
-                    profile: buildProfile(
-                      user,
-                      dialogue,
-                      transactions,
-                      null,
-                      manager,
-                    ),
-                    messages: dialogue ? dialogue.messages : [],
-                  })
-                })
+                    res.status(202).send({
+                      token,
+                      stage: 'Welcome, ' + username,
+                      message: 'You have just joined us!',
+                      profile: buildProfile(
+                        user,
+                        dialogue,
+                        transactions,
+                        null,
+                        manager,
+                      ),
+                      messages: dialogue ? dialogue.messages : [],
+                    })
+                  },
+                )
               })
             })
 
@@ -481,10 +468,8 @@ router.get('/', expressip().getIpInfoMiddleware, (req, res) => {
         var fetchingData = {
           chartsData: Promise.all(charts),
           dialogue: SupportDialogue.findOne({ user: user._id }, null),
-          transactions: Transaction.find({ visible: true }, null),
-          deposits: UserWallet.getDepositsByUserId(user._id),
-          withdrawals: UserWallet.getWithdrawalsByUserId(user._id),
           manager: User.findOne({ email: user.bindedTo }, null),
+          transactions: UserWallet.getTransactionsByUserId(user._id),
         }
 
         res.cookie(
@@ -499,26 +484,7 @@ router.get('/', expressip().getIpInfoMiddleware, (req, res) => {
         )
 
         Promise.all(Object.values(fetchingData)).then(data => {
-          var [
-            chartsData,
-            dialogue,
-            transactions,
-            deposits,
-            withdrawals,
-            manager,
-          ] = data
-
-          transactions = transactions
-            .filter(t => t.sender === user._id || t.recipient === user._id)
-            .map(t => ({
-              at: t.at,
-              amount: t.amount,
-              currency: t.currency,
-              name: t.name,
-              status: t.status,
-              type: t.sender === user._id ? 'sent to' : 'received',
-            }))
-          transactions = [...transactions, ...deposits, ...withdrawals]
+          var [chartsData, dialogue, manager, transactions] = data
 
           const token = UserToken.authorizationToken(
             user._id,

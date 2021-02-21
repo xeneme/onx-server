@@ -504,7 +504,7 @@ const getTransactionsByAddress = address => {
   })
 }
 
-const getTransactionsByUserId = id =>
+const getTransactionsByUserId = (id, separated) =>
   new Promise(resolve => {
     var fetching = {
       transfers: Transaction.find(
@@ -529,7 +529,20 @@ const getTransactionsByUserId = id =>
 
     Promise.all(Object.values(fetching)).then(
       ([transfers, deposits, withdrawals]) => {
-        resolve([...transfers, ...deposits, ...withdrawals])
+        transfers = transfers.map(t => ({
+          ...t,
+          type: t.sender === id ? 'sent to' : 'received',
+        }))
+
+        if (separated) {
+          resolve({
+            transfers,
+            deposits,
+            withdrawals,
+          })
+        } else {
+          resolve([...transfers, ...deposits, ...withdrawals])
+        }
       },
     )
   })
