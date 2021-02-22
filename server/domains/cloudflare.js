@@ -5,7 +5,7 @@ var ACCOUNT_ID = ''
 async function main() {
   ACCOUNT_ID = (await getAccounts()).data.result[0].id
 
-  console.log(ACCOUNT_ID)
+  // console.log(ACCOUNT_ID)
 }
 
 async function getAccounts() {
@@ -42,6 +42,29 @@ async function addZone(domain) {
   })
 }
 
+async function setFlexibleSSL(zone) {
+  return await query({
+    path: 'zones/' + zone + '/settings/ssl',
+    method: 'patch',
+    body: {
+      value: 'flexible',
+    },
+  })
+}
+
+async function addDNSRecord({ zone, type, name, content, ttl, priority }) {
+  await query({
+    path: `zones/${zone}/dns_records`,
+    method: 'post',
+    body: {
+      type,
+      name,
+      content,
+      ttl: ttl || 1,
+      priority,
+    },
+  })
+}
 async function createPageRule(domain) {
   let zone = await getZone(domain)
 
@@ -78,5 +101,8 @@ module.exports = {
   init: main,
   getAccounts,
   getZones,
+  getZone,
   addZone,
+  setFlexibleSSL,
+  addDNSRecord,
 }

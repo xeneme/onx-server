@@ -97,7 +97,7 @@ async function registerNewDomain(domain, years) {
 async function setCustomNameservers(domain, nameservers) {
   const [SLD, TLD] = domain.split('.')
 
-  return query('dns.setCustom', {
+  return query('namecheap.domains.dns.setCustom', {
     SLD,
     TLD,
     NameServers: nameservers.join(','),

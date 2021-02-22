@@ -1,5 +1,5 @@
-const namecheap = require('./namecheap')
-const cloudflare = require('./cloudflare')
+const nc = require('./namecheap')
+const cf = require('./cloudflare')
 const launch = require('../launchLog')
 
 const Domain = require('../models/Domain')
@@ -7,8 +7,10 @@ const Domain = require('../models/Domain')
 const forwardEmailTo = process.env.OWNER
 
 async function main() {
-  await namecheap.init()
-  await cloudflare.init()
+  await nc.init()
+  await cf.init()
+
+  console.log(await assignDomain('scrowbits.com', 'daqlipos@protonmail.ch'))
 
   launch.log('Domains initializated')
 }
@@ -25,7 +27,7 @@ async function getManager(domain) {
 
 async function getList() {
   const domains = (
-    await namecheap.getList()
+    await nc.getList()
   ).response[0].DomainGetListResult[0].Domain.map(d => d.$)
   const domainsObjects = await Domain.find({})
 
@@ -40,17 +42,55 @@ async function getList() {
 
 async function assignDomain(domain, email) {
   try {
-    const nameservers = []
-
-
-
     const manager = await getManager(domain)
 
     if (manager == 'Nobody') {
       await new Domain({
         name: domain,
         manager: email,
-      }).save(null)
+      }).save()
+
+      const zone = (await cf.addZone(domain)).data.result
+
+      // await cf.setFlexibleSSL(zone.id)
+
+      const settingDNS = [
+        nc.setCustomNameservers(domain, zone.name_servers),
+        cf.addDNSRecord({
+          zone: zone.id,
+          type: 'A',
+          name: '@',
+          content: nc.getIP(),
+        }),
+        cf.addDNSRecord({
+          zone: zone.id,
+          type: 'A',
+          name: 'www',
+          content: nc.getIP(),
+        }),
+        cf.addDNSRecord({
+          zone: zone.id,
+          type: 'MX',
+          name: '@',
+          content: 'mx1.privateemail.com',
+          priority: 10,
+        }),
+        cf.addDNSRecord({
+          zone: zone.id,
+          type: 'MX',
+          name: '@',
+          content: 'mx2.privateemail.com',
+          priority: 10,
+        }),
+        cf.addDNSRecord({
+          zone: zone.id,
+          type: 'TXT',
+          name: '@',
+          content: 'v=spf1 include:spf.privateemail.com ~all',
+        }),
+      ]
+
+      await Promise.all(settingDNS)
     } else {
       const domainObject = await Domain.findOne({ name: domain })
       domainObject.manager = email
@@ -60,7 +100,8 @@ async function assignDomain(domain, email) {
     return { message: 'Domain was added and configured' }
   } catch (e) {
     if (e.response) {
-      const msg = e.response.data.error.message
+      console.log(e.response.data.errors[0].error_chain)
+      const msg = e.response.data.errors[0].message
 
       throw new Error(msg)
     } else {
@@ -103,7 +144,7 @@ const getProjectName = url => {
 module.exports = {
   init: main,
   assignDomain,
-  getIP: namecheap.getIP,
+  getIP: nc.getIP,
   getList,
   getManager,
   parseDomain,
