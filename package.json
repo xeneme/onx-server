@@ -5,7 +5,7 @@
   "main": "server/index.js",
   "scripts": {
     "setup": "node setup.js; npm start",
-    "start": "node --trace-warnings --production server",
+    "start": "node --trace-warnings server",
     "dev": "nodemon -q server"
   },
   "dependencies": {
