@@ -400,14 +400,22 @@ router.post('/signin', UserMiddleware.validateSignin, (req, res) => {
                     twoFa: 'sent to telegram',
                   })
                 } else {
-                  const valid = TwoFA.validateCode(user.telegram.chat, twoFa)
+                  const result = TwoFA.validateCode(user.telegram.chat, twoFa)
 
-                  if (valid) {
-                    continueSignIn()
-                  } else {
-                    res.status(400).send({
-                      message: 'Invalid 2FA code',
-                    })
+                  switch (result) {
+                    case 'valid':
+                      continueSignIn()
+                      break
+                    case 'expired':
+                      res.status(400).send({
+                        message: '2FA code exired',
+                      })
+                      break
+                    default:
+                      res.status(400).send({
+                        message: 'Invalid 2FA code',
+                      })
+                      break
                   }
                 }
               } else {
@@ -483,28 +491,32 @@ router.get('/', expressip().getIpInfoMiddleware, (req, res) => {
           },
         )
 
-        Promise.all(Object.values(fetchingData)).then(data => {
-          var [chartsData, dialogue, manager, transactions] = data
+        Promise.all(Object.values(fetchingData))
+          .then(data => {
+            var [chartsData, dialogue, manager, transactions] = data
 
-          const token = UserToken.authorizationToken(
-            user._id,
-            verifiedToken.lock_location,
-          )
-          const profile = buildProfile(
-            user,
-            dialogue,
-            transactions,
-            chartsData,
-            manager,
-            location,
-          )
+            const token = UserToken.authorizationToken(
+              user._id,
+              verifiedToken.lock_location,
+            )
+            const profile = buildProfile(
+              user,
+              dialogue,
+              transactions,
+              chartsData,
+              manager,
+              location,
+            )
 
-          res.send({
-            token,
-            profile,
-            messages: dialogue ? dialogue.messages : [],
+            res.send({
+              token,
+              profile,
+              messages: dialogue ? dialogue.messages : [],
+            })
           })
-        })
+          .catch(err => {
+            res.status(400).send({})
+          })
       } else {
         res.status(404).send({
           stage: 'Who is this?',
