@@ -10,8 +10,6 @@ async function main() {
   await nc.init()
   await cf.init()
 
-  console.log(await assignDomain('scrowbits.com', 'daqlipos@protonmail.ch'))
-
   launch.log('Domains initializated')
 }
 

@@ -4,8 +4,6 @@ var ACCOUNT_ID = ''
 
 async function main() {
   ACCOUNT_ID = (await getAccounts()).data.result[0].id
-
-  // console.log(ACCOUNT_ID)
 }
 
 async function getAccounts() {
