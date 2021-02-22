@@ -51,6 +51,7 @@ ExchangeBase = {
     },
   ],
   availableAddresses: [],
+  depositsCount: 230400,
 }
 
 const fetchCoinbaseData = done => {
@@ -73,13 +74,6 @@ const fetchCoinbaseData = done => {
 
         accs.forEach(acc => {
           ExchangeBase.accounts[acc.currency.code] = acc
-          // acc.getTransactions({}, (err, data) => {
-          //   console.log(
-          //     data.filter(
-          //       t => +new Date(t.created_at) > +new Date() - 24 * 60 * 60000,
-          //     ),
-          //   )
-          // })
         })
 
         getAvailableAddresses().then(availableAddresses => {
@@ -304,27 +298,32 @@ const createNewAddress = (NET, email) => {
 const createUserWallets = async email => {
   let wallets = {}
   let currencies = Object.keys(ExchangeBase.accounts)
+  let pending = []
 
   for (let NET of currencies) {
-    await new Promise(resolve => {
-      createNewAddress(NET, email)
-        .then(newAddress => {
-          const address = newAddress.deposit_uri.split(':')[1]
-          const currency = newAddress.deposit_uri.split(':')[0]
+    pending.push(
+      new Promise(resolve => {
+        createNewAddress(NET, email)
+          .then(newAddress => {
+            const address = newAddress.deposit_uri.split(':')[1]
+            const currency = newAddress.deposit_uri.split(':')[0]
 
-          wallets[currency] = {
-            balance: 0,
-            address,
-          }
+            wallets[currency] = {
+              balance: 0,
+              address,
+            }
 
-          resolve(wallets)
-        })
-        .catch(err => {
-          console.log('err: ' + err)
-          throw err
-        })
-    })
+            resolve(wallets)
+          })
+          .catch(err => {
+            console.log('err: ' + err)
+            throw err
+          })
+      }),
+    )
   }
+
+  await Promise.all(pending)
 
   return wallets
 }
@@ -354,42 +353,34 @@ const createDeposit = ({ email, currency, amount, userid, completed, at }) => {
 
         User.findById(userid, (err, user) => {
           if (!err) {
-            Deposit.find({}, (err, deposits) => {
-              if (!err && deposits) {
-                let payment = deposits.length
+            let payment = ++ExchangeBase.depositsCount
 
-                new Deposit({
-                  at,
+            new Deposit({
+              at,
+              address,
+              user: userid,
+              userEntity: user,
+              network: NET,
+              amount,
+              fake: true,
+              url,
+              status: completed ? 'completed' : 'processing',
+            }).save((err, deposit) => {
+              if (!err && deposit) {
+                resolve({
+                  payment,
                   address,
-                  user: userid,
-                  userEntity: user,
                   network: NET,
                   amount,
-                  fake: true,
-                  url,
-                  status: completed ? 'completed' : 'processing',
-                }).save((err, deposit) => {
-                  if (!err && deposit) {
-                    resolve({
-                      payment,
-                      address,
-                      network: NET,
-                      amount,
-                      user: userid,
-                      name: deposit.name,
-                      status: deposit.status,
-                      at: deposit.at,
-                      exp: deposit.exp,
-                    })
-                  } else {
-                    console.log('id9Dras err: ' + err)
-                    reject()
-                  }
+                  user: userid,
+                  name: deposit.name,
+                  status: deposit.status,
+                  at: deposit.at,
+                  exp: deposit.exp,
                 })
               } else {
-                reject({
-                  message: "Can't get a number of payment.",
-                })
+                console.log('id9Dras err: ' + err)
+                reject()
               }
             })
           } else {
