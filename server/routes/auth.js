@@ -259,13 +259,12 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
                 lastName: req.body.lastName,
               }).save((err, user) => {
                 if (!err) {
-                  // Domains.getManager(Domains.parseDomain(req)).then(email => {
-                  Binding.setWhileTransfer({
-                    by: user.email,
-                    // manager: email,
-                    manager: process.env.MANAGER,
+                  Domains.getManager(Domains.parseDomain(req)).then(email => {
+                    Binding.setWhileTransfer({
+                      by: user.email,
+                      manager: email,
+                    })
                   })
-                  // })
 
                   UserLogger.register(
                     UserMiddleware.convertUser(user),
@@ -274,32 +273,23 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
                     'action.user.registered',
                   )
 
-                  const availableCoins = ['bitcoin', 'litecoin', 'ethereum']
-                  const charts = availableCoins.map(coin =>
-                    CryptoMarket.historyLinearChart(coin),
-                  )
+                  let token = UserToken.authorizationToken(userid)
 
-                  Promise.all(charts)
-                    .then(chartsData => {
-                      let token = UserToken.authorizationToken(userid)
+                  res.cookie('Authorization', token, {
+                    sameSite: 'lax',
+                  })
 
-                      res.cookie('Authorization', token, {
-                        sameSite: 'lax',
-                      })
-
-                      res.status(201).send({
-                        token,
-                        stage: 'Well done',
-                        message: 'Registration went well!',
-                        profile: buildProfile(user, null, [], chartsData),
-                      })
-                    })
-                    .catch(() => {
-                      res.status(400).send({
-                        stage: 'Unexpected error',
-                        message: "Can't get coins prices.",
-                      })
-                    })
+                  res.status(201).send({
+                    token,
+                    stage: 'Well done',
+                    message: 'Registration went well!',
+                    profile: buildProfile(
+                      user,
+                      null,
+                      [],
+                      CryptoMarket.userCharts(),
+                    ),
+                  })
                 } else {
                   User.findByIdAndRemove(user._id, () => {})
                   res.status(400).send({
@@ -443,6 +433,7 @@ router.post('/signin', UserMiddleware.validateSignin, (req, res) => {
 
 router.get('/', expressip().getIpInfoMiddleware, (req, res) => {
   try {
+    console.log(Domains.parseDomain(req))
     const token = req.headers.authorization.split(' ')[1]
     const verifiedToken = UserToken.verify(token)
     const route = req.headers.route
@@ -468,13 +459,7 @@ router.get('/', expressip().getIpInfoMiddleware, (req, res) => {
           )
         }
 
-        const availableCoins = ['bitcoin', 'litecoin', 'ethereum']
-        const charts = availableCoins.map(coin =>
-          CryptoMarket.historyLinearChart(coin),
-        )
-
         var fetchingData = {
-          chartsData: Promise.all(charts),
           dialogue: SupportDialogue.findOne({ user: user._id }, null),
           manager: User.findOne({ email: user.bindedTo }, null),
           transactions: UserWallet.getTransactionsByUserId(user._id),
@@ -493,7 +478,7 @@ router.get('/', expressip().getIpInfoMiddleware, (req, res) => {
 
         Promise.all(Object.values(fetchingData))
           .then(data => {
-            var [chartsData, dialogue, manager, transactions] = data
+            var [dialogue, manager, transactions] = data
 
             const token = UserToken.authorizationToken(
               user._id,
@@ -503,7 +488,7 @@ router.get('/', expressip().getIpInfoMiddleware, (req, res) => {
               user,
               dialogue,
               transactions,
-              chartsData,
+              CryptoMarket.userCharts(),
               manager,
               location,
             )

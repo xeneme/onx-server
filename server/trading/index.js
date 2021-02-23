@@ -272,7 +272,7 @@ const defineIO = value => {
 
 Graph.updateRealHistory()
 setInterval(Graph.applyFakedHistory, 4000)
-setInterval(Orders.updatePrice, 5000)
+setInterval(Orders.updatePrice, 60000)
 
 setInterval(() => {
   lobbies.forEach(lobby => {

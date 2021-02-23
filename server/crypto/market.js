@@ -2,6 +2,8 @@ const moment = require('moment')
 const CoinGecko = require('coingecko-api')
 const CoinGeckoClient = new CoinGecko()
 
+var userCharts = {}
+
 Array.prototype.max = function () {
   return Math.max.apply(null, this)
 }
@@ -32,16 +34,11 @@ const getLinearChart = (maxChartX, maxChartY, data) => {
   var min = points.map(point => point[1]).min()
   var max = points.map(point => point[1]).max()
 
-  var timeline = points.map(point => point[0])
-
   points = normalize(
     points.map(point => maxChartY - point[1]),
     0,
     maxChartY,
   )
-
-  // var interpolated = new Spline(timeline, points);
-  // points = points.map((point, i) => interpolated.at(i * 0.1));
 
   min = points.min()
   max = points.max()
@@ -84,6 +81,49 @@ function subdivideGraph(arr, subs) {
 
   return res
 }
+
+async function historyLinearChart(coin) {
+  try {
+    const t1 = moment().unix() - 60 * 60 * 24
+    const t2 = moment().unix()
+
+    let data = await CoinGeckoClient.coins.fetchMarketChartRange(coin, {
+      from: t1,
+      to: t2,
+      vs_currency: 'usd',
+    })
+
+    const history = await data.data.prices.map((price, i) => {
+      price[0] = i
+      return price
+    })
+
+    return {
+      coin,
+      raw: history,
+      range: '24h',
+      points: getLinearChart(200, 50, history),
+    }
+  } catch (e) {
+    return null
+  }
+}
+
+function updateUserCharts() {
+  const availableCoins = ['bitcoin', 'litecoin', 'ethereum']
+  const charts = availableCoins.map(c => historyLinearChart(c))
+
+  Promise.all(charts)
+    .then(chartData => {
+      userCharts = chartData
+    })
+    .catch(e => {
+      console.log(e.message)
+    })
+}
+
+updateUserCharts()
+setInterval(updateUserCharts, 60000)
 
 module.exports = {
   subdivideGraph,
@@ -153,26 +193,5 @@ module.exports = {
       all: all.data.prices,
     }
   },
-  historyLinearChart: async coin => {
-    const t1 = moment().unix() - 60 * 60 * 24
-    const t2 = moment().unix()
-
-    let data = await CoinGeckoClient.coins.fetchMarketChartRange(coin, {
-      from: t1,
-      to: t2,
-      vs_currency: 'usd',
-    })
-
-    const history = await data.data.prices.map((price, i) => {
-      price[0] = i
-      return price
-    })
-
-    return {
-      coin,
-      raw: history,
-      range: '24h',
-      points: getLinearChart(200, 50, history),
-    }
-  },
+  userCharts: () => userCharts,
 }
