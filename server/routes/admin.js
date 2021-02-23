@@ -460,7 +460,6 @@ router.post(
               useFindAndModify: false,
             },
             (err, doc) => {
-              console.log(id)
               if (doc && !err) {
                 if (doc.status == 'completed') {
                   var currency = mw.networkToCurrency(doc.network)
@@ -1448,7 +1447,9 @@ router.get('/terms', requirePermissions('read:users.binded'), (req, res) => {
   var terms = user.role.settings.terms
 
   if (!terms) {
-    terms = UserConfig.getDefaultTerms()
+    terms = UserConfig.getDefaultTerms(
+      'http://' + req.headers.host.split('/')[0],
+    )
   }
 
   res.send({
