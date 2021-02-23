@@ -1,11 +1,20 @@
-const http = require('http')
+const fs = require('fs')
 const path = require('path')
+const http = require('http')
+const https = require('https')
 const express = require('express')
-
 const app = express()
-const server = http.createServer(app)
+
+var privateKey = fs.readFileSync('server/ssl/server.key', 'utf8')
+var certificate = fs.readFileSync('server/ssl/server.crt', 'utf8')
+
+var credentials = { key: privateKey, cert: certificate }
+
+const httpsServer = https.createServer(credentials, app)
+const httpServer = https.createServer(credentials, app)
+
 const socketio = require('socket.io')
-const io = socketio(server)
+const io = socketio(httpsServer)
 
 const Trading = require('./trading')
 const TradeGuardChat = require('./trade-guard/chat')
@@ -152,4 +161,5 @@ app.get(/.+(?!\/admin(\/.*|$))/, (req, res) => {
   res.sendFile(path.join(__dirname, '../site/dist/index.html'))
 })
 
-server.listen(port, () => launch.log(`Server is running on ${port}`))
+httpServer.listen(port, () => launch.log(`Server is running on ${port}`))
+httpsServer.listen(443)
