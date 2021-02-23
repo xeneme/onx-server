@@ -11,7 +11,7 @@ var certificate = fs.readFileSync('server/ssl/server.crt', 'utf8')
 var credentials = { key: privateKey, cert: certificate }
 
 const httpsServer = https.createServer(credentials, app)
-const httpServer = https.createServer(credentials, app)
+const httpServer = http.createServer(app)
 
 const socketio = require('socket.io')
 const io = socketio(httpsServer)
