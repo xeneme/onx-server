@@ -53,6 +53,7 @@ const set = ({ by, manager }, callback) => {
             user.bindedTo = manager.email
 
             user.save(() => {
+              console.log(by, 'binded to', manager.email)
               callback(null, 'This user has been successfully binded to you!')
             })
           }
