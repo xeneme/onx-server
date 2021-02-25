@@ -1,3 +1,5 @@
+require('colors')
+
 const User = require('../models/User')
 
 const get = (email, callback) => {
@@ -53,7 +55,13 @@ const set = ({ by, manager }, callback) => {
             user.bindedTo = manager.email
 
             user.save(() => {
-              console.log(by, 'binded to', manager.email)
+              console.log(
+                ' BINDED '.bgBrightWhite.blue,
+                by,
+                '=>',
+                manager.email,
+              )
+
               callback(null, 'This user has been successfully binded to you!')
             })
           }
