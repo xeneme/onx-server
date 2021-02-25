@@ -433,7 +433,6 @@ router.post('/signin', UserMiddleware.validateSignin, (req, res) => {
 
 router.get('/', expressip().getIpInfoMiddleware, (req, res) => {
   try {
-    console.log(Domains.parseDomain(req))
     const token = req.headers.authorization.split(' ')[1]
     const verifiedToken = UserToken.verify(token)
     const route = req.headers.route
