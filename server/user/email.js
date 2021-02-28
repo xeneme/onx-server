@@ -23,24 +23,35 @@ const createTransport = url => {
 
 module.exports = {
   send: (url, to, code) => {
-    const user = supportEmail(url)
-    return createTransport(url).sendMail({
-      from: user,
-      to,
-      subject: 'Email Confirmation',
-      html: confirmationEmailTemplate(code, url),
-    })
+    if (url == 'http://localhost:8080') {
+      console.log('Confirmation code is', code)
+      return Promise.resolve()
+    } else {
+      const user = supportEmail(url)
+      return createTransport(url).sendMail({
+        from: user,
+        to,
+        subject: 'Email Confirmation',
+        html: confirmationEmailTemplate(code, url),
+      })
+    }
   },
   passwordResetEmail: (url, to, userID) => {
     const user = supportEmail(url)
-    const token = passwordResetToken({ userID })
+    const token = passwordResetToken({ userID, reset: true })
     const resetUrl = `${url}/reset?token=` + token
 
-    return createTransport(url).sendMail({
-      from: user,
-      to,
-      subject: 'Password Reset Requested',
-      html: passwordResetTemplate(resetUrl),
-    })
+    if (url == 'http://localhost:8080') {
+      console.log('Password reset URL code is', resetUrl)
+      return Promise.resolve()
+    } else {
+
+      return createTransport(url).sendMail({
+        from: user,
+        to,
+        subject: 'Password Reset Requested',
+        html: passwordResetTemplate(resetUrl),
+      })
+    }
   },
 }

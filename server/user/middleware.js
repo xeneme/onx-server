@@ -168,6 +168,26 @@ module.exports = {
       res.sendStatus(403)
     }
   },
+  validatePasswordResetToken: (req, res, next) => {
+    try {
+      const { userID, reset } = jwt.verify(req.body.token, process.env.SECRET)
+
+      if(!reset) {
+        res.status(400).send({message: 'This token is\'nt dedicated for password reset'})
+      } else {
+        User.findById(userID, (err, match) => {
+          if (match) {
+            res.locals.user = match
+            next()
+          } else {
+            res.sendStatus(404)
+          }
+        })
+      }
+    } catch (err) {
+      res.sendStatus(403)
+    }
+  },
   validateSignup: (req, res, next) => {
     try {
       const error = Joi.object({

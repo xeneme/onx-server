@@ -91,13 +91,13 @@ router.post('/update', UserMiddleware.requireAccess, (req, res) => {
   ) {
     const error = Joi.object({
       password: Joi.string()
-        .pattern(/^[a-zA-Z0-9]{6,32}$/)
+        .pattern(/^[0-9A-Za-z#$%=@!{},`~&*()'<>?.:;_|^\/+\t\r\n\[\]"-]{6,32}$/)
         .required()
         .error(
           new Error('Passwords must contain 6 to 32 alphanumeric characters.'),
         ),
       newPassword: Joi.string()
-        .pattern(/^[a-zA-Z0-9]{6,32}$/)
+        .pattern(/^[0-9A-Za-z#$%=@!{},`~&*()'<>?.:;_|^\/+\t\r\n\[\]"-]{6,32}$/)
         .required()
         .error(
           new Error('Passwords must contain 6 to 32 alphanumeric characters.'),
@@ -174,6 +174,62 @@ router.post('/update', UserMiddleware.requireAccess, (req, res) => {
   }
 })
 
+router.post(
+  '/reset-password',
+  UserMiddleware.validatePasswordResetToken,
+  (req, res) => {
+    const user = res.locals.user
+
+    if (req.body.newPassword && req.body.repeatNewPassword) {
+      const error = Joi.object({
+        newPassword: Joi.string()
+          .pattern(
+            /^[0-9A-Za-z#$%=@!{},`~&*()'<>?.:;_|^\/+\t\r\n\[\]"-]{6,32}$/,
+          )
+          .required()
+          .error(new Error('Passwords must contain 6 to 32 characters.')),
+        repeatNewPassword: Joi.string()
+          .valid(Joi.ref('newPassword'))
+          .required()
+          .error(new Error("New passwords don't match.")),
+      }).validate({
+        newPassword: req.body.newPassword,
+        repeatNewPassword: req.body.repeatNewPassword,
+      }).error
+
+      if (error) {
+        res.status(406).send({
+          stage: 'Validation',
+          message: error.message,
+        })
+      } else {
+        const salt = bcrypt.genSaltSync(7)
+        const hashedPassword = bcrypt.hashSync(req.body.newPassword, salt)
+
+        user.password = hashedPassword
+        user.save(() => {
+          Logger.register(
+            UserMiddleware.convertUser(user),
+            200,
+            'password_changed',
+            'action.user.passwordChanged',
+          )
+          res.status(200).send({
+            token: UserToken.authorizationToken(user._id),
+            stage: 'Password reset',
+            message: 'Your password has been changed',
+          })
+        })
+      }
+    } else {
+      res.status(400).send({
+        stage: 'Error 400',
+        message: 'Fill out all the fields to continue',
+      })
+    }
+  },
+)
+
 router.get(
   '/two-factor-authorization/:mode/code',
   UserMiddleware.requireAccess,
@@ -222,7 +278,11 @@ router.post(
         User.find({}, 'telegram email', (err, users) => {
           if (users) {
             for (let u of users) {
-              if (user.email != u.email && u.telegram && u.telegram.chatId == valid.chat.id) {
+              if (
+                user.email != u.email &&
+                u.telegram &&
+                u.telegram.chatId == valid.chat.id
+              ) {
                 res.status(400).send({
                   stage: 'Validation',
                   message: 'Invalid 2FA activation code',
