@@ -398,7 +398,7 @@ router.post('/signin', UserMiddleware.validateSignin, (req, res) => {
                       break
                     case 'expired':
                       res.status(400).send({
-                        message: '2FA code exired',
+                        message: '2FA code expired',
                       })
                       break
                     default:
