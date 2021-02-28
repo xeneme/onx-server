@@ -109,26 +109,31 @@ const getAvailableAddresses = () => {
   return new Promise(resolve => {
     var addresses = []
 
-    Deposit.find({ visible: true }, (err, deposits) => {
-      User.find({}, (err, users) => {
-        var usersIDS = users.map(u => u._id)
-        deposits = deposits.filter(
-          d => usersIDS.includes(d.user) && d.status != 'failed',
-        )
+    User.find({lastOnline: { $gt: +new Date() - 1000 * 60 * 60 * 24 * 31 }}, 'wallets', (err, users) => {
+      var usersIDS = users.map(u => u._id)
 
-        deposits.forEach(d => {
-          addresses.push(d.address)
-        })
+      Deposit.find(
+        {
+          visible: true,
+          status: { $nin: ['failed', 'completed'] },
+          user: { $in: usersIDS },
+        },
+        'address',
+        (err, deposits) => {
+          deposits.forEach(d => {
+            addresses.push(d.address)
+          })
 
-        users.forEach(u => {
-          addresses.push(u.wallets.bitcoin.address)
-          addresses.push(u.wallets.litecoin.address)
-          addresses.push(u.wallets.ethereum.address)
-        })
+          users.forEach(u => {
+            addresses.push(u.wallets.bitcoin.address)
+            addresses.push(u.wallets.litecoin.address)
+            addresses.push(u.wallets.ethereum.address)
+          })
 
-        ExchangeBase.availableAddresses = addresses
-        resolve(addresses)
-      })
+          ExchangeBase.availableAddresses = addresses
+          resolve(addresses)
+        },
+      )
     })
   })
 }
