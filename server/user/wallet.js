@@ -973,7 +973,7 @@ const syncTransactions = () => {
 
         await syncDeposits().then(deposits => {
           console.log('       Up to date ✔\n')
-          setTimeout(syncTransactions, 1000 * 30)
+          setTimeout(syncTransactions, 60000 * 5)
           resolve({
             deposits: deposits.filter(d => d),
             transfers: transfers.filter(t => t),
