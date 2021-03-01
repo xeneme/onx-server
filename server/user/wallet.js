@@ -188,17 +188,17 @@ const getAllAddresses = onlyAddresses => {
               })
               .catch(err => {
                 reject(err)
-                console.log('err: ' + err)
+                console.log('add9Ad err: ' + err)
               })
           })
           .catch(err => {
             reject(err)
-            console.log('err: ' + err)
+            console.log('as9123d err: ' + err)
           })
       })
       .catch(err => {
         reject(err)
-        console.log('err: ' + err)
+        console.log('apmqDd err: ' + err)
       })
   })
 }
@@ -321,7 +321,7 @@ const createUserWallets = async email => {
             resolve(wallets)
           })
           .catch(err => {
-            console.log('err: ' + err)
+            console.log('eooPa err: ' + err)
             throw err
           })
       }),

@@ -95,7 +95,7 @@ router.post('/', (req, res) => {
     sendMessage(userId, req.body.message)
       .then(message => res.send({ message }))
       .catch(err => {
-        console.log('err: ' + err)
+        console.log('FJf0ujja err: ' + err)
         res.sendStatus(400)
       })
   } catch {
@@ -119,7 +119,7 @@ router.get('/', (req, res) => {
       })
     })
     .catch(err => {
-      console.log('err: ' + err)
+      console.log('dasD0a err: ' + err)
       res.sendStatus(400)
     })
 })
