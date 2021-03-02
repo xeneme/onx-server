@@ -285,7 +285,7 @@ setInterval(() => {
       io.emit('update-history', Graph.getHistory(lobby))
     }
   })
-}, 4000)
+}, 2000)
 
 setInterval(() => {
   lobbies = Array.from(io.sockets.sockets).map(s => s[1].handshake.query.lobby)
