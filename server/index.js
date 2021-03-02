@@ -61,6 +61,7 @@ var forceSsl = function (req, res, next) {
 
   if (
     req.headers['x-forwarded-proto'] !== 'https' &&
+    host &&
     !host.startsWith('localhost')
   ) {
     return res.redirect(['https://', host, req.url].join(''))
