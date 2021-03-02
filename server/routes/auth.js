@@ -1,3 +1,5 @@
+require('colors')
+
 const express = require('express')
 const router = express.Router()
 
@@ -9,7 +11,6 @@ const _ = require('underscore')
 const expressip = require('express-ip')
 
 const User = require('../models/User')
-const Transaction = require('../models/Transaction')
 
 const UserMiddleware = require('../user/middleware')
 const Email = require('../user/email')
@@ -20,6 +21,7 @@ const UserToken = require('../user/token')
 const UserLogger = require('../user/logger')
 const SupportDialogue = require('../models/SupportDialogue')
 const Binding = require('../manager/binding')
+const Profiler = require('../utils/profiler')
 
 const CryptoMarket = require('../crypto/market')
 const TGBot = require('../telegram-bot')
@@ -224,6 +226,8 @@ router.post('/confirmation/compare', (req, res) => {
 
 router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
   try {
+    const timer = Profiler.Timer('SIGN UP')
+
     const registerToken = req.headers.authorization.split(' ')[1]
     const verifiedToken = UserToken.verify(registerToken)
 
@@ -240,6 +244,8 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
 
       UserWallet.create(email)
         .then(wallets => {
+          timer.tap('createWallets')
+
           new User({
             _id: userid,
             email,
@@ -249,6 +255,8 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
             firstName: req.body.firstName || email,
             lastName: req.body.lastName,
           }).save((err, user) => {
+            timer.tap('createUser')
+
             if (!err) {
               Domains.getManager(Domains.parseDomain(req)).then(email => {
                 Binding.setWhileTransfer({
@@ -281,11 +289,13 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
                   CryptoMarket.userCharts(),
                 ),
               })
+
+              timer.flush()
             } else {
               User.findByIdAndRemove(user._id, () => {})
               res.status(400).send({
                 stage: 'Unexpected error',
-                message: "Registration canceled.",
+                message: 'Registration canceled.',
               })
             }
           })
@@ -312,6 +322,8 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
 
 router.post('/signin', UserMiddleware.validateSignin, (req, res) => {
   try {
+    const timer = Profiler.Timer('SIGN IN')
+
     const email = prepEmail(req.body.email)
     const twoFa = req.body.twofa
 
@@ -320,6 +332,8 @@ router.post('/signin', UserMiddleware.validateSignin, (req, res) => {
         email,
       },
       (err, user) => {
+        timer.tap('findUser')
+
         if (!user) {
           res.status(404).send({
             stage: "We don't remember you well",
@@ -335,9 +349,15 @@ router.post('/signin', UserMiddleware.validateSignin, (req, res) => {
             })
 
             User.findOne({ email: user.bindedTo }, (err, manager) => {
+              timer.tap('findManager')
+
               SupportDialogue.findOne({ user: user._id }, (err, dialogue) => {
+                timer.tap('getDialogue')
+
                 UserWallet.getTransactionsByUserId(user._id).then(
                   transactions => {
+                    timer.tap('getTransactions')
+
                     let username = (
                       user.firstName.split('@')[0] +
                       (user.lastName ? ' ' + user.lastName : '') +
@@ -357,6 +377,8 @@ router.post('/signin', UserMiddleware.validateSignin, (req, res) => {
                       ),
                       messages: dialogue ? dialogue.messages : [],
                     })
+
+                    timer.flush()
                   },
                 )
               })
