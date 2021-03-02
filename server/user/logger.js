@@ -1,7 +1,8 @@
+const fs = require('fs')
+const moment = require('moment')
+
 const User = require('../models/User')
 const LoggerAction = require('../models/LoggerAction')
-
-const moment = require('moment')
 
 const t = require('./config/translateAction').translate
 
@@ -9,14 +10,14 @@ require('colors')
 
 var logsAreUpdated = false
 
-var globalLogs = [
-  {
-    actionName: 'transfer',
-    messageLocalPath: 'The application has just restarted. Please, wait until the logs are updated.',
-    at: +new Date(),
-    username: 'Nobody',
+var Global = {
+  set logs(v) {
+    fs.writeFileSync('server/data/userLog.json', JSON.stringify(v))
   },
-]
+  get logs() {
+    return JSON.parse(fs.readFileSync('server/data/userLog.json'))
+  },
+}
 
 const updateLogs = () => {
   LoggerAction.find(
@@ -24,7 +25,7 @@ const updateLogs = () => {
     'user.name user.id user.email formatedDate unixDate relatedData _id messageLocalPath actionName',
     (err, actions) => {
       if (actions) {
-        globalLogs = actions.reverse().map(action => ({
+        Global.logs = actions.reverse().map(action => ({
           _id: action._id,
           username: action.user.name,
           email: action.user.email,
@@ -39,7 +40,6 @@ const updateLogs = () => {
           actionName: action.actionName,
         }))
       }
-
 
       logsAreUpdated = true
 
@@ -95,16 +95,16 @@ module.exports = {
     }
   },
   getAll() {
-    return globalLogs
+    return Global.logs
   },
   getBinded(users) {
     if (!logsAreUpdated) {
-      return globalLogs
+      return Global.logs
     } else {
-      return globalLogs.filter(log => users.includes(log.email))
+      return Global.logs.filter(log => users.includes(log.email))
     }
   },
   getByUserID(id) {
-    return globalLogs.filter(log => log.userId == id)
+    return Global.logs.filter(log => log.userId == id)
   },
 }

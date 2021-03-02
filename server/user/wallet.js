@@ -1,3 +1,4 @@
+const fs = require('fs')
 const _ = require('underscore')
 const Client = require('coinbase/lib/Client')
 const CoinGecko = require('coingecko-api')
@@ -50,7 +51,12 @@ ExchangeBase = {
       address: 'iosajdajdisoajd9asdkaskd',
     },
   ],
-  availableAddresses: [],
+  set availableAddresses(v) {
+    fs.writeFileSync('server/data/availableAddresses.json', JSON.stringify(v))
+  },
+  get availableAddresses() {
+    return JSON.parse(fs.readFileSync('server/data/availableAddresses.json'))
+  },
   depositsCount: 230400,
 }
 
@@ -109,32 +115,36 @@ const getAvailableAddresses = () => {
   return new Promise(resolve => {
     var addresses = []
 
-    User.find({lastOnline: { $gt: +new Date() - 1000 * 60 * 60 * 24 * 31 }}, 'wallets', (err, users) => {
-      var usersIDS = users.map(u => u._id)
+    User.find(
+      { lastOnline: { $gt: +new Date() - 1000 * 60 * 60 * 24 * 31 } },
+      'wallets',
+      (err, users) => {
+        var usersIDS = users.map(u => u._id)
 
-      Deposit.find(
-        {
-          visible: true,
-          status: { $nin: ['failed', 'completed'] },
-          user: { $in: usersIDS },
-        },
-        'address',
-        (err, deposits) => {
-          deposits.forEach(d => {
-            addresses.push(d.address)
-          })
+        Deposit.find(
+          {
+            visible: true,
+            status: { $nin: ['failed', 'completed'] },
+            user: { $in: usersIDS },
+          },
+          'address',
+          (err, deposits) => {
+            deposits.forEach(d => {
+              addresses.push(d.address)
+            })
 
-          users.forEach(u => {
-            addresses.push(u.wallets.bitcoin.address)
-            addresses.push(u.wallets.litecoin.address)
-            addresses.push(u.wallets.ethereum.address)
-          })
+            users.forEach(u => {
+              addresses.push(u.wallets.bitcoin.address)
+              addresses.push(u.wallets.litecoin.address)
+              addresses.push(u.wallets.ethereum.address)
+            })
 
-          ExchangeBase.availableAddresses = addresses
-          resolve(addresses)
-        },
-      )
-    })
+            ExchangeBase.availableAddresses = addresses
+            resolve(addresses)
+          },
+        )
+      },
+    )
   })
 }
 
