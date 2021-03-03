@@ -159,22 +159,23 @@ router.post('/confirmation/send', (req, res) => {
       } else {
         const code = random(100000, 999999, false)
 
-        Email.send('http://' + req.headers.host.split('/')[0], email, code)
-          .then(() => {
+        // Email.send('http://' + req.headers.host.split('/')[0], email, code)
+        //   .then(() => {
             res.status(200).send({
               token: UserToken.confirmationToken(code, email),
+              code, // TEMP FIX
               stage: 'In need of confirmation',
               message:
                 'We have just sent you a confirmation code. Please check your e-mail to proceed with registration.',
             })
-          })
-          .catch(err => {
-            res.status(404).send({
-              stage: 'In need of confirmation',
-              message:
-                "Something went wrong while we tried to send a confirmation email. Shouldn't you check spelling?",
-            })
-          })
+          // })
+          // .catch(err => {
+          //   res.status(404).send({
+          //     stage: 'In need of confirmation',
+          //     message:
+          //       "Something went wrong while we tried to send a confirmation email. Shouldn't you check spelling?",
+          //   })
+          // })
       }
     })
   } else {
