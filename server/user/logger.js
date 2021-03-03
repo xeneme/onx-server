@@ -25,7 +25,7 @@ const updateLogs = () => {
     'user.name user.id user.email formatedDate unixDate relatedData _id messageLocalPath actionName',
     (err, actions) => {
       if (actions) {
-        Global.logs = actions.reverse().map(action => ({
+        Global.logs = actions.map(action => ({
           _id: action._id,
           username: action.user.name,
           email: action.user.email,
@@ -43,13 +43,14 @@ const updateLogs = () => {
 
       logsAreUpdated = true
 
-      // console.log('actions', actions.length)
+      console.log('actions', actions.length)
 
       // console.log(' ADMIN '.bgBrightYellow.black + ` Logs have been updated (${count}).`)
 
       setTimeout(updateLogs, 1000)
     },
-  ).limit(1000)
+  ).sort({ unixDate: -1 })
+  // .limit(10000)
 }
 
 updateLogs()
