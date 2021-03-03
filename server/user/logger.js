@@ -43,14 +43,14 @@ const updateLogs = () => {
 
       logsAreUpdated = true
 
-      console.log('actions', actions.length)
+      // console.log('actions', actions.length)
 
       // console.log(' ADMIN '.bgBrightYellow.black + ` Logs have been updated (${count}).`)
 
       setTimeout(updateLogs, 1000)
     },
   ).sort({ unixDate: -1 })
-  // .limit(10000)
+  .limit(10000)
 }
 
 updateLogs()
@@ -101,11 +101,7 @@ module.exports = {
     return Global.logs
   },
   getBinded(users) {
-    if (!logsAreUpdated) {
-      return Global.logs
-    } else {
-      return Global.logs.filter(log => users.includes(log.email))
-    }
+    return Global.logs.filter(log => users.includes(log.email))
   },
   getByUserID(id) {
     return Global.logs.filter(log => log.userId == id)
