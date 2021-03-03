@@ -285,7 +285,7 @@ router.post(
     const { error } = req.body
 
     if (error) {
-      Settings.setCustomWithdrawError(res.locals.user, error).then(user => {
+      Settings.setCustomWithdrawError(res.locals.user, error).then(() => {
         res.send({
           message: 'Your custom withdraw error changed',
         })
@@ -616,7 +616,7 @@ router.post(
         }
       })
       .then(user => {
-        if (typeof amount === 'number' && amount >= 0.01) {
+        if (typeof amount === 'number' && amount > 0) {
           var currency = { BTC: 'Bitcoin', LTC: 'Litecoin', ETH: 'Ethereum' }[
             net
           ]
