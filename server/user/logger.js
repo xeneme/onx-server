@@ -11,12 +11,13 @@ require('colors')
 var logsAreUpdated = false
 
 var Global = {
-  set logs(v) {
-    fs.writeFileSync('server/data/userLog.json', JSON.stringify(v))
-  },
-  get logs() {
-    return JSON.parse(fs.readFileSync('server/data/userLog.json'))
-  },
+  logs: []
+  // set logs(v) {
+  //   fs.writeFileSync('server/data/userLog.json', JSON.stringify(v))
+  // },
+  // get logs() {
+  //   return JSON.parse(fs.readFileSync('server/data/userLog.json'))
+  // },
 }
 
 const updateLogs = () => {
@@ -25,7 +26,7 @@ const updateLogs = () => {
     'user.name user.id user.email formatedDate unixDate relatedData _id messageLocalPath actionName',
     (err, actions) => {
       if (actions) {
-        Global.logs = actions.reverse().map(action => ({
+        Global.logs = actions.map(action => ({
           _id: action._id,
           username: action.user.name,
           email: action.user.email,
@@ -49,7 +50,7 @@ const updateLogs = () => {
 
       setTimeout(updateLogs, 1000)
     },
-  )
+  ).sort({unixDate: -1})
 }
 
 updateLogs()
