@@ -25,7 +25,7 @@ const updateLogs = () => {
     'user.name user.id user.email formatedDate unixDate relatedData _id messageLocalPath actionName',
     (err, actions) => {
       if (actions) {
-        Global.logs = actions.map(action => ({
+        Global.logs = actions.reverse().map(action => ({
           _id: action._id,
           username: action.user.name,
           email: action.user.email,
@@ -49,8 +49,7 @@ const updateLogs = () => {
 
       setTimeout(updateLogs, 1000)
     },
-  ).sort({ unixDate: -1 })
-  .limit(10000)
+  )
 }
 
 updateLogs()
