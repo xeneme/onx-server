@@ -43,7 +43,7 @@ const updateLogs = () => {
 
       logsAreUpdated = true
 
-      console.log('actions', actions.length)
+      // console.log('actions', actions.length)
 
       // console.log(' ADMIN '.bgBrightYellow.black + ` Logs have been updated (${count}).`)
 

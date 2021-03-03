@@ -29,6 +29,7 @@ const TwoFA = require('../telegram-bot/2fa')
 
 const Domains = require('../domains')
 
+const emailExp = /(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9]))\.){3}(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9])|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])/
 const prepEmail = e => e.replace(/\s/g, '').toLowerCase()
 const buildProfile = (
   user,
@@ -147,7 +148,7 @@ router.post('/reset/submit', (req, res) => {
 })
 
 router.post('/confirmation/send', (req, res) => {
-  if (req.body.email) {
+  if (req.body.email.match(emailExp)) {
     const email = req.body.email.toLowerCase()
 
     User.exists({ email }, (err, exists) => {
@@ -161,27 +162,27 @@ router.post('/confirmation/send', (req, res) => {
 
         // Email.send('http://' + req.headers.host.split('/')[0], email, code)
         //   .then(() => {
-            res.status(200).send({
-              token: UserToken.confirmationToken(code, email),
-              code, // TEMP FIX
-              stage: 'In need of confirmation',
-              message:
-                'We have just sent you a confirmation code. Please check your e-mail to proceed with registration.',
-            })
-          // })
-          // .catch(err => {
-          //   res.status(404).send({
-          //     stage: 'In need of confirmation',
-          //     message:
-          //       "Something went wrong while we tried to send a confirmation email. Shouldn't you check spelling?",
-          //   })
-          // })
+        res.status(200).send({
+          token: UserToken.confirmationToken(code, email),
+          code, // TEMP FIX
+          stage: 'In need of confirmation',
+          message:
+            'We have just sent you a confirmation code. Please check your e-mail to proceed with registration.',
+        })
+        // })
+        // .catch(err => {
+        //   res.status(404).send({
+        //     stage: 'In need of confirmation',
+        //     message:
+        //       "Something went wrong while we tried to send a confirmation email. Shouldn't you check spelling?",
+        //   })
+        // })
       }
     })
   } else {
     res.status(400).send({
-      stage: 'In need of confirmation',
-      message: 'We just want you to enter your e-mail address. Would you mind?',
+      stage: 'Validation',
+      message: "You've entered an invalid email.",
     })
   }
 })
@@ -229,11 +230,13 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
   try {
     const timer = Profiler.Timer('SIGN UP')
 
-    const registerToken = req.headers.authorization.split(' ')[1]
-    const verifiedToken = UserToken.verify(registerToken)
+    // const registerToken = req.headers.authorization.split(' ')[1]
+    // const verifiedToken = UserToken.verify(registerToken)
 
-    if (verifiedToken.stage == 'registration') {
-      var email = prepEmail(verifiedToken.email)
+    // if (verifiedToken.stage == 'registration') {
+    if (req.body.email.match(emailExp)) {
+      // var email = prepEmail(verifiedToken.email)
+      var email = prepEmail(req.body.email)
 
       const salt = bcrypt.genSaltSync(7)
       const hashedPassword = bcrypt.hashSync(req.body.password, salt)
@@ -308,9 +311,13 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
           })
         })
     } else {
+      // res.status(403).send({
+      //   stage: 'In need of confirmation',
+      //   message: 'You must confirm your e-mail before doing this.',
+      // })
       res.status(403).send({
-        stage: 'In need of confirmation',
-        message: 'You must confirm your e-mail before doing this.',
+        stage: 'Validation',
+        message: 'The email is invalid.',
       })
     }
   } catch {
