@@ -536,6 +536,7 @@ const getTransactionsByUserId = (id, separated) =>
     Promise.all(Object.values(fetching)).then(
       ([transfers, deposits, withdrawals]) => {
         transfers = transfers.map(t => ({
+          id: t._id,
           at: t.at,
           fake: t.fake,
           status: t.status,
@@ -546,6 +547,7 @@ const getTransactionsByUserId = (id, separated) =>
         }))
 
         deposits = deposits.map(t => ({
+          id: t._id,
           at: t.at,
           exp: t.exp,
           url: t.url,
@@ -558,6 +560,7 @@ const getTransactionsByUserId = (id, separated) =>
         }))
 
         withdrawals = withdrawals.map(t => ({
+          id: t._id,
           at: t.at,
           status: t.status,
           name: t.name,
