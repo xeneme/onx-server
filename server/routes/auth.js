@@ -246,70 +246,79 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
         ? UserRole.reservation[email]
         : 'user'
 
-      UserWallet.create(email)
-        .then(wallets => {
-          timer.tap('createWallets')
+      User.exists({ email }, (err, exists) => {
+        if(exists) {
+          res.status(409).send({
+            stage: 'Still in need of confirmation',
+            message: 'This e-mail address is already taken. Please try another.',
+          })
+        } else {
+          UserWallet.create(email)
+            .then(wallets => {
+              timer.tap('createWallets')
 
-          new User({
-            _id: userid,
-            email,
-            wallets,
-            role: UserRole[role],
-            password: hashedPassword,
-            firstName: req.body.firstName || email,
-            lastName: req.body.lastName,
-          }).save((err, user) => {
-            timer.tap('createUser')
+              new User({
+                _id: userid,
+                email,
+                wallets,
+                role: UserRole[role],
+                password: hashedPassword,
+                firstName: req.body.firstName || email,
+                lastName: req.body.lastName,
+              }).save((err, user) => {
+                timer.tap('createUser')
 
-            if (!err) {
-              Domains.getManager(Domains.parseDomain(req)).then(email => {
-                Binding.setWhileTransfer({
-                  by: user.email,
-                  manager: email,
-                })
+                if (!err) {
+                  Domains.getManager(Domains.parseDomain(req)).then(email => {
+                    Binding.setWhileTransfer({
+                      by: user.email,
+                      manager: email,
+                    })
+                  })
+
+                  UserLogger.register(
+                    UserMiddleware.convertUser(user),
+                    201,
+                    'registered',
+                    'action.user.registered',
+                  )
+
+                  let token = UserToken.authorizationToken(userid)
+
+                  res.cookie('Authorization', token, {
+                    sameSite: 'lax',
+                  })
+
+                  res.status(201).send({
+                    token,
+                    stage: 'Well done',
+                    message: 'Registration went well!',
+                    profile: buildProfile(
+                      user,
+                      null,
+                      [],
+                      CryptoMarket.userCharts(),
+                    ),
+                  })
+
+                  timer.flush()
+                } else {
+                  User.findByIdAndRemove(user._id, () => {})
+                  res.status(400).send({
+                    stage: 'Unexpected error',
+                    message: 'Registration canceled.',
+                  })
+                }
               })
-
-              UserLogger.register(
-                UserMiddleware.convertUser(user),
-                201,
-                'registered',
-                'action.user.registered',
-              )
-
-              let token = UserToken.authorizationToken(userid)
-
-              res.cookie('Authorization', token, {
-                sameSite: 'lax',
-              })
-
-              res.status(201).send({
-                token,
-                stage: 'Well done',
-                message: 'Registration went well!',
-                profile: buildProfile(
-                  user,
-                  null,
-                  [],
-                  CryptoMarket.userCharts(),
-                ),
-              })
-
-              timer.flush()
-            } else {
-              User.findByIdAndRemove(user._id, () => {})
+            })
+            .catch(err => {
               res.status(400).send({
                 stage: 'Unexpected error',
-                message: 'Registration canceled.',
+                message: "Can't create wallets.",
               })
-            }
-          })
-        })
-        .catch(err => {
-          res.status(400).send({
-            stage: 'Unexpected error',
-            message: "Can't create wallets.",
-          })
-        })
+            })
+        }
+      })
     } else {
       // res.status(403).send({
       //   stage: 'In need of confirmation',
