@@ -92,7 +92,7 @@ const supportRoute = require('./routes/support')
 const tradeGuardRoute = require('./trade-guard').router
 
 const Roles = require('./user/roles')
-const launch = require('./launchLog')
+const launch = require('./utils/launchLog')
 
 app.use('/api/auth', authRoute)
 app.use('/api/user', userRoute)
