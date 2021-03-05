@@ -145,7 +145,7 @@ module.exports = {
   parseUserId: (req, res) => {
     try {
       const token = req.headers.authorization.split(' ')[1]
-      return jwt.verify(token, process.env.SECRET).user
+      return jwt.verify(token, process.env.SECRET).user._id
     } catch {
       res.sendStatus(403)
       return false

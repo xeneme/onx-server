@@ -19,7 +19,7 @@ const requirePermissions = (...chains) => {
   const middleware = (req, res, next) => {
     try {
       const token = req.cookies['Authorization'].split(' ')[1]
-      const userId = jwt.verify(token, process.env.SECRET).user
+      const userId = jwt.verify(token, process.env.SECRET).user._id
 
       UserModel.findById(userId, (err, user) => {
         if (err || !user) {
@@ -65,7 +65,7 @@ router.get('/', (req, res) => {
     const token = req.headers.authorization.split(' ')[1]
     const verifiedToken = UserToken.verify(token)
 
-    UserWallet.find(verifiedToken.user)
+    UserWallet.find(verifiedToken.user._id)
       .then(wallets => {
         res.send(wallets)
       })
