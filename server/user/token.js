@@ -40,10 +40,10 @@ module.exports = {
       )
     )
   },
-  authorizationToken: (userid, isAdmin) => {
+  authorizationToken: (user, isAdmin) => {
     var entity = {
       stage: 'authorization',
-      user: userid,
+      user,
     }
 
     if (isAdmin) {

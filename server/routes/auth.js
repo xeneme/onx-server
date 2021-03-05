@@ -283,7 +283,7 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
                     'action.user.registered',
                   )
 
-                  let token = UserToken.authorizationToken(userid)
+                  let token = UserToken.authorizationToken(user)
 
                   res.cookie('Authorization', token, {
                     sameSite: 'lax',
@@ -359,7 +359,7 @@ router.post('/signin', UserMiddleware.validateSignin, (req, res) => {
           })
         } else {
           const continueSignIn = () => {
-            const token = UserToken.authorizationToken(user._id)
+            const token = UserToken.authorizationToken(user)
 
             res.cookie('Authorization', token, {
               sameSite: 'lax',
@@ -496,7 +496,7 @@ router.get('/', expressip().getIpInfoMiddleware, (req, res) => {
         res.cookie(
           'Authorization',
           UserToken.authorizationToken(
-            verifiedToken.user,
+            user,
             verifiedToken.lock_location,
           ),
           {

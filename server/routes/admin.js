@@ -313,7 +313,7 @@ router.get('/deposits', requirePermissions('read:users.binded'), (req, res) => {
 
       res.send(result)
     },
-  )
+  ).sort({ at: -1 })
 })
 
 router.get(
@@ -1621,12 +1621,10 @@ router.post(
 router.get('/auth', (req, res) => {
   try {
     const token = req.headers.authorization.split(' ')[1]
-    const verifiedToken = UserToken.verify(token)
+    const user = UserToken.verify(token).user
 
-    User.findById(verifiedToken.user, (err, user) => {
-      if (!err && user && user.role.name != 'user') res.send(user)
-      else res.sendStatus(403)
-    })
+    if (user.role.name != 'user') res.send(user)
+    else res.sendStatus(403)
   } catch {
     res.sendStatus(403)
   }
