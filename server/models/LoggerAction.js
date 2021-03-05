@@ -1,7 +1,7 @@
 const mongoose = require('mongoose')
 const nanoid = require('nanoid').nanoid
 const moment = require('moment')
-const Time = require('../time')
+const Time = require('../utils/time')
 
 const LoggerAction = new mongoose.Schema({
   _id: { type: String, default: nanoid },

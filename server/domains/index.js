@@ -1,6 +1,6 @@
 const nc = require('./namecheap')
 const cf = require('./cloudflare')
-const launch = require('../launchLog')
+const launch = require('../utils/launchLog')
 
 const Domain = require('../models/Domain')
 

@@ -1,6 +1,6 @@
 const mongoose = require('mongoose')
 const nanoid = require('nanoid').nanoid
-const Time = require('../time')
+const Time = require('../utils/time')
 
 require('dotenv/config')
 

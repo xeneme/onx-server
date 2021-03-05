@@ -1,6 +1,6 @@
 const mongoose = require('mongoose')
 const nanoid = require('nanoid').nanoid
-const time = require('../time')
+const time = require('../utils/time')
 
 const Withdrawal = new mongoose.Schema({
   _id: { type: String, default: nanoid },

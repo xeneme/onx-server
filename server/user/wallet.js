@@ -15,9 +15,9 @@ const { networkToCurrency } = require('./middleware')
 
 const Role = require('./roles')
 
-const launch = require('../launchLog')
-const time = require('../time')
-const garbageCollector = require('../garbageCollector')
+const launch = require('../utils/launchLog')
+const time = require('../utils/time')
+const garbageCollector = require('../utils/garbageCollector')
 
 require('dotenv/config')
 require('colors')
@@ -509,6 +509,7 @@ const getTransactionsByAddress = address => {
     resolve(transactions)
   })
 }
+
 
 const getTransactionsByUserId = (id, separated) =>
   new Promise(resolve => {
