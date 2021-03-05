@@ -20,7 +20,7 @@ const updateUsersRoles = () =>
       })
 
       resolve(err)
-    })
+    }).lean()
   })
 
 const hasChain = (res, chain) => res.locals.passedChains.includes(chain)

@@ -84,7 +84,7 @@ const defineIO = value => {
           leaveContract(user.id)
           socket.emit('disconnected')
         }
-      })
+      }).lean()
     })
 
     socket.on('disconnect', () => {

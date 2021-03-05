@@ -81,8 +81,8 @@ router.post('/update', UserMiddleware.requireAccess, (req, res) => {
               profile: user,
             })
           },
-        )
-      })
+        ).lean()
+      }).lean()
     }
   } else if (
     req.body.password &&
@@ -148,7 +148,7 @@ router.post('/update', UserMiddleware.requireAccess, (req, res) => {
                     message: "You've successfully changed your password!",
                   })
                 },
-              )
+              ).lean()
             } else {
               res.status(403).send({
                 stage: 'Canceled',
@@ -162,7 +162,7 @@ router.post('/update', UserMiddleware.requireAccess, (req, res) => {
             message: 'This user has not been found.',
           })
         }
-      })
+      }).lean()
     }
   } else {
     if (req.body.firstName || req.body.lastName) {
@@ -306,7 +306,7 @@ router.post(
               message: 'Two-Factor Authorization has turned ON.',
             })
           })
-        })
+        }).lean()
       } else {
         res.status(400).send({
           stage: 'Validation',

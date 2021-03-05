@@ -74,7 +74,7 @@ const collectLogs = users => {
     } else {
       LoggerAction.find({}, (err, logs) => {
         collect(logs)
-      })
+      }).lean()
     }
   })
 }

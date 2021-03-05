@@ -15,7 +15,7 @@ const getBlackList = () => {
       }
 
       resolve(result)
-    })
+    }).lean()
   })
 }
 

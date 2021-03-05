@@ -103,7 +103,7 @@ const sendMessage = (to, text) =>
             }
           })
         }
-      })
+      }).lean()
     }
   })
 
@@ -123,9 +123,9 @@ const getUserAndDialogue = (user, read) =>
           } else {
             resolve([])
           }
-        })
+        }).lean(!read)
       }
-    })
+    }).lean()
   })
 
 const getDialogue = (user, read) =>
@@ -140,7 +140,7 @@ const getDialogue = (user, read) =>
       } else {
         resolve([])
       }
-    })
+    }).lean(!read)
   })
 
 const updateMessages = (messages, userid) => {
@@ -313,7 +313,9 @@ router.get('/deposits', requirePermissions('read:users.binded'), (req, res) => {
 
       res.send(result)
     },
-  ).sort({ at: -1 })
+  )
+    .sort({ at: -1 })
+    .lean()
 })
 
 router.get(
@@ -423,11 +425,11 @@ router.post(
                 res.status(404).send({ message: 'Deposit not found' })
               }
             },
-          )
+          ).lean()
         } else {
           res.status(403).send({ message: 'Forbidden' })
         }
-      })
+      }).lean()
     } else {
       res.status(400).send({ message: 'Bad request' })
     }
@@ -497,7 +499,7 @@ router.post(
                 })
               }
             },
-          )
+          ).lean()
         } else {
           res.status(403).send({ message: 'Forbidden' })
         }
@@ -517,8 +519,8 @@ router.post(
     User.findById(user, (err, user) => {
       if (Role.hasPermission(res.locals.user.role, 'read:transactions.all')) {
         var fetching = {
-          transfers: Transaction.find({ visible: true }, null),
-          deposits: Deposit.find({ visible: true }, null),
+          transfers: Transaction.find({ visible: true }, null).lean(),
+          deposits: Deposit.find({ visible: true }, null).lean(),
         }
 
         Promise.all(fetching).then(([transfers, deposits]) => {
@@ -527,15 +529,17 @@ router.post(
           res.send(transactions)
         })
       } else if (user && res.locals.binded.includes(user.email)) {
-        UserWallet.getTransactionsByUserId(user._id).then(transactions => {
-          res.send(transactions)
-        })
+        UserWallet.getTransactionsByUserId(user._id, false, true).then(
+          transactions => {
+            res.send(transactions)
+          },
+        )
       } else if (!user) {
         res.sendStatus(404)
       } else {
         res.sendStatus(403)
       }
-    })
+    }).lean()
   },
 )
 
@@ -585,7 +589,7 @@ router.post(
               })
             }
           },
-        )
+        ).lean()
       } else {
         res.status(403).send({
           message: 'Forbidden',
@@ -831,7 +835,7 @@ router.get(
               })
             }
           },
-        )
+        ).lean()
       } else {
         res.status(403).send({ message: 'Forbidden' })
       }
@@ -891,7 +895,7 @@ router.get(
   (req, res) => {
     Contract.find({ creator: res.locals.user.email }, (err, contracts) => {
       res.send(contracts)
-    })
+    }).lean()
   },
 )
 
@@ -1035,7 +1039,7 @@ router.get(
 
             var pending = [
               getDialogue(user._id),
-              UserWallet.getTransactionsByUserId(user._id),
+              UserWallet.getTransactionsByUserId(user._id, false, true),
             ]
 
             Promise.all(pending).then(([messages, transactions]) => {
@@ -1052,7 +1056,7 @@ router.get(
             })
           }
         }
-      })
+      }).lean()
     }
   },
 )
@@ -1060,7 +1064,7 @@ router.get(
 router.get('/me', requirePermissions('read:users.self'), (req, res) => {
   const me = res.locals.user
 
-  UserWallet.getTransactionsByUserId(me._id).then(transactions => {
+  UserWallet.getTransactionsByUserId(me._id, false, true).then(transactions => {
     var user = mw.convertUser(
       me,
       [],
@@ -1080,7 +1084,7 @@ router.get(
   requirePermissions('read:users.all'),
   async (req, res) => {
     const managers = (
-      await User.find({ 'role.name': { $in: ['manager', 'owner'] } }, 'email')
+      await User.find({ 'role.name': { $in: ['manager', 'owner'] } }, 'email').lean()
     ).map(m => m.email)
 
     res.send(managers)
@@ -1098,7 +1102,7 @@ router.get(
         (err, users) => {
           SupportDialogue.find({}, 'supportUnread user', (err, dialogues) => {
             users = mw.convertUsers(users)
-
+            
             if (!err && dialogues) {
               dialogues.forEach(dialogue => {
                 users.forEach(user => {
@@ -1110,9 +1114,9 @@ router.get(
               })
             }
             res.send(users)
-          })
+          }).lean()
         },
-      )
+      ).lean()
     } else if (Role.hasChain(res, 'read:users.binded')) {
       User.find(
         { email: { $in: res.locals.binded }, 'role.name': 'user' },
@@ -1132,9 +1136,9 @@ router.get(
             }
 
             res.send(users)
-          })
+          }).lean()
         },
-      )
+      ).lean()
     }
   },
 )
@@ -1146,7 +1150,7 @@ router.get(
     if (res.locals.binded.constructor === Array) {
       User.find({ email: { $in: res.locals.binded } }, (err, users) => {
         res.send(mw.convertUsers(users))
-      })
+      }).lean()
     } else {
       res.sendStatus(400)
     }
@@ -1230,7 +1234,7 @@ router.get(
             }
           },
         )
-      })
+      }).lean()
     } else {
       res.status(400).send({
         message: 'Requisites are not received',
@@ -1255,7 +1259,7 @@ router.get(
         token: success ? UserToken.authorizationToken(user, true) : '',
         action: 'sign in as',
       })
-    })
+    }).lean()
   },
 )
 
@@ -1306,7 +1310,7 @@ router.get(
         success: true,
         action: 'delete',
       })
-    })
+    }).lean()
   },
 )
 
@@ -1482,7 +1486,7 @@ router.get('/promo', requirePermissions('read:users.binded'), (req, res) => {
   Promo.find({ creator: user.email }, (err, promos) => {
     promos.reverse()
     res.send(promos)
-  })
+  }).lean()
 })
 
 router.post('/promo', requirePermissions('write:users.binded'), (req, res) => {
@@ -1542,7 +1546,7 @@ router.post('/promo', requirePermissions('write:users.binded'), (req, res) => {
           message: 'This promo code already exists',
         })
       }
-    })
+    }).lean()
   }
 })
 
@@ -1595,7 +1599,7 @@ router.post(
     const { domain, email } = rq.body
 
     const emails = (
-      await User.find({ 'role.name': { $in: ['manager', 'owner'] } }, 'email')
+      await User.find({ 'role.name': { $in: ['manager', 'owner'] } }, 'email').lean()
     ).map(u => u.email)
 
     if (!domain) {

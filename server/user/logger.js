@@ -11,7 +11,7 @@ require('colors')
 var logsAreUpdated = false
 
 var Global = {
-  logs: []
+  logs: [],
   // set logs(v) {
   //   fs.writeFileSync('server/data/userLog.json', JSON.stringify(v))
   // },
@@ -50,7 +50,9 @@ const updateLogs = () => {
 
       setTimeout(updateLogs, 1000)
     },
-  ).sort({unixDate: -1})
+  )
+    .sort({ unixDate: -1 })
+    .lean()
 }
 
 updateLogs()
@@ -74,7 +76,7 @@ module.exports = {
           useFindAndModify: false,
         },
         (err, user) => {},
-      )
+      ).lean()
 
       var newAction = {
         userId: user.id,

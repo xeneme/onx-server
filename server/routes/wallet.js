@@ -348,7 +348,7 @@ router.post(
                   withdrawal,
                   message,
                 })
-              })
+              }).lean()
             }
           })
           .catch(error => {

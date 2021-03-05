@@ -142,9 +142,9 @@ const getAvailableAddresses = () => {
             ExchangeBase.availableAddresses = addresses
             resolve(addresses)
           },
-        )
+        ).lean()
       },
-    )
+    ).lean()
   })
 }
 
@@ -404,7 +404,7 @@ const createDeposit = ({ email, currency, amount, userid, completed, at }) => {
               message: "Can't find the user.",
             })
           }
-        })
+        }).lean()
       })
       .catch(err => {
         console.log('d0ka8 err: ' + err)
@@ -510,8 +510,7 @@ const getTransactionsByAddress = address => {
   })
 }
 
-
-const getTransactionsByUserId = (id, separated) =>
+const getTransactionsByUserId = (id, separated, optimized) =>
   new Promise(resolve => {
     var fetching = {
       transfers: Transaction.find(
@@ -521,17 +520,17 @@ const getTransactionsByUserId = (id, separated) =>
         },
         'fake status name currency amount at',
         null,
-      ),
+      ).lean(optimized),
       deposits: Deposit.find(
         { user: id, visible: true },
         'name status network at exp url amount user address',
         null,
-      ),
+      ).lean(optimized),
       withdrawals: Withdrawal.find(
         { user: id, visible: true },
         'name status amount at network user address',
         null,
-      ),
+      ).lean(optimized),
     }
 
     Promise.all(Object.values(fetching)).then(
@@ -602,7 +601,7 @@ const getWithdrawalsByUserId = id => {
           })),
         )
       })
-    })
+    }).lean()
   })
 }
 const getDepositsByUserId = id => {
@@ -705,14 +704,14 @@ const getWalletByUserId = id => {
 
 const getOurTransactionsIDs = cb =>
   new Promise(resolve => {
-    Transaction.find({ visible: true }, (e, ts) => {
+    Transaction.find({ visible: true }, '', (e, ts) => {
       if (ts) {
         cb(ts.map(t => t._id))
         resolve(ts.map(t => t._id))
       } else {
         resolve([])
       }
-    })
+    }).lean()
   })
 
 ////////

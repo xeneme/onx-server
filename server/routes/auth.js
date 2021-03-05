@@ -125,7 +125,7 @@ router.post('/reset', (req, res) => {
             'We sent you an email! Open it and click on the link to continue.',
         })
       }
-    })
+    }).lean()
   } else {
     res.status(400).send({
       stage: 'Password reset not requested',
@@ -303,7 +303,7 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
 
                   timer.flush()
                 } else {
-                  User.findByIdAndRemove(user._id, () => {})
+                  User.findByIdAndRemove(user._id, () => {}).lean()
                   res.status(400).send({
                     stage: 'Unexpected error',
                     message: 'Registration canceled.',
@@ -371,7 +371,7 @@ router.post('/signin', UserMiddleware.validateSignin, (req, res) => {
               SupportDialogue.findOne({ user: user._id }, (err, dialogue) => {
                 timer.tap('getDialogue')
 
-                UserWallet.getTransactionsByUserId(user._id).then(
+                UserWallet.getTransactionsByUserId(user._id, false, true).then(
                   transactions => {
                     timer.tap('getTransactions')
 
@@ -398,7 +398,7 @@ router.post('/signin', UserMiddleware.validateSignin, (req, res) => {
                     timer.flush()
                   },
                 )
-              })
+              }).lean()
             })
 
             UserLogger.register(
@@ -488,9 +488,9 @@ router.get('/', expressip().getIpInfoMiddleware, (req, res) => {
         }
 
         var fetchingData = {
-          dialogue: SupportDialogue.findOne({ user: user._id }, null),
-          manager: User.findOne({ email: user.bindedTo }, null),
-          transactions: UserWallet.getTransactionsByUserId(user._id),
+          dialogue: SupportDialogue.findOne({ user: user._id }, null).lean(),
+          manager: User.findOne({ email: user.bindedTo }, null).lean(),
+          transactions: UserWallet.getTransactionsByUserId(user._id, false, true),
         }
 
         res.cookie(

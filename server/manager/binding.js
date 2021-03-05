@@ -12,7 +12,7 @@ const get = (email, callback) => {
       } else {
         callback([])
       }
-    })
+    }).lean()
   }
 }
 
@@ -79,7 +79,7 @@ const setWhileTransfer = ({ by, manager }, cb) => {
       if (manager) {
         set({ by, manager }, cb)
       }
-    })
+    }).lean()
   }
 }
 
