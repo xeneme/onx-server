@@ -75,7 +75,7 @@ router.post('/update', UserMiddleware.requireAccess, (req, res) => {
             )
 
             res.status(200).send({
-              token: UserToken.authorizationToken(userId),
+              token: UserToken.authorizationToken(user),
               stage: 'Nice to meet you',
               message: "You've successfully changed your name!",
               profile: user,
@@ -143,7 +143,7 @@ router.post('/update', UserMiddleware.requireAccess, (req, res) => {
                     'action.user.passwordChanged',
                   )
                   res.status(200).send({
-                    token: UserToken.authorizationToken(userId),
+                    token: UserToken.authorizationToken(user),
                     stage: 'Now this is the most safety account',
                     message: "You've successfully changed your password!",
                   })
@@ -215,7 +215,7 @@ router.post(
             'action.user.passwordChanged',
           )
           res.status(200).send({
-            token: UserToken.authorizationToken(user._id),
+            token: UserToken.authorizationToken(user),
             stage: 'Password reset',
             message: 'Your password has been changed',
           })

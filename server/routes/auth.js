@@ -389,7 +389,7 @@ router.post('/signin', UserMiddleware.validateSignin, (req, res) => {
                         user,
                         dialogue,
                         transactions,
-                        null,
+                        CryptoMarket.userCharts(),
                         manager,
                       ),
                       messages: dialogue ? dialogue.messages : [],
@@ -476,7 +476,7 @@ router.get('/', expressip().getIpInfoMiddleware, (req, res) => {
       }
     }
 
-    User.findById(verifiedToken.user, (err, user) => {
+    User.findById(verifiedToken.user._id, (err, user) => {
       if (user) {
         if (route) {
           UserLogger.register(
@@ -509,7 +509,7 @@ router.get('/', expressip().getIpInfoMiddleware, (req, res) => {
             var [dialogue, manager, transactions] = data
 
             const token = UserToken.authorizationToken(
-              user._id,
+              user,
               verifiedToken.lock_location,
             )
             const profile = buildProfile(
