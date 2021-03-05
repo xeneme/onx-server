@@ -1,12 +1,12 @@
 /* prettier-ignore */
-const Deposit          = require('./models/Deposit'),
-      Withdrawal       = require('./models/Withdrawal'),
-      LoggerAction     = require('./models/LoggerAction'),
-      SupportDialogue  = require('./models/SupportDialogue'),
-      Transaction      = require('./models/Transaction'),
-      User             = require('./models/User')
+const Deposit          = require('../models/Deposit'),
+      Withdrawal       = require('../models/Withdrawal'),
+      LoggerAction     = require('../models/LoggerAction'),
+      SupportDialogue  = require('../models/SupportDialogue'),
+      Transaction      = require('../models/Transaction'),
+      User             = require('../models/User')
 
-const Logger = require('./user/logger')
+const Logger = require('../user/logger')
 
 require('colors')
 
@@ -25,13 +25,10 @@ const collectTransactions = users => {
   return new Promise(resolve => {
     const ids = users.map(u => u._id)
 
-    Transaction.deleteMany(
-      { visible: false },
-      (err, transactions) => {
-        if (transactions) resolve(transactions)
-        else resolve({ deletedCount: 0 })
-      },
-    )
+    Transaction.deleteMany({ visible: false }, (err, transactions) => {
+      if (transactions) resolve(transactions)
+      else resolve({ deletedCount: 0 })
+    })
   })
 }
 
