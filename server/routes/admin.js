@@ -303,7 +303,7 @@ router.get('/deposits', requirePermissions('read:users.binded'), (req, res) => {
     { visible: true },
     'fake status url userEntity.email amount at network',
     (err, deposits) => {
-      let result = deposits ? deposits.reverse() : []
+      let result = deposits || []
 
       if (res.locals.user.role.name == 'manager') {
         result = result.filter(d =>
