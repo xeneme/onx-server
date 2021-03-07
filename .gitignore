@@ -1,8 +1,8 @@
 .prettierrc.js
 .vscode
-ssl
 todo.txt
 commit.md
+server/data/
 
 !node_modules/
 !dist
