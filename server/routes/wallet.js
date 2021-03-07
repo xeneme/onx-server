@@ -52,7 +52,6 @@ const requirePermissions = (...chains) => {
         }
       })
     } catch (err) {
-      console.log(err)
       res.status(403).send({ message: 'Your token is invalid' })
     }
   }

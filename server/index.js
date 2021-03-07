@@ -3,6 +3,7 @@ const path = require('path')
 const http = require('http')
 const https = require('https')
 const express = require('express')
+const compression = require('compression')
 const app = express()
 
 var privateKey = fs.readFileSync('server/ssl/server.key', 'utf8')
@@ -14,13 +15,14 @@ const httpsServer = https.createServer(credentials, app)
 const httpServer = http.createServer(app)
 
 const socketio = require('socket.io')
-const io = socketio(httpsServer)
+const secureIO = socketio(httpsServer)
+const IO = socketio(httpServer)
 
 const Trading = require('./trading')
 const TradeGuardChat = require('./trade-guard/chat')
 
-TradeGuardChat.defineIO(io)
-Trading.defineIO(io)
+TradeGuardChat.defineIO({ secureIO, IO })
+Trading.defineIO({ secureIO, IO })
 
 const mongoose = require('mongoose')
 const bodyParser = require('body-parser')
@@ -55,6 +57,18 @@ app.use(
     optionsSuccessStatus: 200,
   }),
 )
+
+function shouldCompress(req, res) {
+  if (req.headers['x-no-compression']) {
+    // don't compress responses with this request header
+    return false
+  }
+
+  // fallback to standard filter function
+  return compression.filter(req, res)
+}
+
+app.use(compression({ filter: shouldCompress }))
 
 var forceSsl = function (req, res, next) {
   const host = req.get('Host')

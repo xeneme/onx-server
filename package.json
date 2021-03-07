@@ -5,6 +5,8 @@
   "main": "server/index.js",
   "scripts": {
     "setup": "node setup.js; npm start",
+    "build-admin": "cd ../admin; npm run build; cd ../server",
+    "build-website": "cd ../website; npm run build; cd ../server",
     "start": "node --trace-warnings server",
     "dev": "nodemon -q server"
   },
@@ -17,6 +19,7 @@
     "coinbase": "^2.0.8",
     "coingecko-api": "^1.0.10",
     "colors": "^1.4.0",
+    "compression": "^1.7.4",
     "cookie-parser": "^1.4.5",
     "cors": "^2.8.5",
     "cryptocurrency-address-validator": "^0.1.3",

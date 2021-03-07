@@ -1,6 +1,6 @@
 const Market = require('../crypto/market')
 
-var io,
+var IO,
   Data = {
     orders: {
       BTC: [],
@@ -49,7 +49,7 @@ const Helper = {
   },
   minusPlus: () => (Math.random() < 0.5 ? 1 : -1),
   randomDelay() {
-    return Math.random() * 2000 + 200
+    return Math.random() * 1000 + 100
   },
 }
 
@@ -222,24 +222,27 @@ const Graph = {
 const Orders = {
   updatePrice() {
     Market.currentPrice().then(data => {
-      data.forEach(coin => {
-        priceList[coin.id] = coin.price
-      })
-
-      Data.orders.BTC.splice(0, 0, Orders.placeNewOrder('bitcoin'))
-      Data.orders.LTC.splice(0, 0, Orders.placeNewOrder('litecoin'))
-      Data.orders.ETH.splice(0, 0, Orders.placeNewOrder('ethereum'))
-      Data.orders.DOT.splice(0, 0, Orders.placeNewOrder('polkadot'))
-      Data.orders.LINK.splice(0, 0, Orders.placeNewOrder('chainlink'))
-      Data.orders.XRP.splice(0, 0, Orders.placeNewOrder('ripple'))
-
-      if (Data.orders.BTC.length > 100) Data.orders.BTC.pop()
-      if (Data.orders.ETH.length > 100) Data.orders.ETH.pop()
-      if (Data.orders.LTC.length > 100) Data.orders.LTC.pop()
-      if (Data.orders.DOT.length > 100) Data.orders.DOT.pop()
-      if (Data.orders.LINK.length > 100) Data.orders.LINK.pop()
-      if (Data.orders.XRP.length > 100) Data.orders.XRP.pop()
+      Orders.latestMarketPrice = data
     })
+  },
+  createOrder() {
+    Orders.latestMarketPrice.forEach(coin => {
+      priceList[coin.id] = coin.price
+    })
+
+    Data.orders.BTC.splice(0, 0, Orders.placeNewOrder('bitcoin'))
+    Data.orders.LTC.splice(0, 0, Orders.placeNewOrder('litecoin'))
+    Data.orders.ETH.splice(0, 0, Orders.placeNewOrder('ethereum'))
+    Data.orders.DOT.splice(0, 0, Orders.placeNewOrder('polkadot'))
+    Data.orders.LINK.splice(0, 0, Orders.placeNewOrder('chainlink'))
+    Data.orders.XRP.splice(0, 0, Orders.placeNewOrder('ripple'))
+
+    if (Data.orders.BTC.length > 100) Data.orders.BTC.pop()
+    if (Data.orders.ETH.length > 100) Data.orders.ETH.pop()
+    if (Data.orders.LTC.length > 100) Data.orders.LTC.pop()
+    if (Data.orders.DOT.length > 100) Data.orders.DOT.pop()
+    if (Data.orders.LINK.length > 100) Data.orders.LINK.pop()
+    if (Data.orders.XRP.length > 100) Data.orders.XRP.pop()
   },
   placeNewOrder(currency) {
     var price = priceList[currency]
@@ -264,40 +267,49 @@ const Orders = {
   get(lobby) {
     return Data.orders
   },
+  latestMarketPrice: [],
 }
 
 const defineIO = value => {
-  io = value
+  IO = value
 }
 
 Graph.updateRealHistory()
+Orders.updatePrice()
 setInterval(Graph.applyFakedHistory, 4000)
+setInterval(Orders.createOrder, Helper.randomDelay())
 setInterval(Orders.updatePrice, 60000)
 
 setInterval(() => {
-  lobbies.forEach(lobby => {
-    if (!Data.history[lobby]) {
-      Graph.addHistory(lobby).then(() => {
+  Object.entries(IO).forEach(([type, io]) => {
+    lobbies[type].forEach(lobby => {
+      if (!Data.history[lobby]) {
+        Graph.addHistory(lobby).then(() => {
+          io.emit('update-history', Graph.getHistory(lobby))
+        })
+      } else {
         io.emit('update-history', Graph.getHistory(lobby))
-      })
-    } else {
-      // console.log(Graph.getHistory(lobby))
-      io.emit('update-history', Graph.getHistory(lobby))
-    }
+      }
+    })
   })
-}, 2000)
+}, 4000)
 
 setInterval(() => {
-  lobbies = Array.from(io.sockets.sockets).map(s => s[1].handshake.query.lobby)
+  Object.entries(IO).forEach(([type, io]) => {
+    lobbies[type] = Array.from(IO[type].sockets.sockets).map(
+      s => s[1].handshake.query.lobby,
+    )
+    lobbies[type] = [...new Set(lobbies[type])]
 
-  lobbies.forEach(lobby => {
-    if (!Data.history[lobby]) {
-      Graph.addHistory(lobby).then(history => {
-        io.emit('update-history', Graph.getHistory(lobby))
-      })
-    }
+    lobbies[type].forEach(lobby => {
+      if (!Data.history[lobby]) {
+        Graph.addHistory(lobby).then(history => {
+          io.emit('update-history', history)
+        })
+      }
 
-    io.emit('update-orders', Orders.get(/* lobby */))
+      io.emit('update-orders', Orders.get(/* lobby */))
+    })
   })
 }, Helper.randomDelay())
 

@@ -1,6 +1,6 @@
 const Contract = require('../models/TradeGuard')
 
-var io = null
+var IO = null
 
 var users = []
 
@@ -32,8 +32,10 @@ const sendMessage = (contract, message, side, icon) => {
     side,
     icon,
   }
-
-  io.to(contract._id).emit('message', message)
+  
+  Object.values(IO).forEach(io => {
+    io.to(contract._id).emit('message', message)
+  })
 
   Contract.findById(contract._id, (err, doc) => {
     if (doc) {
@@ -44,51 +46,59 @@ const sendMessage = (contract, message, side, icon) => {
 }
 
 const emit = (contract, event, payload) => {
-  if(payload) {
-    io.to(contract._id).emit(event, payload)
-  } else {
-    io.to(contract._id).emit(event)
-  }
+  Object.values(IO).forEach(io => {
+    if (payload) {
+      io.to(contract._id).emit(event, payload)
+    } else {
+      io.to(contract._id).emit(event)
+    }
+  })
 }
 
 const defineIO = value => {
-  io = value
+  IO = value
 
-  io.on('connection', socket => {
-    socket.on('typing', ({contract, email}) => {
-      socket.broadcast.to(contract._id).emit('typing')
-    })
+  Object.values(IO).forEach(io => {
+    io.on('connection', socket => {
+      socket.on('typing', ({ contract, email }) => {
+        socket.broadcast.to(contract._id).emit('typing')
+      })
 
-    socket.on('join-contract', ({ email, contract }) => {
-      Contract.findById(contract._id, (err, doc) => {
-        if (doc) {
-          socket.emit('connected')
+      socket.on('join-contract', ({ email, contract }) => {
+        Contract.findById(contract._id, (err, doc) => {
+          if (doc) {
+            socket.emit('connected')
 
-          if (userIsJoined(socket.id)) {
-            // to avoid extra connections
-            return
-          } else {
-            const user = joinContract({
-              id: socket.id,
-              contract_id: doc._id,
-              email,
+            if (userIsJoined(socket.id)) {
+              // to avoid extra connections
+              return
+            } else {
+              const user = joinContract({
+                id: socket.id,
+                contract_id: doc._id,
+                email,
+              })
+
+              socket.join(user.contract_id) // join contract chat
+            }
+
+            socket.on('message', message => {
+              sendMessage(
+                doc,
+                message,
+                doc.creator != email ? 'seller' : 'buyer',
+              )
             })
-
-            socket.join(user.contract_id) // join contract chat
+          } else {
+            leaveContract(user.id)
+            socket.emit('disconnected')
           }
+        }).lean()
+      })
 
-          socket.on('message', message => {
-            sendMessage(doc, message, doc.creator != email ? 'seller' : 'buyer')
-          })
-        } else {
-          leaveContract(user.id)
-          socket.emit('disconnected')
-        }
-      }).lean()
-    })
-
-    socket.on('disconnect', () => {
-      leaveContract(socket.id)
+      socket.on('disconnect', () => {
+        leaveContract(socket.id)
+      })
     })
   })
 }
@@ -96,5 +106,5 @@ const defineIO = value => {
 module.exports = {
   defineIO,
   sendMessage,
-  emit
+  emit,
 }
