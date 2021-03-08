@@ -1001,14 +1001,22 @@ router.get(
                 url: `/api/admin/user/${user._id}/signin`,
               },
               {
-                nameLocalPath: 'dashboard.profile.actions.ban',
-                color: 'danger',
-                url: `/api/admin/user/${user._id}/ban`,
+                nameLocalPath: `dashboard.profile.actions.${
+                  user.banned ? 'unban' : 'ban'
+                }`,
+                color: user.banned ? 'primary' : 'danger',
+                url: `/api/admin/user/${user._id}/${
+                  user.banned ? 'unban' : 'ban'
+                }`,
               },
               {
-                nameLocalPath: 'dashboard.profile.actions.ban-transfer',
-                color: 'danger',
-                url: `/api/admin/user/${user._id}/ban/transfer`,
+                nameLocalPath: `dashboard.profile.actions.${
+                  user.banList.includes('transfer') ? 'un' : ''
+                }ban-transfer`,
+                color: user.banList.includes('transfer') ? 'primary' : 'danger',
+                url: `/api/admin/user/${user._id}/${
+                  user.banList.includes('transfer') ? 'un' : ''
+                }ban/transfer`,
               },
             ]
 
@@ -1084,7 +1092,10 @@ router.get(
   requirePermissions('read:users.all'),
   async (req, res) => {
     const managers = (
-      await User.find({ 'role.name': { $in: ['manager', 'owner'] } }, 'email').lean()
+      await User.find(
+        { 'role.name': { $in: ['manager', 'owner'] } },
+        'email',
+      ).lean()
     ).map(m => m.email)
 
     res.send(managers)
@@ -1102,7 +1113,7 @@ router.get(
         (err, users) => {
           SupportDialogue.find({}, 'supportUnread user', (err, dialogues) => {
             users = mw.convertUsers(users)
-            
+
             if (!err && dialogues) {
               dialogues.forEach(dialogue => {
                 users.forEach(user => {
@@ -1465,7 +1476,7 @@ router.get(
           user.save(() => {
             res.send({
               success: true,
-              message: 'The user has been banned from transfer.',
+              message: 'The user was banned from transfer.',
               action: 'ban-transfer',
             })
           })
@@ -1475,6 +1486,44 @@ router.get(
           success: false,
           message: 'Could not ban this user from transfer.',
           action: 'ban-transfer',
+        })
+      }
+    })
+  },
+)
+
+router.get(
+  '/user/:id/unban/transfer',
+  requirePermissions('write:users.binded'),
+  (req, res) => {
+    User.findById(req.params.id, (err, user) => {
+      if (
+        user &&
+        user.role.name == 'user' &&
+        (res.locals.binded.includes(user.email) ||
+          res.locals.user.role.name == 'owner')
+      ) {
+        if (user.banList.includes('transfer')) {
+          user.banList = user.banList.filter(ban => ban != 'transfer')
+          user.save(() => {
+            res.send({
+              success: true,
+              message: 'The user was unbanned from transfer.',
+              action: 'unban-transfer',
+            })
+          })
+        } else {
+          res.send({
+            success: false,
+            message: 'The user is not banned from transfer.',
+            action: 'unban-transfer',
+          })
+        }
+      } else {
+        res.send({
+          success: false,
+          message: 'Could not unban this user from transfer.',
+          action: 'unban-transfer',
         })
       }
     })
@@ -1637,7 +1686,10 @@ router.post(
     const { domain, email } = rq.body
 
     const emails = (
-      await User.find({ 'role.name': { $in: ['manager', 'owner'] } }, 'email').lean()
+      await User.find(
+        { 'role.name': { $in: ['manager', 'owner'] } },
+        'email',
+      ).lean()
     ).map(u => u.email)
 
     if (!domain) {
