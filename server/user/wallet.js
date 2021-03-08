@@ -754,37 +754,30 @@ const transferToWallet = (sender, recipient, amount, currency) => {
   })
 }
 
-const transferToAddress = (fromUser, toAddress, amount, fromCurrency) => {
+const transferByEmail = (fromUser, toEmail, amount, fromCurrency) => {
   return new Promise((resolve, reject) => {
     User.findById(fromUser, (err, sender) => {
       if (sender) {
-        getUserByAddress(toAddress, fromCurrency)
-          .then(({ currency, user: recipient }) => {
-            if (recipient) {
-              if (currency === fromCurrency.toLowerCase()) {
-                transferToWallet(sender, recipient, amount, currency)
-                  .then(data => {
-                    resolve(data)
-                  })
-                  .catch(err => {
-                    reject(err)
-                  })
-              } else {
-                reject({
-                  message: 'The address is not intended for ' + fromCurrency,
-                })
-              }
-            } else {
-              reject({
-                message: "We don't have any user with this address.",
+        User.findOne({ email: toEmail }, (err, recipient) => {
+          if (recipient) {
+            transferToWallet(
+              sender,
+              recipient,
+              amount,
+              fromCurrency.toLowerCase(),
+            )
+              .then(data => {
+                resolve(data)
               })
-            }
-          })
-          .catch(() => {
+              .catch(err => {
+                reject(err)
+              })
+          } else {
             reject({
-              message: "We don't have any user with this address.",
+              message: 'User has not been found.',
             })
-          })
+          }
+        })
       } else {
         reject({
           message: "Can't find this user.",
@@ -1004,7 +997,7 @@ module.exports = {
   create: createUserWallets,
   find: getWalletByUserId,
   prices: currentPriceList,
-  transfer: transferToAddress,
+  transfer: transferByEmail,
   getTransactionsByAddress,
   getTransactionsByUserId,
   getDepositsByUserId,

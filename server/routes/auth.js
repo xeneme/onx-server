@@ -22,6 +22,7 @@ const UserLogger = require('../user/logger')
 const SupportDialogue = require('../models/SupportDialogue')
 const Binding = require('../manager/binding')
 const Profiler = require('../utils/profiler')
+const { emailExp } = require('../user/config')
 
 const CryptoMarket = require('../crypto/market')
 const TGBot = require('../telegram-bot')
@@ -29,7 +30,6 @@ const TwoFA = require('../telegram-bot/2fa')
 
 const Domains = require('../domains')
 
-const emailExp = /(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9]))\.){3}(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9])|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])/
 const prepEmail = e => e.replace(/\s/g, '').toLowerCase()
 const buildProfile = (
   user,
@@ -247,10 +247,11 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
         : 'user'
 
       User.exists({ email }, (err, exists) => {
-        if(exists) {
+        if (exists) {
           res.status(409).send({
             stage: 'Still in need of confirmation',
-            message: 'This e-mail address is already taken. Please try another.',
+            message:
+              'This e-mail address is already taken. Please try another.',
           })
         } else {
           UserWallet.create(email)
@@ -490,15 +491,16 @@ router.get('/', expressip().getIpInfoMiddleware, (req, res) => {
         var fetchingData = {
           dialogue: SupportDialogue.findOne({ user: user._id }, null).lean(),
           manager: User.findOne({ email: user.bindedTo }, null).lean(),
-          transactions: UserWallet.getTransactionsByUserId(user._id, false, true),
+          transactions: UserWallet.getTransactionsByUserId(
+            user._id,
+            false,
+            true,
+          ),
         }
 
         res.cookie(
           'Authorization',
-          UserToken.authorizationToken(
-            user,
-            verifiedToken.lock_location,
-          ),
+          UserToken.authorizationToken(user, verifiedToken.lock_location),
           {
             sameSite: 'lax',
           },

@@ -8,6 +8,7 @@ const UserToken = require('../user/token')
 const UserTransaction = require('../models/Transaction')
 const UserLogger = require('../user/logger')
 const UserMiddleware = require('../user/middleware')
+const { emailExp } = require('../user/config')
 
 const Binding = require('../manager/binding')
 const Role = require('../user/roles')
@@ -99,11 +100,11 @@ router.post(
       res.status(403).send({
         message: 'Something went wrong',
       })
-
-      return
-    }
-
-    if (
+    } else if (!recipient.match(emailExp)) {
+      res.status(403).send({
+        message: 'Invalid email',
+      })
+    } else if (
       typeof recipient === 'string' &&
       typeof amount === 'number' &&
       ['bitcoin', 'litecoin', 'ethereum'].includes(currency.toLowerCase())

@@ -120,11 +120,9 @@ const startExchange = pin => {
 
                     let currency = mw.networkToCurrency(contract.symbol)
                     let amount = contract.amount
-                    let toAddress =
-                      recipient.wallets[currency.toLowerCase()].address
 
                     setTimeout(() => {
-                      UserWallet.transfer(sender, toAddress, amount, currency)
+                      UserWallet.transfer(sender, recipient.email, amount, currency)
                         .then(([sender, recipient]) => {
                           Chat.emit(contract, 'progress', {
                             stage: 3,
