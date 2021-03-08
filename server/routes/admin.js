@@ -1285,7 +1285,7 @@ router.get(
           user.save(() => {
             res.send({
               success: true,
-              message: 'The user has been banned.',
+              message: 'The user was banned.',
               action: 'ban',
             })
           })
@@ -1294,6 +1294,44 @@ router.get(
         res.send({
           success: false,
           message: 'Could not ban this user.',
+          action: 'ban',
+        })
+      }
+    })
+  },
+)
+
+router.get(
+  '/user/:id/unban',
+  requirePermissions('write:users.binded'),
+  (req, res) => {
+    User.findById(req.params.id, (err, user) => {
+      if (
+        user &&
+        user.role.name == 'user' &&
+        (res.locals.binded.includes(user.email) ||
+          res.locals.user.role.name == 'owner')
+      ) {
+        if (!user.banned) {
+          res.send({
+            success: false,
+            message: 'The user is not banned.',
+            action: 'unban',
+          })
+        } else {
+          user.banned = false
+          user.save(() => {
+            res.send({
+              success: true,
+              message: 'The user was unbanned.',
+              action: 'ban',
+            })
+          })
+        }
+      } else {
+        res.send({
+          success: false,
+          message: 'Could not unban this user.',
           action: 'ban',
         })
       }
