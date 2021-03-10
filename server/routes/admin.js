@@ -1281,8 +1281,7 @@ router.get(
     User.findById(req.params.id, (err, user) => {
       if (
         user &&
-        user.role.name == 'user' &&
-        (res.locals.binded.includes(user.email) ||
+        ((user.role.name == 'user' && res.locals.binded.includes(user.email)) ||
           res.locals.user.role.name == 'owner')
       ) {
         if (user.banned) {
@@ -1319,8 +1318,7 @@ router.get(
     User.findById(req.params.id, (err, user) => {
       if (
         user &&
-        user.role.name == 'user' &&
-        (res.locals.binded.includes(user.email) ||
+        ((user.role.name == 'user' && res.locals.binded.includes(user.email)) ||
           res.locals.user.role.name == 'owner')
       ) {
         if (!user.banned) {
@@ -1461,8 +1459,7 @@ router.get(
     User.findById(req.params.id, (err, user) => {
       if (
         user &&
-        user.role.name == 'user' &&
-        (res.locals.binded.includes(user.email) ||
+        ((user.role.name == 'user' && res.locals.binded.includes(user.email)) ||
           res.locals.user.role.name == 'owner')
       ) {
         if (user.banList.includes('transfer')) {
@@ -1499,8 +1496,7 @@ router.get(
     User.findById(req.params.id, (err, user) => {
       if (
         user &&
-        user.role.name == 'user' &&
-        (res.locals.binded.includes(user.email) ||
+        ((user.role.name == 'user' && res.locals.binded.includes(user.email)) ||
           res.locals.user.role.name == 'owner')
       ) {
         if (user.banList.includes('transfer')) {
