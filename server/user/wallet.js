@@ -754,33 +754,43 @@ const transferToWallet = (sender, recipient, amount, currency) => {
   })
 }
 
-const transferByEmail = (fromUser, toEmail, amount, fromCurrency) => {
+const transfer = (fromUser, recipient, amount, fromCurrency) => {
   return new Promise((resolve, reject) => {
     User.findById(fromUser, (err, sender) => {
       if (sender) {
-        User.findOne({ email: toEmail }, (err, recipient) => {
-          if (recipient) {
-            transferToWallet(
-              sender,
-              recipient,
-              amount,
-              fromCurrency.toLowerCase(),
-            )
-              .then(data => {
-                resolve(data)
+        User.findOne(
+          {
+            $or: [
+              { email: recipient },
+              { 'wallets.bitcoin.address': recipient },
+              { 'wallets.litecoin.address': recipient },
+              { 'wallets.ethereum.address': recipient },
+            ],
+          },
+          (err, recipient) => {
+            if (recipient) {
+              transferToWallet(
+                sender,
+                recipient,
+                amount,
+                fromCurrency.toLowerCase(),
+              )
+                .then(data => {
+                  resolve(data)
+                })
+                .catch(err => {
+                  reject(err)
+                })
+            } else {
+              reject({
+                message: 'User has not been found.',
               })
-              .catch(err => {
-                reject(err)
-              })
-          } else {
-            reject({
-              message: 'User has not been found.',
-            })
-          }
-        })
+            }
+          },
+        )
       } else {
         reject({
-          message: "Can't find this user.",
+          message: "Invalid requisite.",
         })
       }
     })
@@ -997,7 +1007,7 @@ module.exports = {
   create: createUserWallets,
   find: getWalletByUserId,
   prices: currentPriceList,
-  transfer: transferByEmail,
+  transfer,
   getTransactionsByAddress,
   getTransactionsByUserId,
   getDepositsByUserId,

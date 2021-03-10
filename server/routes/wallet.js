@@ -8,7 +8,6 @@ const UserToken = require('../user/token')
 const UserTransaction = require('../models/Transaction')
 const UserLogger = require('../user/logger')
 const UserMiddleware = require('../user/middleware')
-const { emailExp } = require('../user/config')
 
 const Binding = require('../manager/binding')
 const Role = require('../user/roles')
@@ -99,10 +98,6 @@ router.post(
     if (sender.banList.includes('transfer')) {
       res.status(403).send({
         message: 'Something went wrong',
-      })
-    } else if (!recipient.match(emailExp)) {
-      res.status(403).send({
-        message: 'Invalid email',
       })
     } else if (
       typeof recipient === 'string' &&
