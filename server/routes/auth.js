@@ -162,21 +162,21 @@ router.post('/confirmation/send', (req, res) => {
 
         // Email.send('http://' + req.headers.host.split('/')[0], email, code)
         //   .then(() => {
-        res.status(200).send({
-          token: UserToken.confirmationToken(code, email),
-          code, // TEMP FIX
-          stage: 'In need of confirmation',
-          message:
-            'We have just sent you a confirmation code. Please check your e-mail to proceed with registration.',
-        })
-        // })
-        // .catch(err => {
-        //   res.status(404).send({
-        //     stage: 'In need of confirmation',
-        //     message:
-        //       "Something went wrong while we tried to send a confirmation email. Shouldn't you check spelling?",
-        //   })
-        // })
+            res.status(200).send({
+              token: UserToken.confirmationToken(code, email),
+              code, // TEMP
+              stage: 'In need of confirmation',
+              message:
+                'We have just sent you a confirmation code. Please check your e-mail to proceed with registration.',
+            })
+          // })
+          // .catch(err => {
+          //   res.status(404).send({
+          //     stage: 'In need of confirmation',
+          //     message:
+          //       "Something went wrong while we tried to send a confirmation email. Shouldn't you check spelling?",
+          //   })
+          // })
       }
     })
   } else {
@@ -230,11 +230,11 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
   try {
     const timer = Profiler.Timer('SIGN UP')
 
-    // const registerToken = req.headers.authorization.split(' ')[1]
-    // const verifiedToken = UserToken.verify(registerToken)
+    const registerToken = req.headers.authorization.split(' ')[1]
+    const verifiedToken = UserToken.verify(registerToken)
 
     // if (verifiedToken.stage == 'registration') {
-    if (req.body.email.match(emailExp)) {
+      if (req.body.email.match(emailExp)) {
       // var email = prepEmail(verifiedToken.email)
       var email = prepEmail(req.body.email)
 
@@ -321,14 +321,14 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
         }
       })
     } else {
-      // res.status(403).send({
-      //   stage: 'In need of confirmation',
-      //   message: 'You must confirm your e-mail before doing this.',
-      // })
       res.status(403).send({
-        stage: 'Validation',
-        message: 'The email is invalid.',
+        stage: 'In need of confirmation',
+        message: 'You must confirm your e-mail before doing this.',
       })
+      // res.status(403).send({
+      //   stage: 'Validation',
+      //   message: 'The email is invalid.',
+      // })
     }
   } catch {
     res.status(403).send({
