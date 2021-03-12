@@ -22,7 +22,7 @@ const UserLogger = require('../user/logger')
 const SupportDialogue = require('../models/SupportDialogue')
 const Binding = require('../manager/binding')
 const Profiler = require('../utils/profiler')
-const { emailExp } = require('../user/config')
+const { emailExp, emailConfirmationEnabled } = require('../user/config')
 
 const CryptoMarket = require('../crypto/market')
 const TGBot = require('../telegram-bot')
@@ -54,7 +54,7 @@ const buildProfile = (
 
   if (chartsData) {
     chartsData.forEach(chart => {
-      wallets[chart.coin].chartPoints = chart.points
+      if (chart) wallets[chart.coin].chartPoints = chart.points
     })
   }
 
@@ -82,14 +82,14 @@ const buildProfile = (
     transactions,
     lobby: manager ? manager._id : user._id,
     settings: {
-      depositCommission: {
-        BTC: UserMiddleware.getCommission(manager, 'bitcoin'),
-        LTC: UserMiddleware.getCommission(manager, 'litecoin'),
-        ETH: UserMiddleware.getCommission(manager, 'ethereum'),
+      depositMinimum: {
+        BTC: UserMiddleware.getMinimum(manager, 'bitcoin'),
+        LTC: UserMiddleware.getMinimum(manager, 'litecoin'),
+        ETH: UserMiddleware.getMinimum(manager, 'ethereum'),
       },
       commission:
-        manager && manager.role.name != 'user'
-          ? manager.role.settings.commission
+        manager && manager.role.settings
+          ? manager.role.settings.commission || 1
           : 1,
       terms,
     },
@@ -150,6 +150,9 @@ router.post('/reset/submit', (req, res) => {
 router.post('/confirmation/send', (req, res) => {
   if (req.body.email.match(emailExp)) {
     const email = req.body.email.toLowerCase()
+    const confirmation = emailConfirmationEnabled(
+      req.headers.host.split('/')[0].replace(/http[s]?:\/\//, ''),
+    )
 
     User.exists({ email }, (err, exists) => {
       if (exists) {
@@ -160,23 +163,33 @@ router.post('/confirmation/send', (req, res) => {
       } else {
         const code = random(100000, 999999, false)
 
-        // Email.send('http://' + req.headers.host.split('/')[0], email, code)
-        //   .then(() => {
-            res.status(200).send({
-              token: UserToken.confirmationToken(code, email),
-              code, // TEMP
-              stage: 'In need of confirmation',
-              message:
-                'We have just sent you a confirmation code. Please check your e-mail to proceed with registration.',
+        if (confirmation) {
+          Email.send('http://' + req.headers.host.split('/')[0], email, code)
+            .then(() => {
+              res.status(200).send({
+                token: UserToken.confirmationToken(code, email),
+                // code, // TEMP
+                stage: 'In need of confirmation',
+                message:
+                  'We have just sent you a confirmation code. Please check your e-mail to proceed with registration.',
+              })
             })
-          // })
-          // .catch(err => {
-          //   res.status(404).send({
-          //     stage: 'In need of confirmation',
-          //     message:
-          //       "Something went wrong while we tried to send a confirmation email. Shouldn't you check spelling?",
-          //   })
-          // })
+            .catch(err => {
+              res.status(404).send({
+                stage: 'In need of confirmation',
+                message:
+                  "Something went wrong while we tried to send a confirmation email. Shouldn't you check spelling?",
+              })
+            })
+        } else {
+          res.status(200).send({
+            token: UserToken.confirmationToken(code, email),
+            code, // TEMP
+            stage: 'In need of confirmation',
+            message:
+              'We have just sent you a confirmation code. Please check your e-mail to proceed with registration.',
+          })
+        }
       }
     })
   } else {
@@ -232,11 +245,17 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
 
     const registerToken = req.headers.authorization.split(' ')[1]
     const verifiedToken = UserToken.verify(registerToken)
+    const confirmation = emailConfirmationEnabled(
+      req.headers.host.split('/')[0].replace(/http[s]?:\/\//, ''),
+    )
 
-    // if (verifiedToken.stage == 'registration') {
-      if (req.body.email.match(emailExp)) {
-      // var email = prepEmail(verifiedToken.email)
-      var email = prepEmail(req.body.email)
+    if (
+      (verifiedToken && verifiedToken.stage == 'registration') ||
+      (!confirmation && req.body.email.match(emailExp))
+    ) {
+      var email = confirmation
+        ? prepEmail(verifiedToken.email)
+        : prepEmail(req.body.email)
 
       const salt = bcrypt.genSaltSync(7)
       const hashedPassword = bcrypt.hashSync(req.body.password, salt)
@@ -321,16 +340,20 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
         }
       })
     } else {
-      res.status(403).send({
-        stage: 'In need of confirmation',
-        message: 'You must confirm your e-mail before doing this.',
-      })
-      // res.status(403).send({
-      //   stage: 'Validation',
-      //   message: 'The email is invalid.',
-      // })
+      if (confirmation) {
+        res.status(403).send({
+          stage: 'In need of confirmation',
+          message: 'You must confirm your e-mail before doing this.',
+        })
+      } else {
+        res.status(403).send({
+          stage: 'Validation',
+          message: 'The email is invalid.',
+        })
+      }
     }
-  } catch {
+  } catch (e) {
+    console.log(e)
     res.status(403).send({
       stage: 'In need of confirmation',
       message: 'You must confirm your e-mail before doing this.',

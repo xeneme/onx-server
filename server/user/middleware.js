@@ -243,18 +243,18 @@ module.exports = {
       res.sendStatus(400)
     }
   },
-  getCommission: (manager, currency) => {
-    let commission = 0.01
+  getMinimum: (manager, currency) => {
+    let min = 0.01
     const net = currencyToNetwork(currency)
 
     if (manager) {
       const c = manager.role.settings['depositMinimum' + net]
 
       if (typeof c == 'number') {
-        commission = c
+        min = c
       }
     }
 
-    return commission
+    return min
   },
 }

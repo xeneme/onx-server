@@ -183,14 +183,14 @@ router.post(
     const user = res.locals.user
     const manager = res.locals.manager
     const { amount, currency } = req.body
-    const commission = UserMiddleware.getCommission(manager, currency)
+    const minimum = UserMiddleware.getMinimum(manager, currency)
 
     if (
       typeof amount === 'number' &&
       typeof currency === 'string' &&
       !isNaN(amount)
     ) {
-      if (amount < commission) {
+      if (amount < minimum) {
         error('Amount must be above the minimum set')
       } else if (!['Bitcoin', 'Litecoin', 'Ethereum'].includes(currency)) {
         error('Unexpected currency selected')

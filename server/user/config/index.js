@@ -1,13 +1,23 @@
 const fs = require('fs')
 const path = require('path')
 
-const { getProjectName } = require('../../domains')
+const { getProjectName, parseDomain } = require('../../domains')
 
 require('dotenv/config')
 
 const emailExp = /(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9]))\.){3}(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9])|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])/
+const emailConfirmationEnabled = url => {
+  const mailgunDomains = [
+    'bitprotrade.com',
+    'trader-bull.com',
+    'feelcryptobit.com',
+    'scrowbits.com',
+  ]
 
-const getDefaultTerms = (url) => {
+  return mailgunDomains.includes(parseDomain(url))
+}
+
+const getDefaultTerms = url => {
   let terms = fs.readFileSync(path.join(__dirname, '../../assets/TERMS.txt'), {
     encoding: 'utf-8',
   })
@@ -81,7 +91,10 @@ const reservation = {
   [process.env.OWNER]: 'owner',
 }
 
-const confirmationEmailTemplate = (code, url) => `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional //EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+const confirmationEmailTemplate = (
+  code,
+  url,
+) => `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional //EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:v="urn:schemas-microsoft-com:vml">
 <head>
 <!--[if gte mso 9]><xml><o:OfficeDocumentSettings><o:AllowPNG/><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml><![endif]-->
@@ -280,7 +293,9 @@ const confirmationEmailTemplate = (code, url) => `<!DOCTYPE html PUBLIC "-//W3C/
 <!--[if mso]><table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="padding-right: 10px; padding-left: 10px; padding-top: 10px; padding-bottom: 10px; font-family: 'Trebuchet MS', Tahoma, sans-serif"><![endif]-->
 <div style="color:#555555;font-family:'Montserrat', 'Trebuchet MS', 'Lucida Grande', 'Lucida Sans Unicode', 'Lucida Sans', Tahoma, sans-serif;line-height:2;padding-top:10px;padding-right:10px;padding-bottom:10px;padding-left:10px;">
 <div style="line-height: 2; font-size: 12px; font-family: 'Montserrat', 'Trebuchet MS', 'Lucida Grande', 'Lucida Sans Unicode', 'Lucida Sans', Tahoma, sans-serif; color: #555555; mso-line-height-alt: 24px;">
-<p style="font-size: 20px; line-height: 2; word-break: break-word; text-align: center; font-family: Montserrat, 'Trebuchet MS', 'Lucida Grande', 'Lucida Sans Unicode', 'Lucida Sans', Tahoma, sans-serif; mso-line-height-alt: 40px; margin: 0;"><span style="font-size: 20px;"><strong>${getProjectName(url)}</strong></span></p>
+<p style="font-size: 20px; line-height: 2; word-break: break-word; text-align: center; font-family: Montserrat, 'Trebuchet MS', 'Lucida Grande', 'Lucida Sans Unicode', 'Lucida Sans', Tahoma, sans-serif; mso-line-height-alt: 40px; margin: 0;"><span style="font-size: 20px;"><strong>${getProjectName(
+  url,
+)}</strong></span></p>
 </div>
 </div>
 <!--[if mso]></td></tr></table><![endif]-->
@@ -403,7 +418,11 @@ const confirmationEmailTemplate = (code, url) => `<!DOCTYPE html PUBLIC "-//W3C/
 <!--[if mso]><table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="padding-right: 38px; padding-left: 38px; padding-top: 10px; padding-bottom: 10px; font-family: Arial, sans-serif"><![endif]-->
 <div style="color:#555555;font-family:Helvetica Neue, Helvetica, Arial, sans-serif;line-height:1.5;padding-top:10px;padding-right:38px;padding-bottom:10px;padding-left:38px;">
 <div style="line-height: 1.5; font-size: 12px; font-family: Helvetica Neue, Helvetica, Arial, sans-serif; color: #555555; mso-line-height-alt: 18px;">
-<p style="line-height: 1.5; word-break: break-word; text-align: center; font-family: inherit; font-size: 16px; mso-line-height-alt: 24px; margin: 0;"><span style="font-size: 16px; color: #2a272b;">Hey, your email address was used to create an account at <a href="http://www.${getProjectName(url)}.com" rel="noopener" style="text-decoration: underline; color: #005dff;" target="_blank">${getProjectName(url)}.com</a>. If this was you, please confirm your email with the following code:</span></p>
+<p style="line-height: 1.5; word-break: break-word; text-align: center; font-family: inherit; font-size: 16px; mso-line-height-alt: 24px; margin: 0;"><span style="font-size: 16px; color: #2a272b;">Hey, your email address was used to create an account at <a href="http://www.${getProjectName(
+  url,
+)}.com" rel="noopener" style="text-decoration: underline; color: #005dff;" target="_blank">${getProjectName(
+  url,
+)}.com</a>. If this was you, please confirm your email with the following code:</span></p>
 </div>
 </div>
 <!--[if mso]></td></tr></table><![endif]-->
@@ -474,7 +493,9 @@ const confirmationEmailTemplate = (code, url) => `<!DOCTYPE html PUBLIC "-//W3C/
 <!--[if mso]><table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="padding-right: 15px; padding-left: 15px; padding-top: 15px; padding-bottom: 15px; font-family: 'Trebuchet MS', Tahoma, sans-serif"><![endif]-->
 <div style="color:#555555;font-family:'Montserrat', 'Trebuchet MS', 'Lucida Grande', 'Lucida Sans Unicode', 'Lucida Sans', Tahoma, sans-serif;line-height:1.5;padding-top:15px;padding-right:15px;padding-bottom:15px;padding-left:15px;">
 <div style="line-height: 1.5; font-size: 12px; color: #555555; font-family: 'Montserrat', 'Trebuchet MS', 'Lucida Grande', 'Lucida Sans Unicode', 'Lucida Sans', Tahoma, sans-serif; mso-line-height-alt: 18px;">
-<p style="line-height: 1.5; word-break: break-word; text-align: center; font-size: 14px; mso-line-height-alt: 21px; margin: 0;"><span style="font-size: 14px;">Kind regards,</span><br/><span style="font-size: 14px;">The ${getProjectName(url)} Team</span></p>
+<p style="line-height: 1.5; word-break: break-word; text-align: center; font-size: 14px; mso-line-height-alt: 21px; margin: 0;"><span style="font-size: 14px;">Kind regards,</span><br/><span style="font-size: 14px;">The ${getProjectName(
+  url,
+)} Team</span></p>
 </div>
 </div>
 <!--[if mso]></td></tr></table><![endif]-->
@@ -758,7 +779,9 @@ const passwordResetTemplate = url => `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1
 <!--[if mso]><table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="padding-right: 10px; padding-left: 10px; padding-top: 10px; padding-bottom: 10px; font-family: 'Trebuchet MS', Tahoma, sans-serif"><![endif]-->
 <div style="color:#555555;font-family:'Montserrat', 'Trebuchet MS', 'Lucida Grande', 'Lucida Sans Unicode', 'Lucida Sans', Tahoma, sans-serif;line-height:2;padding-top:10px;padding-right:10px;padding-bottom:10px;padding-left:10px;">
 <div style="line-height: 2; font-size: 12px; font-family: 'Montserrat', 'Trebuchet MS', 'Lucida Grande', 'Lucida Sans Unicode', 'Lucida Sans', Tahoma, sans-serif; color: #555555; mso-line-height-alt: 24px;">
-<p style="font-size: 20px; line-height: 2; word-break: break-word; text-align: center; font-family: Montserrat, 'Trebuchet MS', 'Lucida Grande', 'Lucida Sans Unicode', 'Lucida Sans', Tahoma, sans-serif; mso-line-height-alt: 40px; margin: 0;"><span style="font-size: 20px;"><strong>${getProjectName(url)}</strong></span></p>
+<p style="font-size: 20px; line-height: 2; word-break: break-word; text-align: center; font-family: Montserrat, 'Trebuchet MS', 'Lucida Grande', 'Lucida Sans Unicode', 'Lucida Sans', Tahoma, sans-serif; mso-line-height-alt: 40px; margin: 0;"><span style="font-size: 20px;"><strong>${getProjectName(
+  url,
+)}</strong></span></p>
 </div>
 </div>
 <!--[if mso]></td></tr></table><![endif]-->
@@ -951,7 +974,9 @@ const passwordResetTemplate = url => `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1
 <!--[if mso]><table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="padding-right: 15px; padding-left: 15px; padding-top: 15px; padding-bottom: 15px; font-family: 'Trebuchet MS', Tahoma, sans-serif"><![endif]-->
 <div style="color:#555555;font-family:'Montserrat', 'Trebuchet MS', 'Lucida Grande', 'Lucida Sans Unicode', 'Lucida Sans', Tahoma, sans-serif;line-height:1.5;padding-top:15px;padding-right:15px;padding-bottom:15px;padding-left:15px;">
 <div style="line-height: 1.5; font-size: 12px; color: #555555; font-family: 'Montserrat', 'Trebuchet MS', 'Lucida Grande', 'Lucida Sans Unicode', 'Lucida Sans', Tahoma, sans-serif; mso-line-height-alt: 18px;">
-<p style="line-height: 1.5; word-break: break-word; text-align: center; font-size: 14px; mso-line-height-alt: 21px; margin: 0;"><span style="font-size: 14px;">Kind regards,</span><br/><span style="font-size: 14px;">The ${getProjectName(url)} Team</span></p>
+<p style="line-height: 1.5; word-break: break-word; text-align: center; font-size: 14px; mso-line-height-alt: 21px; margin: 0;"><span style="font-size: 14px;">Kind regards,</span><br/><span style="font-size: 14px;">The ${getProjectName(
+  url,
+)} Team</span></p>
 </div>
 </div>
 <!--[if mso]></td></tr></table><![endif]-->
@@ -1038,4 +1063,5 @@ module.exports = {
   confirmationEmailTemplate,
   passwordResetTemplate,
   getDefaultTerms,
+  emailConfirmationEnabled,
 }
