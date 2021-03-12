@@ -14,7 +14,7 @@ const createTransport = url => {
 
   return mailgun({
     apiKey: 'b4b48a2c35fea8be3f6a0e8a75e67492-29561299-56d703e5',
-    domain: parseDomain(url),
+    domain: parseDomain('http://' + url),
     // domain: 'trader-bull.com',
   })
 

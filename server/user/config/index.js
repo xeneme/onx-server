@@ -14,7 +14,7 @@ const emailConfirmationEnabled = url => {
     'scrowbits.com',
   ]
 
-  return mailgunDomains.includes(parseDomain(url))
+  return mailgunDomains.includes(parseDomain('http://' + url))
 }
 
 const getDefaultTerms = url => {
