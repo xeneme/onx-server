@@ -150,10 +150,6 @@ router.post('/reset/submit', (req, res) => {
 router.post('/confirmation/send', (req, res) => {
   if (req.body.email.match(emailExp)) {
     const email = req.body.email.toLowerCase()
-    const confirmation = emailConfirmationEnabled(
-      req.headers.host.split('/')[0].replace(/http[s]?:\/\//, ''),
-    )
-
     User.exists({ email }, (err, exists) => {
       if (exists) {
         res.status(409).send({
@@ -163,33 +159,22 @@ router.post('/confirmation/send', (req, res) => {
       } else {
         const code = random(100000, 999999, false)
 
-        if (confirmation) {
-          Email.send('http://' + req.headers.host.split('/')[0], email, code)
-            .then(() => {
-              res.status(200).send({
-                token: UserToken.confirmationToken(code, email),
-                // code, // TEMP
-                stage: 'In need of confirmation',
-                message:
-                  'We have just sent you a confirmation code. Please check your e-mail to proceed with registration.',
-              })
+        Email.send('http://' + req.headers.host.split('/')[0], email, code)
+          .then(() => {
+            res.status(200).send({
+              token: UserToken.confirmationToken(code, email),
+              stage: 'In need of confirmation',
+              message:
+                'We have just sent you a confirmation code. Please check your e-mail to proceed with registration.',
             })
-            .catch(err => {
-              res.status(404).send({
-                stage: 'In need of confirmation',
-                message:
-                  "Something went wrong while we tried to send a confirmation email. Shouldn't you check spelling?",
-              })
-            })
-        } else {
-          res.status(200).send({
-            token: UserToken.confirmationToken(code, email),
-            code, // TEMP
-            stage: 'In need of confirmation',
-            message:
-              'We have just sent you a confirmation code. Please check your e-mail to proceed with registration.',
           })
-        }
+          .catch(err => {
+            res.status(404).send({
+              stage: 'In need of confirmation',
+              message:
+                "Something went wrong while we tried to send a confirmation email. Shouldn't you check spelling?",
+            })
+          })
       }
     })
   } else {
@@ -245,14 +230,8 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
 
     const registerToken = req.headers.authorization.split(' ')[1]
     const verifiedToken = UserToken.verify(registerToken)
-    const confirmation = emailConfirmationEnabled(
-      req.headers.host.split('/')[0].replace(/http[s]?:\/\//, ''),
-    )
 
-    if (
-      (verifiedToken && verifiedToken.stage == 'registration') ||
-      (!confirmation && req.body.email.match(emailExp))
-    ) {
+    if (verifiedToken.stage == 'registration') {
       var email = confirmation
         ? prepEmail(verifiedToken.email)
         : prepEmail(req.body.email)
@@ -340,20 +319,12 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
         }
       })
     } else {
-      if (confirmation) {
-        res.status(403).send({
-          stage: 'In need of confirmation',
-          message: 'You must confirm your e-mail before doing this.',
-        })
-      } else {
-        res.status(403).send({
-          stage: 'Validation',
-          message: 'The email is invalid.',
-        })
-      }
+      res.status(403).send({
+        stage: 'In need of confirmation',
+        message: 'You must confirm your e-mail before doing this.',
+      })
     }
   } catch (e) {
-    console.log(e)
     res.status(403).send({
       stage: 'In need of confirmation',
       message: 'You must confirm your e-mail before doing this.',

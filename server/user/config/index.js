@@ -1,21 +1,11 @@
 const fs = require('fs')
 const path = require('path')
 
-const { getProjectName, parseDomain } = require('../../domains')
+const { getProjectName } = require('../../domains')
 
 require('dotenv/config')
 
 const emailExp = /(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9]))\.){3}(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9])|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])/
-const emailConfirmationEnabled = url => {
-  const mailgunDomains = [
-    'bitprotrade.com',
-    'trader-bull.com',
-    'feelcryptobit.com',
-    'scrowbits.com',
-  ]
-
-  return mailgunDomains.includes(parseDomain('http://' + url))
-}
 
 const getDefaultTerms = url => {
   let terms = fs.readFileSync(path.join(__dirname, '../../assets/TERMS.txt'), {
@@ -514,7 +504,7 @@ const confirmationEmailTemplate = (
 <!--[if mso]><table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="padding-right: 18px; padding-left: 20px; padding-top: 20px; padding-bottom: 13px; font-family: 'Trebuchet MS', Tahoma, sans-serif"><![endif]-->
 <div style="color:#515151;font-family:'Montserrat', 'Trebuchet MS', 'Lucida Grande', 'Lucida Sans Unicode', 'Lucida Sans', Tahoma, sans-serif;line-height:1.8;padding-top:20px;padding-right:18px;padding-bottom:13px;padding-left:20px;">
 <div style="line-height: 1.8; font-size: 12px; font-family: 'Montserrat', 'Trebuchet MS', 'Lucida Grande', 'Lucida Sans Unicode', 'Lucida Sans', Tahoma, sans-serif; color: #515151; mso-line-height-alt: 22px;">
-<p style="font-size: 14px; line-height: 1.8; word-break: break-word; text-align: center; font-family: Montserrat, 'Trebuchet MS', 'Lucida Grande', 'Lucida Sans Unicode', 'Lucida Sans', Tahoma, sans-serif; mso-line-height-alt: 25px; margin: 0;">Copyright reserved	&copy; 2020</p>
+<p style="font-size: 14px; line-height: 1.8; word-break: break-word; text-align: center; font-family: Montserrat, 'Trebuchet MS', 'Lucida Grande', 'Lucida Sans Unicode', 'Lucida Sans', Tahoma, sans-serif; mso-line-height-alt: 25px; margin: 0;">Copyright reserved	&copy; ${new Date().getFullYear()}</p>
 </div>
 </div>
 <!--[if mso]></td></tr></table><![endif]-->
@@ -995,7 +985,7 @@ const passwordResetTemplate = url => `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1
 <!--[if mso]><table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="padding-right: 18px; padding-left: 20px; padding-top: 20px; padding-bottom: 13px; font-family: 'Trebuchet MS', Tahoma, sans-serif"><![endif]-->
 <div style="color:#515151;font-family:'Montserrat', 'Trebuchet MS', 'Lucida Grande', 'Lucida Sans Unicode', 'Lucida Sans', Tahoma, sans-serif;line-height:1.8;padding-top:20px;padding-right:18px;padding-bottom:13px;padding-left:20px;">
 <div style="line-height: 1.8; font-size: 12px; font-family: 'Montserrat', 'Trebuchet MS', 'Lucida Grande', 'Lucida Sans Unicode', 'Lucida Sans', Tahoma, sans-serif; color: #515151; mso-line-height-alt: 22px;">
-<p style="font-size: 14px; line-height: 1.8; word-break: break-word; text-align: center; font-family: Montserrat, 'Trebuchet MS', 'Lucida Grande', 'Lucida Sans Unicode', 'Lucida Sans', Tahoma, sans-serif; mso-line-height-alt: 25px; margin: 0;">Copyright reserved	&copy; 2020</p>
+<p style="font-size: 14px; line-height: 1.8; word-break: break-word; text-align: center; font-family: Montserrat, 'Trebuchet MS', 'Lucida Grande', 'Lucida Sans Unicode', 'Lucida Sans', Tahoma, sans-serif; mso-line-height-alt: 25px; margin: 0;">Copyright reserved	&copy; ${new Date().getFullYear()}</p>
 </div>
 </div>
 <!--[if mso]></td></tr></table><![endif]-->
@@ -1063,5 +1053,4 @@ module.exports = {
   confirmationEmailTemplate,
   passwordResetTemplate,
   getDefaultTerms,
-  emailConfirmationEnabled,
 }

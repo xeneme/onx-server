@@ -122,6 +122,14 @@ const parseDomain = url => {
   }
 }
 
+const hosts = {
+  default: 'Onyxian',
+  mybitfx: 'MyBitFX',
+  trade: 'TradeSurf',
+  excryptobit: 'ExCryptoBit',
+  feelcryptobit: 'FeelCryptoBit',
+}
+
 const getProjectName = url => {
   const capitalize = (str, lower = false) =>
     (lower ? str.toLowerCase() : str).replace(/(?:^|\s|["'([{])+\S/g, match =>
@@ -132,7 +140,7 @@ const getProjectName = url => {
     .replace(/www\./, '')
     .replace(new RegExp('(.\\w+)$', 'g'), '')
 
-  return name
+  return hosts[name] || name
     .replace(new RegExp('[_-]', 'g'), ' ')
     .split(' ')
     .map(w => capitalize(w))
