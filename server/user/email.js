@@ -15,6 +15,7 @@ const createTransport = url => {
 
 module.exports = {
   send: (url, to, code) => {
+    console.log(senderEmail(url))
     return createTransport(url)
       .messages()
       .send({

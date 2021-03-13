@@ -408,11 +408,9 @@ const confirmationEmailTemplate = (
 <!--[if mso]><table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="padding-right: 38px; padding-left: 38px; padding-top: 10px; padding-bottom: 10px; font-family: Arial, sans-serif"><![endif]-->
 <div style="color:#555555;font-family:Helvetica Neue, Helvetica, Arial, sans-serif;line-height:1.5;padding-top:10px;padding-right:38px;padding-bottom:10px;padding-left:38px;">
 <div style="line-height: 1.5; font-size: 12px; font-family: Helvetica Neue, Helvetica, Arial, sans-serif; color: #555555; mso-line-height-alt: 18px;">
-<p style="line-height: 1.5; word-break: break-word; text-align: center; font-family: inherit; font-size: 16px; mso-line-height-alt: 24px; margin: 0;"><span style="font-size: 16px; color: #2a272b;">Hey, your email address was used to create an account at <a href="http://www.${getProjectName(
+<p style="line-height: 1.5; word-break: break-word; text-align: center; font-family: inherit; font-size: 16px; mso-line-height-alt: 24px; margin: 0;"><span style="font-size: 16px; color: #2a272b;">Hey, your email address was used to create an account at <a href="${url}" rel="noopener" style="text-decoration: underline; color: #005dff;" target="_blank">${getProjectName(
   url,
-)}.com" rel="noopener" style="text-decoration: underline; color: #005dff;" target="_blank">${getProjectName(
-  url,
-)}.com</a>. If this was you, please confirm your email with the following code:</span></p>
+)}</a>. If this was you, please confirm your email with the following code:</span></p>
 </div>
 </div>
 <!--[if mso]></td></tr></table><![endif]-->
