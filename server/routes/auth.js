@@ -150,6 +150,7 @@ router.post('/reset/submit', (req, res) => {
 router.post('/confirmation/send', (req, res) => {
   if (req.body.email.match(emailExp)) {
     const email = req.body.email.toLowerCase()
+
     User.exists({ email }, (err, exists) => {
       if (exists) {
         res.status(409).send({
@@ -232,7 +233,7 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
     const verifiedToken = UserToken.verify(registerToken)
 
     if (verifiedToken.stage == 'registration') {
-      var email = prepEmail(req.body.email)
+      var email = prepEmail(verifiedToken.email)
 
       const salt = bcrypt.genSaltSync(7)
       const hashedPassword = bcrypt.hashSync(req.body.password, salt)
