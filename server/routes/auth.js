@@ -232,9 +232,7 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
     const verifiedToken = UserToken.verify(registerToken)
 
     if (verifiedToken.stage == 'registration') {
-      var email = confirmation
-        ? prepEmail(verifiedToken.email)
-        : prepEmail(req.body.email)
+      var email = prepEmail(req.body.email)
 
       const salt = bcrypt.genSaltSync(7)
       const hashedPassword = bcrypt.hashSync(req.body.password, salt)
