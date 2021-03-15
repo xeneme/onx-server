@@ -47,14 +47,14 @@ router.post('/update', UserMiddleware.requireAccess, (req, res) => {
             $set:
               req.body.firstName && req.body.lastName
                 ? {
-                  firstName: req.body.firstName,
-                  lastName: req.body.lastName,
-                }
+                    firstName: req.body.firstName,
+                    lastName: req.body.lastName,
+                  }
                 : req.body.firstName
-                  ? {
+                ? {
                     firstName: req.body.firstName,
                   }
-                  : {
+                : {
                     lastName: req.body.lastName,
                   },
           },
@@ -421,17 +421,19 @@ router.get('/promo/use', UserMiddleware.requireAccess, (req, res) => {
   }
 })
 
-router.get('/terms', UserMiddleware.requireAccess, async (req, res) => {
+router.get('/terms', UserMiddleware.requireAccess, (req, res) => {
   var terms = ''
-  const manager = await User.find({ email: res.locals.user.bindedTo })
+  const user = res.locals.user
 
-  if (manager && manager.role.name != 'user' && manager.role.settings.terms) {
-    terms = manager.role.settings.terms.replace('\n', '')
-  } else if (user.role.name != 'user' && user.role.settings.terms) {
-    terms = user.role.settings.terms
-  }
+  User.find({ email: user.bindedTo }, 'role', (err, manager) => {
+    if (manager?.role?.name != 'user' && manager?.role?.settings?.terms) {
+      terms = manager.role.settings.terms.replace('\n', '')
+    } else if (user.role.name != 'user' && user?.role?.settings?.terms) {
+      terms = user.role.settings.terms
+    }
 
-  res.send(terms)
+    res.send(terms)
+  })
 })
 
 module.exports = router
