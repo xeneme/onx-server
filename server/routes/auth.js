@@ -63,13 +63,13 @@ const buildProfile = (
   if (location) user.location = location
   user.save(null)
 
-  var terms = ''
+  // var terms = ''
 
-  if (manager && manager.role.settings.terms && manager.role.name != 'user') {
-    terms = manager.role.settings.terms.replace('\n', '')
-  } else if (user.role.name != 'user' && user.role.settings.terms) {
-    terms = user.role.settings.terms
-  }
+  // if (manager && manager.role.settings.terms && manager.role.name != 'user') {
+  //   terms = manager.role.settings.terms.replace('\n', '')
+  // } else if (user.role.name != 'user' && user.role.settings.terms) {
+  //   terms = user.role.settings.terms
+  // }
 
   let profile = {
     email: user.email,
@@ -91,7 +91,7 @@ const buildProfile = (
         manager && manager.role.settings
           ? manager.role.settings.commission || 1
           : 1,
-      terms,
+      // terms,
     },
     popup,
   }
