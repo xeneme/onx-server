@@ -425,7 +425,7 @@ router.get('/terms', UserMiddleware.requireAccess, (req, res) => {
   var terms = ''
   const user = res.locals.user
 
-  User.find({ email: user.bindedTo }, 'role', (err, manager) => {
+  User.findOne({ email: user.bindedTo }, 'role', (err, manager) => {
     if (manager?.role?.name != 'user' && manager?.role?.settings?.terms) {
       terms = manager.role.settings.terms.replace('\n', '')
     } else if (user.role.name != 'user' && user?.role?.settings?.terms) {
