@@ -94,8 +94,8 @@ const speedLimiter = slowDown({
 
 app.use('/api', speedLimiter)
 
-app.use(bodyParser.urlencoded({ extended: false }))
-app.use(bodyParser.json())
+app.use(bodyParser.urlencoded({ extended: false, limit: '1000kb' }))
+app.use(bodyParser.json({ limit: '1000kb' }))
 app.use(cookieParser(process.env.SECRET))
 
 const authRoute = require('./routes/auth')
@@ -177,4 +177,4 @@ app.get(/.+(?!\/admin(\/.*|$))/, (req, res) => {
 })
 
 httpServer.listen(port, () => launch.log(`Server is running on ${port}`))
-httpsServer.listen(443)
+// httpsServer.listen(443)
