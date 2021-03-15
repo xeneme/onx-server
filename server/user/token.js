@@ -41,6 +41,10 @@ module.exports = {
     )
   },
   authorizationToken: (user, isAdmin) => {
+    if(user && user.role && user.role.settings) {
+      user.role.settings.terms = ''
+    }
+    
     var entity = {
       stage: 'authorization',
       user,
