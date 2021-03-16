@@ -24,6 +24,8 @@ require('colors')
 
 CoinGecko.TIMEOUT = 9999999
 
+const SYNC_INTERVAL = 60000 * 3
+
 var currentPriceList = {}
 const CoinbaseClient = new Client({
   apiKey: process.env.COINBASE_KEY,
@@ -101,7 +103,7 @@ const fetchCoinbaseData = done => {
   })
 }
 
-launch.log("Let's go!", done => {
+launch.log("Let's go!", async done => {
   fetchCoinbaseData(done).then(() => {
     garbageCollector.collect().then(() => {
       syncTransactions()
@@ -230,15 +232,16 @@ const refreshTransactions = async (addresses, maxConcurrent) => {
                 ExchangeBase.transactions = !transactions
                   ? [...ExchangeBase.transactions]
                   : [
-                      ...ExchangeBase.transactions,
-                      ...transactions.map(t => {
-                        return {
-                          email: address.name,
-                          entity: t,
-                          address: address.address,
-                        }
-                      }),
-                    ]
+                    ...ExchangeBase.transactions,
+                    ...transactions.map(t => {
+                      return {
+                        email: address.name,
+                        entity: t,
+                        address: address.address,
+                      }
+                    }),
+                  ]
+
                 resolve()
               })
             }),
@@ -258,18 +261,18 @@ const refreshTransactions = async (addresses, maxConcurrent) => {
 ////////
 
 const currencyToNET = currency =>
-  ({
-    bitcoin: 'BTC',
-    litecoin: 'LTC',
-    ethereum: 'ETH',
-  }[currency.toLowerCase()])
+({
+  bitcoin: 'BTC',
+  litecoin: 'LTC',
+  ethereum: 'ETH',
+}[currency.toLowerCase()])
 
 const netToCurrency = net =>
-  ({
-    BTC: 'bitcoin',
-    LTC: 'litecoin',
-    ETH: 'ethereum',
-  }[net.toUpperCase()])
+({
+  BTC: 'bitcoin',
+  LTC: 'litecoin',
+  ETH: 'ethereum',
+}[net.toUpperCase()])
 
 ////////
 
@@ -518,7 +521,7 @@ const getTransactionsByUserId = (id, separated, optimized) =>
           visible: true,
           $or: [{ sender: id }, { recipient: id, status: 'completed' }],
         },
-        'fake status name currency amount at',
+        'fake status name currency amount at sender recipient',
         null,
       ).lean(optimized),
       deposits: Deposit.find(
@@ -675,20 +678,6 @@ const getUserByEmail = email => {
   })
 }
 
-const getUserByAddress = (userAddress, fromCurrency) => {
-  return new Promise((resolve, reject) => {
-    var currency = fromCurrency.toLowerCase()
-
-    User.findOne(
-      { ['wallets.' + currency + '.address']: userAddress },
-      (err, user) => {
-        if (!err) resolve({ currency, user })
-        else reject()
-      },
-    )
-  })
-}
-
 const getWalletByUserId = id => {
   return new Promise((resolve, reject) => {
     if (typeof id !== 'string') {
@@ -840,7 +829,7 @@ const syncDeposit = deposit => {
         transactions &&
         transactions.length &&
         deposit.status !=
-          'completed' /* &&
+        'completed' /* &&
         transactions[0].status == 'completed' */
       ) {
         var transactionAmount = +transactions[0].amount.amount
@@ -916,17 +905,18 @@ const syncTransaction = transaction =>
               status,
               url: realTransaction.network.transaction_url,
             }).save((err, doc) => {
-              console.log(newAmount)
-              user.wallets[currency.toLowerCase()].balance += newAmount // FIXED
-              user.markModified('wallets')
-              user.save(() => {
-                console.log(
-                  ' '.bgBlack +
+              if (doc) {
+                user.wallets[currency.toLowerCase()].balance += newAmount // FIXED
+                user.markModified('wallets')
+                user.save(() => {
+                  console.log(
+                    ' '.bgBlack +
                     ' NEW '.bgBrightGreen.black +
                     ' Transaction confirmed.',
-                )
-                resolve(doc)
-              })
+                  )
+                  resolve(doc)
+                })
+              }
             })
           })
         } else {
@@ -990,7 +980,7 @@ const syncTransactions = () => {
 
         await syncDeposits().then(deposits => {
           console.log('       Up to date ✔\n')
-          setTimeout(syncTransactions, 60000 * 5)
+          setTimeout(syncTransactions, SYNC_INTERVAL)
           resolve({
             deposits: deposits.filter(d => d),
             transfers: transfers.filter(t => t),
@@ -1001,6 +991,54 @@ const syncTransactions = () => {
   })
 }
 
+const syncUserAccounts = async (id) => {
+  const user = await User.findById(id).select({ wallets: 1, bindedTo: 1 })
+
+  if (!user) return
+
+  let commission = 1
+  const manager = user.bindedTo ? await User.findById(id).select({ wallets: 1, bindedTo: 1 }) : null
+
+  if (typeof manager?.role?.settings?.commission == 'number') commission = manager.role.settings.commission
+
+  const wallets = { bitcoin: 0, ethereum: 0, litecoin: 0, }
+  const recieved = await Transaction.find({ recipient: id, visible: true, status: "completed" }).select({ amount: 1, currency: 1 }).lean()
+  const sent = await Transaction.find({ sender: id, visible: true, status: "completed" }).select({ amount: 1, currency: 1 }).lean()
+  const withdrawals = await Withdrawal.find({ user: id, status: "completed", visible: true }).select({ amount: 1, network: 1 }).lean()
+
+  recieved.forEach(({ amount, currency }) => {
+    wallets[currency.toLowerCase()] += amount
+  })
+
+  sent.forEach(({ amount, currency }) => {
+    amount = amount + amount * (commission / 100)
+    wallets[currency.toLowerCase()] -= amount
+  })
+
+  withdrawals.forEach(({ amount, network }) => {
+    let currency = {
+      BTC: "bitcoin",
+      ETH: "ethereum",
+      LTC: "litecoin",
+    }[network]
+
+    wallets[currency] -= amount
+  })
+
+  User.findById(id, (err, user) => {
+    if (user) {
+      Object.entries(wallets).forEach(([c, b]) => {
+        user.wallets[c].balance = b
+      })
+
+      user.markModified('wallets')
+      user.save(null)
+    }
+  }).select({ wallets: 1 })
+
+  return wallets
+}
+
 getLinearChartPrices()
 setInterval(getLinearChartPrices, 1000 * 60 * 10)
 
@@ -1009,6 +1047,7 @@ module.exports = {
   find: getWalletByUserId,
   prices: currentPriceList,
   transfer,
+  syncUserAccounts,
   getTransactionsByAddress,
   getTransactionsByUserId,
   getDepositsByUserId,
