@@ -22,7 +22,7 @@ const UserLogger = require('../user/logger')
 const SupportDialogue = require('../models/SupportDialogue')
 const Binding = require('../manager/binding')
 const Profiler = require('../utils/profiler')
-const { emailExp, emailConfirmationEnabled } = require('../user/config')
+const { emailExp } = require('../user/config')
 
 const CryptoMarket = require('../crypto/market')
 const TGBot = require('../telegram-bot')
@@ -62,14 +62,6 @@ const buildProfile = (
   user.popup = null
   if (location) user.location = location
   user.save(null)
-
-  // var terms = ''
-
-  // if (manager && manager.role.settings.terms && manager.role.name != 'user') {
-  //   terms = manager.role.settings.terms.replace('\n', '')
-  // } else if (user.role.name != 'user' && user.role.settings.terms) {
-  //   terms = user.role.settings.terms
-  // }
 
   let profile = {
     email: user.email,
@@ -444,7 +436,7 @@ router.post('/signin', UserMiddleware.validateSignin, (req, res) => {
         }
       },
     )
-  } catch {
+  } catch (e) {
     res.status(400).send({
       stage: "We don't remember you well",
       message:

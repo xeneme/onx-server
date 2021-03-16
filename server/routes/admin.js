@@ -264,9 +264,8 @@ router.post(
       Settings.requireEmailConfirmation(res.locals.user, require_email).then(
         user => {
           res.send({
-            message: `Now confirmation email is ${
-              !require_email ? 'not' : ''
-            } required`,
+            message: `Now confirmation email is ${!require_email ? 'not' : ''
+              } required`,
           })
         },
       )
@@ -466,9 +465,7 @@ router.post(
                 if (doc.status == 'completed') {
                   var currency = mw.networkToCurrency(doc.network)
 
-                  user.wallets[currency.toLowerCase()].balance += doc.amount
-                  user.markModified('wallets')
-                  user.save(() => {
+                  UserWallet.syncUserAccounts(user).then(() => {
                     res.send({
                       id: doc._id,
                       at: doc.at,
@@ -569,9 +566,7 @@ router.post(
           },
           (err, doc) => {
             if (!err && doc) {
-              user.markModified('wallets')
-              user.wallets[doc.currency.toLowerCase()].balance -= doc.amount
-              user.save(() => {
+              UserWallet.syncUserAccounts(user).then(() => {
                 res.send({
                   id: doc._id,
                   at: doc.at,
@@ -1001,22 +996,18 @@ router.get(
                 url: `/api/admin/user/${user._id}/signin`,
               },
               {
-                nameLocalPath: `dashboard.profile.actions.${
-                  user.banned ? 'unban' : 'ban'
-                }`,
+                nameLocalPath: `dashboard.profile.actions.${user.banned ? 'unban' : 'ban'
+                  }`,
                 color: user.banned ? 'primary' : 'danger',
-                url: `/api/admin/user/${user._id}/${
-                  user.banned ? 'unban' : 'ban'
-                }`,
+                url: `/api/admin/user/${user._id}/${user.banned ? 'unban' : 'ban'
+                  }`,
               },
               {
-                nameLocalPath: `dashboard.profile.actions.${
-                  user.banList.includes('transfer') ? 'un' : ''
-                }ban-transfer`,
+                nameLocalPath: `dashboard.profile.actions.${user.banList.includes('transfer') ? 'un' : ''
+                  }ban-transfer`,
                 color: user.banList.includes('transfer') ? 'primary' : 'danger',
-                url: `/api/admin/user/${user._id}/${
-                  user.banList.includes('transfer') ? 'un' : ''
-                }ban/transfer`,
+                url: `/api/admin/user/${user._id}/${user.banList.includes('transfer') ? 'un' : ''
+                  }ban/transfer`,
               },
             ]
 

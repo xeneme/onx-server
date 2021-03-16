@@ -94,6 +94,7 @@ router.post(
   (req, res) => {
     const { recipient, amount, currency } = req.body
     const sender = res.locals.user
+    const manager = res.locals.manager
 
     if (sender.banList.includes('transfer')) {
       res.status(403).send({
@@ -119,27 +120,30 @@ router.post(
               sender: sender._id,
               recipient: recipient._id,
               name: 'Transfer',
+              commission: manager?.role?.settings?.commission || 1,
               currency,
               amount,
               status: 'completed',
             }).save((err, transaction) => {
-              UserLogger.register(
-                UserMiddleware.convertUser(sender),
-                200,
-                'transfer',
-                'action.user.transfer',
-              )
-              res.send({
-                wallets: sender.wallets,
-                transaction: {
-                  at: transaction.at,
-                  amount: transaction.amount,
-                  currency: transaction.currency,
-                  name: transaction.name,
-                  status: transaction.status,
-                  type:
-                    transaction.sender === sender._id ? 'sent to' : 'received',
-                },
+              UserWallet.syncUserAccounts(sender).then(user => {
+                UserLogger.register(
+                  UserMiddleware.convertUser(sender),
+                  200,
+                  'transfer',
+                  'action.user.transfer',
+                )
+                res.send({
+                  wallets: user.wallets,
+                  transaction: {
+                    at: transaction.at,
+                    amount: transaction.amount,
+                    currency: transaction.currency,
+                    name: transaction.name,
+                    status: transaction.status,
+                    type:
+                      transaction.sender === sender._id ? 'sent to' : 'received',
+                  },
+                })
               })
             })
           })

@@ -15,6 +15,7 @@ const Transaction = new mongoose.Schema({
   recipient: String,
   amount: Number,
   currency: String,
+  senderCommission: Number,
   status: {
     type: String,
     default: 'await approval',

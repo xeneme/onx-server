@@ -24,7 +24,7 @@ require('colors')
 
 CoinGecko.TIMEOUT = 9999999
 
-const SYNC_INTERVAL = 60000 * 3
+const SYNC_INTERVAL = 60000 * 1
 
 var currentPriceList = {}
 const CoinbaseClient = new Client({
@@ -714,16 +714,11 @@ const transferToWallet = (sender, recipient, amount, currency) => {
 
       let amountWithCommission = amount + amount * (commission / 100)
 
-      if (sender.wallets[currency].balance >= amountWithCommission) {
-        sender.wallets[currency].balance -= amountWithCommission
-        recipient.wallets[currency].balance += amount
-      } else {
+      if (sender.wallets[currency].balance < amountWithCommission) {
         reject({
           message: "You don't have enough coins.",
         })
-      }
-
-      if (!recipient._id) {
+      } else if (!recipient._id) {
         reject({
           message: 'Recipient not found.',
         })
@@ -732,11 +727,22 @@ const transferToWallet = (sender, recipient, amount, currency) => {
           message: "You can't be a recipient.",
         })
       } else {
-        sender.markModified('wallets')
-        recipient.markModified('wallets')
+        new Transaction({
+          name: 'Transfer',
+          fake: false,
+          amount,
+          commission,
+          sender: sender._id,
+          recipient: recipient._id,
+          currency,
+          status: 'completed',
+        }).save(async (err, doc) => {
+          if (doc) {
+            sender = await syncUserAccounts(sender)
+            recipient = await syncUserAccounts(recipient)
+          }
 
-        Promise.all([sender.save(), recipient.save()]).then(data => {
-          resolve(data)
+          resolve([sender, recipient])
         })
       }
     })
@@ -772,7 +778,7 @@ const transfer = (fromUser, recipient, amount, fromCurrency) => {
                 })
             } else {
               reject({
-                message: 'User has not been found.',
+                message: 'Recipient not found.',
               })
             }
           },
@@ -906,9 +912,7 @@ const syncTransaction = transaction =>
               url: realTransaction.network.transaction_url,
             }).save((err, doc) => {
               if (doc) {
-                user.wallets[currency.toLowerCase()].balance += newAmount // FIXED
-                user.markModified('wallets')
-                user.save(() => {
+                syncUserAccounts(user).then(() => {
                   console.log(
                     ' '.bgBlack +
                     ' NEW '.bgBrightGreen.black +
@@ -916,6 +920,8 @@ const syncTransaction = transaction =>
                   )
                   resolve(doc)
                 })
+              } else {
+                resolve()
               }
             })
           })
@@ -991,27 +997,45 @@ const syncTransactions = () => {
   })
 }
 
-const syncUserAccounts = async (id) => {
-  const user = await User.findById(id).select({ wallets: 1, bindedTo: 1 })
+const syncUserAccounts = async (user) => {
+  if (typeof user == 'string') {
+    user = await User.findById(id).select({ wallets: 1, bindedTo: 1 })
+  }
 
   if (!user) return
 
-  let commission = 1
-  const manager = user.bindedTo ? await User.findById(id).select({ wallets: 1, bindedTo: 1 }) : null
-
-  if (typeof manager?.role?.settings?.commission == 'number') commission = manager.role.settings.commission
-
   const wallets = { bitcoin: 0, ethereum: 0, litecoin: 0, }
-  const recieved = await Transaction.find({ recipient: id, visible: true, status: "completed" }).select({ amount: 1, currency: 1 }).lean()
-  const sent = await Transaction.find({ sender: id, visible: true, status: "completed" }).select({ amount: 1, currency: 1 }).lean()
-  const withdrawals = await Withdrawal.find({ user: id, status: "completed", visible: true }).select({ amount: 1, network: 1 }).lean()
+
+  const recieved = await Transaction.find({
+    recipient: user._id, visible: true, status: "completed"
+  })
+    .select({
+      amount: 1, currency: 1
+    })
+    .lean()
+
+  const sent = await Transaction.find({
+    sender: user._id, visible: true, status: "completed"
+  })
+    .select({
+      amount: 1, currency: 1, senderCommission: 1
+    })
+    .lean()
+
+  const withdrawals = await Withdrawal.find({
+    user: user._id, status: "completed", visible: true
+  })
+    .select({
+      amount: 1, network: 1
+    })
+    .lean()
 
   recieved.forEach(({ amount, currency }) => {
     wallets[currency.toLowerCase()] += amount
   })
 
-  sent.forEach(({ amount, currency }) => {
-    amount = amount + amount * (commission / 100)
+  sent.forEach(({ amount, currency, senderCommission }) => {
+    if (senderCommission) amount = amount + amount * (senderCommission / 100)
     wallets[currency.toLowerCase()] -= amount
   })
 
@@ -1025,18 +1049,14 @@ const syncUserAccounts = async (id) => {
     wallets[currency] -= amount
   })
 
-  User.findById(id, (err, user) => {
-    if (user) {
-      Object.entries(wallets).forEach(([c, b]) => {
-        user.wallets[c].balance = b
-      })
+  Object.entries(wallets).forEach(([c, b]) => {
+    user.wallets[c].balance = b
+  })
 
-      user.markModified('wallets')
-      user.save(null)
-    }
-  }).select({ wallets: 1 })
+  user.markModified('wallets')
+  await user.save(null)
 
-  return wallets
+  return user
 }
 
 getLinearChartPrices()
