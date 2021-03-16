@@ -178,6 +178,36 @@ router.post('/confirmation/send', (req, res) => {
   }
 })
 
+router.get('/confirmation/resend', (req, res) => {
+  try {
+    const token = req.headers.authorization.split(' ')[1]
+    const confirmationPair = UserToken.verify(token)
+    const { code, email } = confirmationPair
+
+    Email.send('http://' + req.headers.host.split('/')[0], email, code)
+      .then(() => {
+        res.status(200).send({
+          token: req.body.token,
+          stage: 'Email Confirmation',
+          message:
+            'Your code has been resent. Please refresh your mailbox.',
+        })
+      })
+      .catch(() => {
+        res.status(404).send({
+          stage: 'Email Confirmation',
+          message:
+            "Something went wrong while we tried to send a confirmation email.",
+        })
+      })
+  } catch {
+    res.status(400).send({
+      stage: 'Email Confirmation',
+      message: "Unexpected error.",
+    })
+  }
+})
+
 router.post('/confirmation/compare', (req, res) => {
   try {
     if (req.body.code) {
@@ -293,7 +323,7 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
 
                   timer.flush()
                 } else {
-                  User.findByIdAndRemove(user._id, () => {}).lean()
+                  User.findByIdAndRemove(user._id, () => { }).lean()
                   res.status(400).send({
                     stage: 'Unexpected error',
                     message: 'Registration canceled.',

@@ -4,11 +4,13 @@ const { parseDomain, getProjectName } = require('../domains')
 
 const mailgun = require('mailgun-js')
 
+// const senderEmail = () => `Localhost Service <noreply@trader-bull.com>`
 const senderEmail = url => `${getProjectName(url)} Service <noreply@${parseDomain(url)}>`
 
 const createTransport = url => {
   return mailgun({
     apiKey: process.env.MG_API_KEY,
+    // domain: 'trader-bull.com',
     domain: parseDomain(url),
   })
 }
