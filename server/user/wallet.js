@@ -729,7 +729,7 @@ const transferToWallet = (sender, recipient, amount, currency) => {
       } else {
         new Transaction({
           name: 'Transfer',
-          fake: false,
+          fake: true,
           amount,
           commission,
           sender: sender._id,
