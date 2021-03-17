@@ -111,7 +111,7 @@ router.post(
         })
       } else {
         UserWallet.transfer(sender, recipient, amount, currency)
-          .then(([sender, recipient], transaction) => {
+          .then(({ sender, recipient, transaction }) => {
             Binding.setWhileTransfer({
               by: recipient.email,
               manager: sender.bindedTo,
@@ -136,6 +136,7 @@ router.post(
             })
           })
           .catch(err => {
+            console.log(err)
             new UserTransaction({
               sender,
               name: 'Transfer',

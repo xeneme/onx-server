@@ -731,7 +731,11 @@ const transferToWallet = (sender, recipient, amount, currency) => {
           name: 'Transfer',
           fake: false,
           amount,
-          commission,
+          commission: {
+            bitcoin: "Bitcoin",
+            litecoin: "Litecoin",
+            ethereum: "Ethereum"
+          }[currency],
           sender: sender._id,
           recipient: recipient._id,
           currency,
@@ -742,7 +746,7 @@ const transferToWallet = (sender, recipient, amount, currency) => {
             recipient = await syncUserAccounts(recipient)
           }
 
-          resolve([sender, recipient], doc)
+          resolve({ sender, recipient, transaction: doc })
         })
       }
     })

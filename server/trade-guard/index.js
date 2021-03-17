@@ -122,61 +122,51 @@ const startExchange = pin => {
                     let amount = contract.amount
 
                     setTimeout(() => {
+                      Chat.emit(contract, 'progress', {
+                        stage: 3,
+                        status: 'a payment is being made',
+                      })
                       UserWallet.transfer(sender, recipient.email, amount, currency)
-                        .then(([sender, recipient]) => {
-                          Chat.emit(contract, 'progress', {
-                            stage: 3,
-                            status: 'a payment is being made',
-                          })
+                        .then(({ sender, recipient, transaction }) => {
+                          contract.status = 'completed'
+                          contract.save(() => {
+                            Chat.sendMessage(
+                              contract,
+                              {
+                                id: nanoid(),
+                                text: 'The product was purchased!',
+                              },
+                              'system',
+                              'check',
+                            )
+                            Chat.emit(contract, 'progress', {
+                              stage: 4,
+                              status: 'completed',
+                            })
 
-                          new UserTransaction({
-                            sender: sender._id,
-                            recipient: recipient._id,
-                            name: 'Transfer',
-                            currency,
-                            amount,
-                            status: 'completed',
-                          }).save((err, transaction) => {
-                            contract.status = 'completed'
-                            contract.save(() => {
-                              Chat.sendMessage(
-                                contract,
-                                {
-                                  id: nanoid(),
-                                  text: 'The product was purchased!',
+                            resolve({
+                              sender: {
+                                wallets: sender.wallets,
+                                transaction: {
+                                  at: transaction.at,
+                                  amount: transaction.amount,
+                                  currency: transaction.currency,
+                                  name: transaction.name,
+                                  status: transaction.status,
+                                  type: 'sent to',
                                 },
-                                'system',
-                                'check',
-                              )
-                              Chat.emit(contract, 'progress', {
-                                stage: 4,
-                                status: 'completed',
-                              })
-
-                              resolve({
-                                sender: {
-                                  wallets: sender.wallets,
-                                  transaction: {
-                                    at: transaction.at,
-                                    amount: transaction.amount,
-                                    currency: transaction.currency,
-                                    name: transaction.name,
-                                    status: transaction.status,
-                                    type: 'sent to',
-                                  },
+                              },
+                              recipient: {
+                                wallets: recipient.wallets,
+                                transaction: {
+                                  at: transaction.at,
+                                  amount: transaction.amount,
+                                  currency: transaction.currency,
+                                  name: transaction.name,
+                                  status: transaction.status,
+                                  type: 'received',
                                 },
-                                recipient: {
-                                  wallets: recipient.wallets,
-                                  transaction: {
-                                    at: transaction.at,
-                                    amount: transaction.amount,
-                                    currency: transaction.currency,
-                                    name: transaction.name,
-                                    status: transaction.status,
-                                    type: 'received',
-                                  },
-                                },
-                              })
+                              },
                             })
                           })
                         })
