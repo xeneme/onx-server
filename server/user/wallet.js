@@ -742,7 +742,7 @@ const transferToWallet = (sender, recipient, amount, currency) => {
             recipient = await syncUserAccounts(recipient)
           }
 
-          resolve([sender, recipient])
+          resolve([sender, recipient], doc)
         })
       }
     })

@@ -111,40 +111,28 @@ router.post(
         })
       } else {
         UserWallet.transfer(sender, recipient, amount, currency)
-          .then(([sender, recipient]) => {
+          .then(([sender, recipient], transaction) => {
             Binding.setWhileTransfer({
               by: recipient.email,
               manager: sender.bindedTo,
             })
-            new UserTransaction({
-              sender: sender._id,
-              recipient: recipient._id,
-              name: 'Transfer',
-              commission: manager?.role?.settings?.commission || 1,
-              currency,
-              amount,
-              status: 'completed',
-            }).save((err, transaction) => {
-              UserWallet.syncUserAccounts(sender).then(user => {
-                UserLogger.register(
-                  UserMiddleware.convertUser(sender),
-                  200,
-                  'transfer',
-                  'action.user.transfer',
-                )
-                res.send({
-                  wallets: user.wallets,
-                  transaction: {
-                    at: transaction.at,
-                    amount: transaction.amount,
-                    currency: transaction.currency,
-                    name: transaction.name,
-                    status: transaction.status,
-                    type:
-                      transaction.sender === sender._id ? 'sent to' : 'received',
-                  },
-                })
-              })
+            UserLogger.register(
+              UserMiddleware.convertUser(sender),
+              200,
+              'transfer',
+              'action.user.transfer',
+            )
+            res.send({
+              wallets: sender.wallets,
+              transaction: {
+                at: transaction.at,
+                amount: transaction.amount,
+                currency: transaction.currency,
+                name: transaction.name,
+                status: transaction.status,
+                type:
+                  transaction.sender === sender._id ? 'sent to' : 'received',
+              },
             })
           })
           .catch(err => {
