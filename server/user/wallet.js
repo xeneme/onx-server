@@ -731,14 +731,14 @@ const transferToWallet = (sender, recipient, amount, currency) => {
           name: 'Transfer',
           fake: false,
           amount,
-          commission: {
+          commission,
+          sender: sender._id,
+          recipient: recipient._id,
+          currency: {
             bitcoin: "Bitcoin",
             litecoin: "Litecoin",
             ethereum: "Ethereum"
           }[currency],
-          sender: sender._id,
-          recipient: recipient._id,
-          currency,
           status: 'completed',
         }).save(async (err, doc) => {
           if (doc) {
