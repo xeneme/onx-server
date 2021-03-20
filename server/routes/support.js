@@ -1,14 +1,22 @@
+const axios = require('axios')
 const express = require('express')
 const router = new express.Router()
+const FormData = require('form-data')
+const createWriteStream = require('fs').createWriteStream
+
+require('dotenv/config')
 
 const jwt = require('jsonwebtoken')
 const moment = require('moment')
+const multer = require('multer')
 
 const TelegramBot = require('../telegram-bot')
 
 const SupportDialogue = require('../models/SupportDialogue')
 const UserMiddleware = require('../user/middleware')
 const User = require('../models/User')
+
+const upload = multer({ dest: 'uploads/' })
 
 //#region [rgba(10,10,10,1)] Functions
 
@@ -19,7 +27,7 @@ const newMessage = text => ({
   yours: false,
 })
 
-const sendMessage = (from, text) =>
+const sendMessage = (from, { message: text, attached }) =>
   new Promise((resolve, reject) => {
     {
       User.findOne(
@@ -30,6 +38,8 @@ const sendMessage = (from, text) =>
             reject()
           } else {
             const message = newMessage(text)
+
+            if (attached) message.image = { url: attached.image, name: attached.filename }
 
             SupportDialogue.findOne({ user: from }, (err, dialogue) => {
               if (!dialogue) {
@@ -92,7 +102,7 @@ router.post('/', (req, res) => {
     const userId = jwt.verify(req.body.token.split(' ')[1], process.env.SECRET)
       .user
 
-    sendMessage(userId, req.body.message)
+    sendMessage(userId, req.body)
       .then(message => res.send({ message }))
       .catch(err => {
         console.log('FJf0ujja err: ' + err)
@@ -122,6 +132,39 @@ router.get('/', (req, res) => {
       console.log('dasD0a err: ' + err)
       res.sendStatus(400)
     })
+})
+
+router.post('/upload', UserMiddleware.requireAccess, (req, res) => {
+  if (req.body.image && req.body.filename.match('.+\.[a-zA-Z0-9]{3,4}')) {
+    try {
+      var formData = new FormData()
+
+      formData.append('image', req.body.image)
+      formData.append('key', process.env.IMGBB_API_KEY)
+
+      axios.post('https://api.imgbb.com/1/upload', formData, { headers: formData.getHeaders() }).then(({ data}) => {
+        if (data.success) {
+          res.send({
+            filename: req.body.filename,
+            image: data.data.image.url
+          })
+        } else {
+          res.status(data.status).send({ message: 'Error during uploading' })
+        }
+      })
+        .catch(err => {
+          if (err.response) {
+            console.log(err.response.data)
+          } else {
+            console.log(err.message)
+          }
+        })
+    } catch {
+      res.status(401).send({ message: 'Invalid request' })
+    }
+  } else {
+    res.status(400).send({ message: 'Invalid request' })
+  }
 })
 
 module.exports = router
