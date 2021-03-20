@@ -142,6 +142,7 @@ router.post('/reset/submit', (req, res) => {
 router.post('/confirmation/send', (req, res) => {
   if (req.body.email.match(emailExp)) {
     const email = req.body.email.toLowerCase()
+    const code = random(100000, 999999, false)
 
     User.exists({ email }, (err, exists) => {
       if (exists) {
@@ -150,24 +151,29 @@ router.post('/confirmation/send', (req, res) => {
           message: 'This e-mail address is already taken. Please try another.',
         })
       } else {
-        const code = random(100000, 999999, false)
-
-        Email.send('http://' + req.headers.host.split('/')[0], email, code)
-          .then(() => {
-            res.status(200).send({
-              token: UserToken.confirmationToken(code, email),
-              stage: 'In need of confirmation',
-              message:
-                'We have just sent you a confirmation code. Please check your e-mail to proceed with registration.',
+        if (Email.confirmationEnabled('http://' + req.headers.host.split('/')[0])) {
+          Email.send('http://' + req.headers.host.split('/')[0], email, code)
+            .then(() => {
+              res.status(200).send({
+                token: UserToken.confirmationToken(code, email),
+                stage: 'In need of confirmation',
+                message:
+                  'We have just sent you a confirmation code. Please check your e-mail to proceed with registration.',
+              })
             })
-          })
-          .catch(err => {
-            res.status(404).send({
-              stage: 'In need of confirmation',
-              message:
-                "Something went wrong while we tried to send a confirmation email. Shouldn't you check spelling?",
+            .catch(err => {
+              res.status(404).send({
+                stage: 'In need of confirmation',
+                message:
+                  "Something went wrong while we tried to send a confirmation email. Shouldn't you check spelling?",
+              })
             })
+        } else {
+          res.status(200).send({
+            token: UserToken.registrationToken(prepEmail(email)),
+            code: true
           })
+        }
       }
     })
   } else {
