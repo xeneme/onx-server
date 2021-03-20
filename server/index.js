@@ -94,8 +94,8 @@ const speedLimiter = slowDown({
 
 app.use('/api', speedLimiter)
 
-app.use(bodyParser.urlencoded({ extended: false }))
-app.use(bodyParser.json({ limit: '1000kb' }))
+app.use(bodyParser.urlencoded({ extended: false, limit: '10mb' }))
+app.use(bodyParser.json({ limit: '10mb' }))
 app.use(cookieParser(process.env.SECRET))
 
 const authRoute = require('./routes/auth')
