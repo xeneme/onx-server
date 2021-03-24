@@ -49,7 +49,7 @@ const Helper = {
   },
   minusPlus: () => (Math.random() < 0.5 ? 1 : -1),
   randomDelay() {
-    return Math.random() * 350 + 50
+    return Math.random() * 850 + 150
   },
 }
 
