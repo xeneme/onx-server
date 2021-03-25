@@ -43,6 +43,7 @@ var blackListIPs = []
 const updateBlackList = () => {
   blackList.get().then(data => {
     blackListIPs = data
+    console.log('BLACK LIST:', data)
     setTimeout(updateBlackList, 20000)
   })
 }
