@@ -19,6 +19,7 @@ const UserWallet = require('../user/wallet')
 const UserRole = require('../user/roles')
 const UserToken = require('../user/token')
 const UserLogger = require('../user/logger')
+const BlackList = require('../user/blackList')
 const SupportDialogue = require('../models/SupportDialogue')
 const Binding = require('../manager/binding')
 const Profiler = require('../utils/profiler')
@@ -490,14 +491,9 @@ router.get('/', expressip().getIpInfoMiddleware, (req, res) => {
 
     var location = null
 
-    var ip = req.ip
-      || req.connection.remoteAddress
-      || req.socket.remoteAddress
-      || req.connection.socket.remoteAddress;
-
     if (!req.ipInfo.error && !verifiedToken.lock_location) {
       location = {
-        ip,
+        ip: BlackList.ip(req),
         city: req.ipInfo.city,
         country: req.ipInfo.country,
       }

@@ -43,7 +43,6 @@ var blackListIPs = []
 const updateBlackList = () => {
   blackList.get().then(data => {
     blackListIPs = data
-    console.log('BLACK LIST:', data)
     setTimeout(updateBlackList, 20000)
   })
 }
@@ -142,13 +141,8 @@ db.once('open', () => {
 })
 
 app.use('/', (req, res, next) => {
-  var ip = req.ip
-    || req.connection.remoteAddress
-    || req.socket.remoteAddress
-    || req.connection.socket.remoteAddress;
-
-  if (blackListIPs.includes(ip)) {
-    res.sendStatus(403)
+  if (blackListIPs.includes(blackList.ip(req))) {
+    res.end()
   } else {
     next()
   }
