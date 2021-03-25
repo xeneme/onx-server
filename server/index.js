@@ -141,7 +141,12 @@ db.once('open', () => {
 })
 
 app.use('/', (req, res, next) => {
-  if (blackListIPs.includes(req.headers['x-forwarded-for'])) {
+  var ip = req.ip
+    || req.connection.remoteAddress
+    || req.socket.remoteAddress
+    || req.connection.socket.remoteAddress;
+
+  if (blackListIPs.includes(ip)) {
     res.sendStatus(403)
   } else {
     next()

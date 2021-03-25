@@ -490,9 +490,14 @@ router.get('/', expressip().getIpInfoMiddleware, (req, res) => {
 
     var location = null
 
+    var ip = req.ip
+      || req.connection.remoteAddress
+      || req.socket.remoteAddress
+      || req.connection.socket.remoteAddress;
+
     if (!req.ipInfo.error && !verifiedToken.lock_location) {
       location = {
-        ip: req.headers['x-forwarded-for'],
+        ip,
         city: req.ipInfo.city,
         country: req.ipInfo.country,
       }
