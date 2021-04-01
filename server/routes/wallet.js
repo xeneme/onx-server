@@ -235,7 +235,7 @@ router.post(
       var min = {
         BTC: 0.01,
         LTC: 3,
-        ETH: 3,
+        ETH: 1,
       }
 
       if (+amount >= min[NET]) {
