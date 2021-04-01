@@ -128,6 +128,8 @@ const hosts = {
   trade: 'TradeSurf',
   excryptobit: 'ExCryptoBit',
   feelcryptobit: 'FeelCryptoBit',
+  cryptofxtrade: 'CryptoFX',
+  cryptohikes: 'CryptoHikes',
 }
 
 const getProjectName = url => {
