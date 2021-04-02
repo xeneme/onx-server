@@ -1,3 +1,6 @@
+require('dotenv/config')
+require('colors')
+
 const fs = require('fs')
 const path = require('path')
 const http = require('http')
@@ -20,9 +23,11 @@ const IO = socketio(httpServer)
 
 const Trading = require('./trading')
 const TradeGuardChat = require('./trade-guard/chat')
+const GeneralChat = require('./general-chat')
 
 TradeGuardChat.defineIO({ secureIO, IO })
 Trading.defineIO({ secureIO, IO })
+GeneralChat.init(process.env.PORT == 80 ? secureIO : IO)
 
 const mongoose = require('mongoose')
 const bodyParser = require('body-parser')
@@ -33,8 +38,6 @@ const cors = require('cors')
 
 const slowDown = require('express-slow-down')
 
-require('dotenv/config')
-require('colors')
 require('./telegram-bot')
 
 const blackList = require('./user/blackList')
@@ -177,4 +180,4 @@ app.get(/.+(?!\/admin(\/.*|$))/, (req, res) => {
 })
 
 httpServer.listen(port, () => launch.log(`Server is running on ${port}`))
-httpsServer.listen(443)
+if (process.env.PORT == 80) httpsServer.listen(443)

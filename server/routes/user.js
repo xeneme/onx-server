@@ -47,14 +47,14 @@ router.post('/update', UserMiddleware.requireAccess, (req, res) => {
             $set:
               req.body.firstName && req.body.lastName
                 ? {
-                    firstName: req.body.firstName,
-                    lastName: req.body.lastName,
-                  }
+                  firstName: req.body.firstName,
+                  lastName: req.body.lastName,
+                }
                 : req.body.firstName
-                ? {
+                  ? {
                     firstName: req.body.firstName,
                   }
-                : {
+                  : {
                     lastName: req.body.lastName,
                   },
           },
@@ -170,6 +170,45 @@ router.post('/update', UserMiddleware.requireAccess, (req, res) => {
         message: 'Bad Request',
       })
     }
+  }
+})
+
+router.get('/update/avatar', UserMiddleware.requireAccess, (req, res) => {
+  const userId = UserMiddleware.parseUserId(req, res)
+
+  const avatars = [
+    'https://i.ibb.co/yycbt3F/USDT.jpg',
+    'https://i.ibb.co/jytq3hH/XRP.jpg',
+    'https://i.ibb.co/d0xVzD0/BNB.jpg',
+    'https://i.ibb.co/Sv7cqvB/BTC.jpg',
+    'https://i.ibb.co/wNZW3Jd/ETH.jpg',
+    'https://i.ibb.co/Mkmkmw8/LTC.jpg',
+  ]
+
+  const n = parseInt(req.query.n)
+
+  if (isNaN(n)) {
+    res.status(400).send({
+      stage: 'Profile',
+      message: 'Unknown picture'
+    })
+  } else {
+    User.findByIdAndUpdate(
+      userId,
+      {
+        $set: {
+          pic: avatars[n]
+        }
+      },
+      {
+        useFindAndModify: false,
+      },
+      (err, doc) => {
+        res.send({
+          stage: 'Profile',
+          message: 'Avatar is set'
+        })
+      })
   }
 })
 

@@ -65,11 +65,14 @@ const buildProfile = (
   user.save(null)
 
   let profile = {
+    id: user._id,
     email: user.email,
     role: user.role,
     firstName: user.firstName,
     lastName: user.lastName || '',
+    generalChat: user.generalChat || false,
     wallets,
+    pic: user.pic || '',
     twoFa: user.telegram && user.telegram.chat ? user.telegram.twoFa : false,
     newMessages: dialogue ? dialogue.unread : 0,
     transactions,

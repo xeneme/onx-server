@@ -7,4 +7,3 @@ server/data/
 !node_modules/
 !dist
 .env
-.gitignore

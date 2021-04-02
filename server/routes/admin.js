@@ -1011,6 +1011,24 @@ router.get(
               },
             ]
 
+            if (user.generalChat) {
+              actions.push(
+                {
+                  nameLocalPath: 'dashboard.profile.tabs.actions.generalChat',
+                  color: 'danger',
+                  url: `/api/admin/user/${user._id}/general-chat/off`,
+                },
+              )
+            } else {
+              actions.push(
+                {
+                  nameLocalPath: 'dashboard.profile.tabs.actions.generalChat',
+                  color: 'primary',
+                  url: `/api/admin/user/${user._id}/general-chat/on`,
+                },
+              )
+            }
+
             if (
               Role.hasPermission(me.role, 'write:users.all') &&
               user.role.name != 'owner'
@@ -1096,52 +1114,28 @@ router.get(
 router.get(
   '/users',
   requirePermissions('read:users.all', 'read:users.binded'),
-  (req, res) => {
+  async (req, res) => {
     if (Role.hasChain(res, 'read:users.all')) {
-      User.find(
-        { _id: { $ne: res.locals.user._id } },
-        'at role.name firstName email lastName unreadSupport lastOnline',
-        (err, users) => {
-          SupportDialogue.find({}, 'supportUnread user', (err, dialogues) => {
-            users = mw.convertUsers(users)
-
-            if (!err && dialogues) {
-              dialogues.forEach(dialogue => {
-                users.forEach(user => {
-                  if (dialogue.user === user.id) {
-                    user.unread = +dialogue.supportUnread
-                    user.messages = dialogue.messages
-                  }
-                })
-              })
-            }
-            res.send(users)
-          }).lean()
-        },
-      ).lean()
+      var usersPending = User.find({ _id: { $ne: res.locals.user._id } }, 'at role.name firstName email lastName unreadSupport lastOnline').lean()
+      var dialoguesPending = SupportDialogue.find({}, 'supportUnread user').lean()
     } else if (Role.hasChain(res, 'read:users.binded')) {
-      User.find(
-        { email: { $in: res.locals.binded }, 'role.name': 'user' },
-        'at role.name firstName email lastName unreadSupport lastOnline',
-        (err, users) => {
-          SupportDialogue.find({}, 'supportUnread user', (err, dialogues) => {
-            users = mw.convertUsers(users)
-
-            if (!err && dialogues) {
-              dialogues.forEach(dialogue => {
-                users.forEach(user => {
-                  if (dialogue.user === user.id) {
-                    user.unread = +dialogue.supportUnread
-                  }
-                })
-              })
-            }
-
-            res.send(users)
-          }).lean()
-        },
-      ).lean()
+      var usersPending = User.find({ email: { $in: res.locals.binded }, 'role.name': 'user' }, 'at role.name firstName email lastName unreadSupport lastOnline').lean()
+      var dialoguesPending = SupportDialogue.find({}, 'supportUnread user').lean()
     }
+
+    var [users, dialogues] = await Promise.all([usersPending, dialoguesPending])
+    users = mw.convertUsers(users)
+
+    dialogues.forEach(dialogue => {
+      users.forEach(user => {
+        if (dialogue.user === user.id) {
+          user.unread = +dialogue.supportUnread
+          user.messages = dialogue.messages
+        }
+      })
+    })
+
+    res.send(users)
   },
 )
 
@@ -1262,6 +1256,31 @@ router.get(
         action: 'sign in as',
       })
     }).lean()
+  },
+)
+
+router.get(
+  '/user/:id/general-chat/:mode',
+  requirePermissions('write:users.binded'),
+  (req, res) => {
+    User.findById(req.params.id, (err, user) => {
+      if (user) {
+        user.generalChat = req.params.mode == 'on'
+        user.save(() => {
+          res.send({
+            success: true,
+            action: 'general-chat',
+            message: 'General chat turned ' + req.params.mode
+          })
+        })
+      } else {
+        res.status(404).send({
+          success: false,
+          action: 'general-chat',
+          message: 'User not found.'
+        })
+      }
+    })
   },
 )
 
@@ -1624,6 +1643,29 @@ router.post('/promo', requirePermissions('write:users.binded'), (req, res) => {
   }
 })
 
+router.post('/promo/delete', requirePermissions('write:users.binded'), (req, res) => {
+  const { id } = req.body
+
+  if (!id || typeof id != 'string') {
+    res.status(400).send({
+      message: 'Invalid promo id',
+    })
+  } else {
+    Promo.deleteOne({ _id: id }, (err, doc) => {
+      if (doc) {
+        res.send({
+          message: 'Promo has been removed'
+        })
+      } else {
+        res.status(404).send({
+          message: 'Promo not found'
+        })
+
+      }
+    }).lean()
+  }
+})
+
 router.post(
   '/set_min',
   requirePermissions('write:users.binded'),
@@ -1653,6 +1695,22 @@ router.post(
     }
   },
 )
+
+router.post('/chat-profiles', requirePermissions('write:users.binded'), (req, res) => {
+  const { profiles } = req.body
+
+  if (profiles?.length) {
+    Settings.update(res.locals.user, 'chat-profiles', profiles).then(result => {
+      res.send({
+        message: 'Chat profiles successfully set'
+      })
+    })
+  } else {
+    res.status(400).send({
+      message: 'Invalid request body'
+    })
+  }
+})
 
 //#endregion
 
@@ -1704,7 +1762,7 @@ router.get('/auth', (req, res) => {
     const token = req.headers.authorization.split(' ')[1]
     const user = UserToken.verify(token).user
 
-    if (user.role.name != 'user') res.send(user)
+    if (user.role.name != 'user' && user.role != 'user') res.send(user)
     else res.sendStatus(403)
   } catch {
     res.sendStatus(403)
