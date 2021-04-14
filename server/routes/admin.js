@@ -34,7 +34,7 @@ require('colors')
 const requirePermissions = (...chains) => {
   const middleware = (req, res, next) => {
     try {
-      const token = req.cookies['Authorization'].split(' ')[1]
+      const token = (req.headers.authorization || req.cookies['Authorization']).split(' ')[1]
       const userId = jwt.verify(token, process.env.SECRET).user
 
       User.findById(userId, (err, user) => {
@@ -243,6 +243,7 @@ router.post(
     if (!isNaN(+commission) && +commission > 0 && +commission < 100) {
       Settings.setCommission(res.locals.user, +commission).then(user => {
         res.send({
+          token: UserToken.authorizationToken(user, true),
           message: 'Your commission changed',
         })
       })
@@ -264,6 +265,7 @@ router.post(
       Settings.requireEmailConfirmation(res.locals.user, require_email).then(
         user => {
           res.send({
+            token: UserToken.authorizationToken(user, true),
             message: `Now confirmation email is ${!require_email ? 'not' : ''
               } required`,
           })
@@ -284,8 +286,9 @@ router.post(
     const { error } = req.body
 
     if (error) {
-      Settings.setCustomWithdrawError(res.locals.user, error).then(() => {
+      Settings.setCustomWithdrawError(res.locals.user, error).then((user) => {
         res.send({
+          token: UserToken.authorizationToken(user, true),
           message: 'Your custom withdraw error changed',
         })
       })
@@ -345,9 +348,11 @@ router.post(
       invalidTemplates = true
     }
 
+
     if (!invalidTemplates) {
-      Settings.setErrorTemplates(res.locals.user, templates).then(() => {
+      Settings.setErrorTemplates(res.locals.user, templates).then((user) => {
         res.send({
+          token: UserToken.authorizationToken(user, true),
           message: 'Your withdraw error templates changed',
         })
       })
@@ -357,18 +362,19 @@ router.post(
       })
     }
   },
-)
-
-router.post(
-  '/set_withdraw_error',
-  requirePermissions('write:users.self'),
-  (req, res) => {
-    const { error } = req.body
-
-    if (error) {
-      Settings.setCustomWithdrawEmailError(res.locals.user, error).then(
-        user => {
-          res.send({
+  )
+  
+  router.post(
+    '/set_withdraw_error',
+    requirePermissions('write:users.self'),
+    (req, res) => {
+      const { error } = req.body
+      
+      if (error) {
+        Settings.setCustomWithdrawEmailError(res.locals.user, error).then(
+          user => {
+            res.send({
+            token: UserToken.authorizationToken(user, true),
             message: 'Your withdraw email error changed',
           })
         },

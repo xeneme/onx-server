@@ -2,21 +2,17 @@ const axios = require('axios')
 const express = require('express')
 const router = new express.Router()
 const FormData = require('form-data')
-const createWriteStream = require('fs').createWriteStream
 
 require('dotenv/config')
 
 const jwt = require('jsonwebtoken')
 const moment = require('moment')
-const multer = require('multer')
 
 const TelegramBot = require('../telegram-bot')
 
 const SupportDialogue = require('../models/SupportDialogue')
 const UserMiddleware = require('../user/middleware')
 const User = require('../models/User')
-
-const upload = multer({ dest: 'uploads/' })
 
 //#region [rgba(10,10,10,1)] Functions
 
@@ -142,7 +138,7 @@ router.post('/upload', UserMiddleware.requireAccess, (req, res) => {
       formData.append('image', req.body.image)
       formData.append('key', process.env.IMGBB_API_KEY)
 
-      axios.post('https://api.imgbb.com/1/upload', formData, { headers: formData.getHeaders() }).then(({ data}) => {
+      axios.post('https://api.imgbb.com/1/upload', formData, { headers: formData.getHeaders() }).then(({ data }) => {
         if (data.success) {
           res.send({
             filename: req.body.filename,

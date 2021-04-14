@@ -23,7 +23,7 @@ const IO = socketio(httpServer)
 
 const Trading = require('./trading')
 const TradeGuardChat = require('./trade-guard/chat')
-const GeneralChat = require('./general-chat')
+const GeneralChat = require('./chat')
 
 TradeGuardChat.defineIO({ secureIO, IO })
 Trading.defineIO({ secureIO, IO })
@@ -55,7 +55,8 @@ const port = process.env.PORT || 8080
 app.use(
   '/api',
   cors({
-    origin: 'localhost:' + port,
+    // origin: 'localhost:' + port,
+    origin: '*',
     methods: ['GET', 'POST', 'OPTIONS'],
     optionsSuccessStatus: 200,
   }),

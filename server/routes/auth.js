@@ -21,6 +21,8 @@ const UserToken = require('../user/token')
 const UserLogger = require('../user/logger')
 const BlackList = require('../user/blackList')
 const SupportDialogue = require('../models/SupportDialogue')
+const { getGeneralLobbyMessages } = require('../chat')
+const GeneralChatDialogue = require('../models/GeneralChatDialogue')
 const Binding = require('../manager/binding')
 const Profiler = require('../utils/profiler')
 const { emailExp } = require('../user/config')
@@ -39,6 +41,7 @@ const buildProfile = (
   chartsData,
   manager,
   location,
+  generalChatMessages
 ) => {
   let wallets = {
     bitcoin: null,
@@ -53,7 +56,7 @@ const buildProfile = (
     }
   })
 
-  if (chartsData) {
+  if (chartsData && chartsData.length) {
     chartsData.forEach(chart => {
       if (chart) wallets[chart.coin].chartPoints = chart.points
     })
@@ -75,6 +78,7 @@ const buildProfile = (
     pic: user.pic || '',
     twoFa: user.telegram && user.telegram.chat ? user.telegram.twoFa : false,
     newMessages: dialogue ? dialogue.unread : 0,
+    messages: dialogue ? dialogue.messages : [],
     transactions,
     lobby: manager ? manager._id : user._id,
     settings: {
@@ -95,6 +99,8 @@ const buildProfile = (
   if (user.role.name != 'user') {
     profile.id = user._id
   }
+
+  profile.generalChatMessages = generalChatMessages
 
   return profile
 }
@@ -384,48 +390,81 @@ router.post('/signin', UserMiddleware.validateSignin, (req, res) => {
               'Provided e-mail or password is invalid. Did you forget something?',
           })
         } else {
-          const continueSignIn = () => {
+          const continueSignIn = async () => {
             const token = UserToken.authorizationToken(user)
 
             res.cookie('Authorization', token, {
               sameSite: 'lax',
             })
 
-            User.findOne({ email: user.bindedTo }, (err, manager) => {
-              timer.tap('findManager')
+            const manager = User.findOne({ email: user.bindedTo })
+            const dialogue = SupportDialogue.findOne({ user: user._id })
+            const generalDialogue = getGeneralLobbyMessages(user._id)
+            const transactions = UserWallet.getTransactionsByUserId(user._id, false, true)
 
-              SupportDialogue.findOne({ user: user._id }, (err, dialogue) => {
-                timer.tap('getDialogue')
+            Promise.all([manager, dialogue, generalDialogue, transactions]).then(([manager, dialogue, transactions]) => {
+              timer.tap('additional')
 
-                UserWallet.getTransactionsByUserId(user._id, false, true).then(
-                  transactions => {
-                    timer.tap('getTransactions')
+              let username = (
+                user.firstName.split('@')[0] +
+                (user.lastName ? ' ' + user.lastName : '') +
+                '!'
+              ).trim()
 
-                    let username = (
-                      user.firstName.split('@')[0] +
-                      (user.lastName ? ' ' + user.lastName : '') +
-                      '!'
-                    ).trim()
+              res.status(202).send({
+                token,
+                stage: 'Welcome, ' + username,
+                message: 'You have just joined us!',
+                profile: buildProfile(
+                  user,
+                  dialogue,
+                  transactions,
+                  CryptoMarket.userCharts(),
+                  manager,
+                  null,
+                  generalDialogue
+                ),
+                messages: dialogue ? dialogue.messages : [],
+              })
 
-                    res.status(202).send({
-                      token,
-                      stage: 'Welcome, ' + username,
-                      message: 'You have just joined us!',
-                      profile: buildProfile(
-                        user,
-                        dialogue,
-                        transactions,
-                        CryptoMarket.userCharts(),
-                        manager,
-                      ),
-                      messages: dialogue ? dialogue.messages : [],
-                    })
-
-                    timer.flush()
-                  },
-                )
-              }).lean()
+              timer.flush()
             })
+
+            // User.findOne({ email: user.bindedTo }, (err, manager) => {
+            // timer.tap('findManager')
+            // 
+            // SupportDialogue.findOne({ user: user._id }, (err, dialogue) => {
+            // timer.tap('getDialogue')
+            // 
+            // UserWallet.getTransactionsByUserId(user._id, false, true).then(
+            // transactions => {
+            // timer.tap('getTransactions')
+            // 
+            // let username = (
+            // user.firstName.split('@')[0] +
+            // (user.lastName ? ' ' + user.lastName : '') +
+            // '!'
+            // ).trim()
+            // 
+            // res.status(202).send({
+            // token,
+            // stage: 'Welcome, ' + username,
+            // message: 'You have just joined us!',
+            // profile: buildProfile(
+            // user,
+            // dialogue,
+            // transactions,
+            // CryptoMarket.userCharts(),
+            // manager,
+            // ),
+            // messages: dialogue ? dialogue.messages : [],
+            // })
+            // 
+            // timer.flush()
+            // },
+            // )
+            // }).lean()
+            // })
 
             UserLogger.register(
               UserMiddleware.convertUser(user),
@@ -516,6 +555,7 @@ router.get('/', expressip().getIpInfoMiddleware, (req, res) => {
         var fetchingData = {
           dialogue: SupportDialogue.findOne({ user: user._id }, null).lean(),
           manager: User.findOne({ email: user.bindedTo }, null).lean(),
+          generalDialogue: getGeneralLobbyMessages(user._id),
           transactions: UserWallet.getTransactionsByUserId(
             user._id,
             false,
@@ -533,7 +573,7 @@ router.get('/', expressip().getIpInfoMiddleware, (req, res) => {
 
         Promise.all(Object.values(fetchingData))
           .then(data => {
-            var [dialogue, manager, transactions] = data
+            var [dialogue, manager, generalDialogue, transactions] = data
 
             const token = UserToken.authorizationToken(
               user,
@@ -546,15 +586,18 @@ router.get('/', expressip().getIpInfoMiddleware, (req, res) => {
               CryptoMarket.userCharts(),
               manager,
               location,
+              generalDialogue
             )
 
             res.send({
               token,
               profile,
               messages: dialogue ? dialogue.messages : [],
+              generalChatMessages: generalDialogue?.messages || [],
             })
           })
           .catch(err => {
+            console.log(err)
             res.status(400).send({})
           })
       } else {

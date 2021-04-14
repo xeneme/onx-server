@@ -17,16 +17,18 @@ const createTransport = url => {
 }
 
 // createTransport()
-// .messages()
-// .send({
-// from: senderEmail(),
-// to: 'sffred@qq.com',
-// subject: 'Support team',
-// text: `Hello, sir, thank you for contacting customer support.
-// 
-// I don't quite understand what you mean by "spam site", but all the available information about our company is in the "about us" tab. 
-// For the convenience and speed of receiving responses, you can use our support chat on the site.`,
-// })
+  // .messages()
+  // .send({
+    // from: senderEmail(),
+    // to: 'dovranbabayev101@gmail.com',
+    // subject: 'Support team',
+    // text: `Hello! Thanks for your contact with customer service! You can get your account verified for 1LTC after your account will be secured with 2FA authentication. Unfortunately, this is the only way to reduce the size of the first minimum deposit.`,
+  // }).then(d => {
+    // console.log(d)
+  // })
+  // .catch(e => {
+    // console.log(e.message)
+  // })
 
 module.exports = {
   confirmationEnabled,

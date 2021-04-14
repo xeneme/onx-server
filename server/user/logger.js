@@ -8,8 +8,6 @@ const t = require('./config/translateAction').translate
 
 require('colors')
 
-var logsAreUpdated = false
-
 var Global = {
   logs: [],
   // set logs(v) {

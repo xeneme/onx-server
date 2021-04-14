@@ -14,8 +14,10 @@ const updateSettings = (manager, key, value) => {
       },
       {
         useFindAndModify: false,
+        new: true
       },
       (err, user) => {
+
         resolve(user)
       },
     )
