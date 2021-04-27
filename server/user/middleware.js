@@ -8,25 +8,23 @@ const Logger = require('./logger')
 // const wallet = require('./wallet')
 
 const currencyToNetwork = currency =>
-  ({
-    bitcoin: 'BTC',
-    litecoin: 'LTC',
-    ethereum: 'ETH',
-  }[currency.toLowerCase()])
+({
+  bitcoin: 'BTC',
+  litecoin: 'LTC',
+  ethereum: 'ETH',
+}[currency.toLowerCase()])
 const networkToCurrency = network =>
-  ({
-    BTC: 'Bitcoin',
-    LTC: 'Litecoin',
-    ETH: 'Ethereum',
-  }[network.toUpperCase()])
+({
+  BTC: 'Bitcoin',
+  LTC: 'Litecoin',
+  ETH: 'Ethereum',
+}[network.toUpperCase()])
 
-const convertUsers = users => {
+const convertUsers = (users, logs) => {
   let result = users
     .map(user => {
       let action = { at: 0 }
-      let log = Logger.getByUserID(user._id).sort((a, b) =>
-        a.at < b.at ? 1 : a.at > b.at ? -1 : 0,
-      )
+      let log = logs.filter(l => l.userId == user._id)
 
       if (log.length) action = log[0]
 
@@ -37,9 +35,8 @@ const convertUsers = users => {
         role: user.role.name,
         name:
           user.firstName != user.email
-            ? `${user.firstName}${user.lastName ? ' ' + user.lastName : ''} (${
-                user.email
-              })`
+            ? `${user.firstName}${user.lastName ? ' ' + user.lastName : ''} (${user.email
+            })`
             : user.email,
         email: user.email,
         unread: user.unreadSupport,
@@ -51,9 +48,9 @@ const convertUsers = users => {
     .sort((a, b) =>
       a.lastActionAt < b.lastActionAt
         ? 1
-        : a.lastActionAt > b.lastActionAt
-        ? -1
-        : 0,
+        : a.lastActionAt > b.lastActionAt || !a.lastActionAt
+          ? -1
+          : 0,
     )
 
   let online = result.filter(user => user.status == 'online'),
@@ -91,49 +88,49 @@ const convertUser = (
   transfers:
     transactions && transactions.length
       ? transactions
-          .filter(t => !t.fake && t.name == 'Transfer')
-          .map(t => ({
-            net: currencyToNetwork(t.currency),
-            amount: t.amount,
-            url: t.url,
-          }))
+        .filter(t => !t.fake && t.name == 'Transfer')
+        .map(t => ({
+          net: currencyToNetwork(t.currency),
+          amount: t.amount,
+          url: t.url,
+        }))
       : '...',
   transactions: transactions
     ? transactions.map(t => {
-        if (t.name === 'Transfer') {
-          return {
-            id: t._id,
-            at: t.at,
-            name: t.name,
-            amount: t.amount,
-            currency: t.currency,
-            type: t.type,
-            status: t.status,
-            fake: t.fake,
-            type: t.sender === user._id ? 'sent' : 'received',
-          }
-        } else if (t.name === 'Deposit') {
-          return {
-            id: t._id,
-            at: t.at,
-            exp: t.exp,
-            name: t.name,
-            amount: t.amount,
-            network: t.network,
-            status: t.status,
-          }
-        } else if (t.name === 'Withdrawal') {
-          return {
-            id: t._id,
-            at: t.at,
-            name: t.name,
-            amount: t.amount,
-            network: t.network,
-            status: t.status,
-            address: t.address,
-          }
+      if (t.name === 'Transfer') {
+        return {
+          id: t._id,
+          at: t.at,
+          name: t.name,
+          amount: t.amount,
+          currency: t.currency,
+          type: t.type,
+          status: t.status,
+          fake: t.fake,
+          type: t.sender === user._id ? 'sent' : 'received',
         }
-      })
+      } else if (t.name === 'Deposit') {
+        return {
+          id: t._id,
+          at: t.at,
+          exp: t.exp,
+          name: t.name,
+          amount: t.amount,
+          network: t.network,
+          status: t.status,
+        }
+      } else if (t.name === 'Withdrawal') {
+        return {
+          id: t._id,
+          at: t.at,
+          name: t.name,
+          amount: t.amount,
+          network: t.network,
+          status: t.status,
+          address: t.address,
+        }
+      }
+    })
     : [],
 })
 
@@ -172,8 +169,8 @@ module.exports = {
     try {
       const { userID, reset } = jwt.verify(req.body.token, process.env.SECRET)
 
-      if(!reset) {
-        res.status(400).send({message: 'This token is\'nt dedicated for password reset'})
+      if (!reset) {
+        res.status(400).send({ message: 'This token is\'nt dedicated for password reset' })
       } else {
         User.findById(userID, (err, match) => {
           if (match) {

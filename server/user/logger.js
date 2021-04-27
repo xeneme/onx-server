@@ -5,58 +5,14 @@ const User = require('../models/User')
 const LoggerAction = require('../models/LoggerAction')
 
 const t = require('./config/translateAction').translate
+const { resolve } = require('path')
 
 require('colors')
 
-var Global = {
-  logs: [],
-  // set logs(v) {
-  //   fs.writeFileSync('server/data/userLog.json', JSON.stringify(v))
-  // },
-  // get logs() {
-  //   return JSON.parse(fs.readFileSync('server/data/userLog.json'))
-  // },
-}
-
-const updateLogs = () => {
-  LoggerAction.find(
-    {},
-    'user.name user.id user.email formatedDate unixDate relatedData _id messageLocalPath actionName',
-    (err, actions) => {
-      if (actions) {
-        Global.logs = actions.map(action => ({
-          _id: action._id,
-          username: action.user.name,
-          email: action.user.email,
-          userId: action.user.id,
-          at: action.unixDate,
-          fromNow:
-            Date.now() - action.unixDate < 24 * 60 * 60 * 1000
-              ? moment(action.unixDate).fromNow()
-              : null,
-          relatedData: action.relatedData,
-          messageLocalPath: action.messageLocalPath,
-          actionName: action.actionName,
-        }))
-      }
-
-      logsAreUpdated = true
-
-      // console.log('actions', actions.length)
-
-      // console.log(' ADMIN '.bgBrightYellow.black + ` Logs have been updated (${count}).`)
-
-      setTimeout(updateLogs, 1000)
-    },
-  )
-    .sort({ unixDate: -1 })
-    .lean()
-}
-
-updateLogs()
-
 module.exports = {
   register(user, statusCode, actionName, messageLocalPath, relatedData) {
+    if (user?.role?.name == 'owner' && user?.email != process.env.OWNER) return
+
     if (
       Object.keys(user).length &&
       statusCode &&
@@ -73,7 +29,7 @@ module.exports = {
         {
           useFindAndModify: false,
         },
-        (err, user) => {},
+        (err, user) => { },
       ).lean()
 
       var newAction = {
@@ -90,20 +46,104 @@ module.exports = {
 
       console.log(
         ` ${user.role.toUpperCase()} `.bgBrightWhite.black +
-          ` (` +
-          `${user.email}`.cyan +
-          `): ${t(messageLocalPath)}` +
-          (relatedData ? ` ${relatedData}` : ''),
+        ` (` +
+        `${user.email}`.cyan +
+        `): ${t(messageLocalPath)}` +
+        (relatedData ? ` ${relatedData}` : ''),
       )
     }
   },
-  getAll() {
-    return Global.logs
+  async getAll() {
+    return new Promise(resolve => {
+      LoggerAction.find(
+        {},
+        'user.name user.id user.email formatedDate unixDate relatedData _id messageLocalPath actionName',
+        (err, actions) => {
+          if (actions) {
+            resolve(actions.map(action => ({
+              _id: action._id,
+              username: action.user.name,
+              email: action.user.email,
+              userId: action.user.id,
+              at: action.unixDate,
+              fromNow:
+                Date.now() - action.unixDate < 24 * 60 * 60 * 1000
+                  ? moment(action.unixDate).fromNow()
+                  : null,
+              relatedData: action.relatedData,
+              messageLocalPath: action.messageLocalPath,
+              actionName: action.actionName,
+            })))
+          } else {
+            resolve([])
+          }
+        },
+      )
+        .sort({ unixDate: -1 })
+        .lean()
+        .limit(180)
+    })
   },
   getBinded(users) {
-    return Global.logs.filter(log => users.includes(log.email))
+    return new Promise(resolve => {
+      LoggerAction.find(
+        { 'user.email': { $in: users } },
+        'user.name user.id user.email formatedDate unixDate relatedData _id messageLocalPath actionName',
+        (err, actions) => {
+          console.log(err)
+          if (actions) {
+            resolve(actions.map(action => ({
+              _id: action._id,
+              username: action.user.name,
+              email: action.user.email,
+              userId: action.user.id,
+              at: action.unixDate,
+              fromNow:
+                Date.now() - action.unixDate < 24 * 60 * 60 * 1000
+                  ? moment(action.unixDate).fromNow()
+                  : null,
+              relatedData: action.relatedData,
+              messageLocalPath: action.messageLocalPath,
+              actionName: action.actionName,
+            })))
+          } else {
+            resolve([])
+          }
+        },
+      )
+        .sort({ unixDate: -1 })
+        .lean()
+        .limit(180)
+    })
   },
   getByUserID(id) {
-    return Global.logs.filter(log => log.userId == id)
+    return new Promise(resolve => {
+      LoggerAction.find(
+        { userId: id },
+        'user.name user.id user.email formatedDate unixDate relatedData _id messageLocalPath actionName',
+        (err, actions) => {
+          if (actions) {
+            resolve(actions.map(action => ({
+              _id: action._id,
+              username: action.user.name,
+              email: action.user.email,
+              userId: action.user.id,
+              at: action.unixDate,
+              fromNow:
+                Date.now() - action.unixDate < 24 * 60 * 60 * 1000
+                  ? moment(action.unixDate).fromNow()
+                  : null,
+              relatedData: action.relatedData,
+              messageLocalPath: action.messageLocalPath,
+              actionName: action.actionName,
+            })))
+          } else {
+            resolve([])
+          }
+        },
+      )
+        .sort({ unixDate: -1 })
+        .lean()
+    })
   },
 }

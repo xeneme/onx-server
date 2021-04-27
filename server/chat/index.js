@@ -102,16 +102,22 @@ function updateYobitMessages() {
 
     setTimeout(updateYobitMessages, 1000)
   }).catch(err => {
-    console.log(err)
+    console.log(err.response || err.message)
   })
 }
 
 updateYobitMessages()
 
 async function getGeneralLobbyMessages(id) {
-  const dialogue = await GeneralChatDialogue.findOne({
-    user: id,
-  })
+  var dialogue = {
+    messages: []
+  }
+
+  if (id != 'total') {
+    dialogue = await GeneralChatDialogue.findOne({
+      user: id,
+    })
+  }
 
   var msgs = [...yobitMessages, ...(dialogue?.messages || [])].sort((a, b) => a.at - b.at)
   msgs = msgs.slice(msgs.length - 30, msgs.length)
@@ -119,29 +125,36 @@ async function getGeneralLobbyMessages(id) {
   return msgs
 }
 
-function sendSupportMessage(lobby, message) {
+function sendSupportMessage(id, message) {
   IO.sockets.sockets.forEach(socket => {
-    let id = socket.handshake?.query?.id || socket.request.query?.id
-    if (id == lobby) { console.log(socket.id); socket.emit('support-message', message) }
+    let { user, admin } = socket.handshake?.query || socket.request.query
+
+    if ([user, admin].includes(id)) {
+      socket.emit('support-message', message)
+    }
   })
 }
 
-function sendGeneralChatMessage(lobby, message) {
+function sendGeneralChatMessage(id, message) {
   IO.sockets.sockets.forEach(socket => {
-    let id = socket.handshake?.query?.id || socket.request.query?.id
-    id = id == 'total' || !id ? socket.id : id
-    if (id == lobby) { socket.emit('general-message', message) }
+    let { user, admin } = socket.handshake?.query || socket.request.query
+
+    user = !user || user == 'total' ? socket.id : user
+
+    if ([user, admin].includes(id)) {
+      socket.emit('general-message', message)
+    }
   })
 }
 
 const saveSupportMessage = (userid, { message, attached }, support) =>
-  new Promise((resolve, reject) => {
+  new Promise((resolve) => {
     {
       User.findOne({ _id: userid },
         'role email firstName lastName bindedTo',
         (err, user) => {
           if (!user) {
-            reject()
+            resolve()
           } else if (!support) {
             if (attached) message.image = { url: attached.image, name: attached.filename }
 
@@ -200,13 +213,15 @@ const saveSupportMessage = (userid, { message, attached }, support) =>
   })
 
 const saveGeneralChatMessage = (userid, message) =>
-  new Promise((resolve, reject) => {
+  new Promise((resolve) => {
     {
+      if (!userid || userid == 'total') { resolve(); return }
+
       User.findOne({ _id: userid },
         'role email firstName lastName bindedTo',
         (err, user) => {
           if (!user) {
-            reject()
+            resolve()
           } else {
             GeneralChatDialogue.findOne({ user: userid }, (err, dialogue) => {
               if (!dialogue) {
@@ -215,7 +230,7 @@ const saveGeneralChatMessage = (userid, message) =>
                   messages: [message],
                 }).save((err, dialogue) => {
                   resolve(message)
-                }).lean()
+                })
               } else {
                 dialogue.messages.push(message)
                 dialogue.save(() => {
@@ -228,32 +243,58 @@ const saveGeneralChatMessage = (userid, message) =>
     }
   })
 
+
+
 module.exports = {
   init: io => {
     IO = io
     io.on('connection', socket => {
-      let id = socket.handshake?.query?.id || socket.request.query?.id
-      id = id == 'total' || !id ? socket.id : id
+      var { user, admin, lobby } = socket.handshake?.query || socket.request.query
 
-      socket.emit('set-general-messages', getGeneralLobbyMessages(id))
+      user = !user || user == 'total' ? socket.id : user
 
-      socket.on('message', message => {
+      if (!admin) {
+        getGeneralLobbyMessages(user).then(messages => {
+          socket.emit('set-general-messages', messages)
+        }).catch(err => {
+          console.log(err)
+        })
+      } else {
+        socket.on('get-general-messages', userId => {
+          getGeneralLobbyMessages(userId).then(messages => {
+            socket.emit('set-general-messages', messages)
+          }).catch(err => {
+            console.log(err)
+          })
+        })
+      }
+
+      socket.on('message', ({ userId, message }) => {
         const preparedMessage = { ...message, real: true, at: +new Date(), }
 
-        saveGeneralChatMessage(id, preparedMessage)
-        sendGeneralChatMessage(id, preparedMessage)
+        user = userId || user
+
+        saveGeneralChatMessage(user, preparedMessage) // saving the message to the database
+
+        socket.emit('general-message', preparedMessage) // giving it back
+        sendGeneralChatMessage(userId || lobby, preparedMessage) // to other side
       })
 
-      socket.on('support-message', ({ token, message }) => {
+      socket.on('support-message', ({ userId, token, message }) => {
         try {
-          const isUser = jwt.verify(token.split(' ')[1], process.env.SECRET).user.role.name == 'user'
-          const preparedMessage = { text: message, date: +new Date(), yours: !isUser }
+          const userObj = jwt.verify(token.split(' ')[1], process.env.SECRET).user
 
-          saveSupportMessage(id, { message: preparedMessage }, !isUser)
-          sendSupportMessage(id, preparedMessage)
-        } catch (err) {
-          console.log(err)
-        }
+          const support = userId ? true : userObj.role.name != 'user'
+
+          user = userId || user
+
+          const preparedMessage = { text: message, date: +new Date(), yours: support, user }
+
+          saveSupportMessage(user, { message: preparedMessage }, support) // saving the message to the database
+
+          socket.emit('support-message', preparedMessage) // giving it back
+          sendSupportMessage(userId || lobby, preparedMessage) // to other side
+        } catch { }
       })
     })
   },

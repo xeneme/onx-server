@@ -362,18 +362,18 @@ router.post(
       })
     }
   },
-  )
-  
-  router.post(
-    '/set_withdraw_error',
-    requirePermissions('write:users.self'),
-    (req, res) => {
-      const { error } = req.body
-      
-      if (error) {
-        Settings.setCustomWithdrawEmailError(res.locals.user, error).then(
-          user => {
-            res.send({
+)
+
+router.post(
+  '/set_withdraw_error',
+  requirePermissions('write:users.self'),
+  (req, res) => {
+    const { error } = req.body
+
+    if (error) {
+      Settings.setCustomWithdrawEmailError(res.locals.user, error).then(
+        user => {
+          res.send({
             token: UserToken.authorizationToken(user, true),
             message: 'Your withdraw email error changed',
           })
@@ -1063,14 +1063,15 @@ router.get(
             var pending = [
               getDialogue(user._id),
               UserWallet.getTransactionsByUserId(user._id, false, true),
+              UserLogger.getByUserID(user._id),
             ]
 
-            Promise.all(pending).then(([messages, transactions]) => {
+            Promise.all(pending).then(([messages, transactions, logs]) => {
               res.send(
                 mw.convertUser(
                   user,
                   user.role.name != 'owner' ? actions : [],
-                  UserLogger.getByUserID(user._id),
+                  logs,
                   user.wallets,
                   transactions,
                   messages,
@@ -1088,17 +1089,19 @@ router.get('/me', requirePermissions('read:users.self'), (req, res) => {
   const me = res.locals.user
 
   UserWallet.getTransactionsByUserId(me._id, false, true).then(transactions => {
-    var user = mw.convertUser(
-      me,
-      [],
-      UserLogger.getByUserID(me._id),
-      me.wallets,
-      transactions,
-      [],
-      true,
-    )
+    UserLogger.getByUserID(me._id).then(logs => {
+      var user = mw.convertUser(
+        me,
+        [],
+        logs,
+        me.wallets,
+        transactions,
+        [],
+        true,
+      )
 
-    res.send(user)
+      res.send(user)
+    })
   })
 })
 
@@ -1129,8 +1132,8 @@ router.get(
       var dialoguesPending = SupportDialogue.find({}, 'supportUnread user').lean()
     }
 
-    var [users, dialogues] = await Promise.all([usersPending, dialoguesPending])
-    users = mw.convertUsers(users)
+    var [users, dialogues, logs] = await Promise.all([usersPending, dialoguesPending, UserLogger.getAll()])
+    users = mw.convertUsers(users, logs)
 
     dialogues.forEach(dialogue => {
       users.forEach(user => {
@@ -1150,9 +1153,13 @@ router.get(
   requirePermissions('read:users.binded'),
   (req, res) => {
     if (res.locals.binded.constructor === Array) {
-      User.find({ email: { $in: res.locals.binded } }, (err, users) => {
-        res.send(mw.convertUsers(users))
-      }).lean()
+      Promise.all([
+        User.find({ email: { $in: res.locals.binded } }).lean(),
+        UserLogger.getAll().lean()
+      ])
+        .then(([users, logs]) => {
+          res.send(mw.convertUsers(users, logs))
+        })
     } else {
       res.sendStatus(400)
     }
@@ -1162,31 +1169,18 @@ router.get(
 router.get(
   '/actions',
   requirePermissions('read:actions.binded'),
-  (req, res) => {
-    const per =
-      req.query.per > 0 && typeof parseInt(req.query.per) == 'number'
-        ? req.query.per
-        : 8
-    const page =
-      req.query.page > 0 && typeof parseInt(req.query.page) == 'number'
-        ? req.query.page
-        : 0
-
+  async (req, res) => {
     if (res.locals.user.role.name == 'owner') {
-      let logs = _.chunk(UserLogger.getAll(), per)
-      let result = logs[page]
+      let logs = await UserLogger.getAll()
 
       res.send({
-        logs: result,
-        pages: logs.length,
+        logs: logs || []
       })
     } else {
-      let logs = _.chunk(UserLogger.getBinded(res.locals.binded), per)
-      let result = logs[page]
+      let logs = await UserLogger.getBinded(res.locals.binded)
 
       res.send({
-        logs: result,
-        pages: logs.length,
+        logs: logs || []
       })
     }
   },
