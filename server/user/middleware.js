@@ -45,18 +45,8 @@ const convertUsers = (users, logs) => {
         ],
       }
     })
-    .sort((a, b) =>
-      a.lastActionAt < b.lastActionAt
-        ? 1
-        : a.lastActionAt > b.lastActionAt || !a.lastActionAt
-          ? -1
-          : 0,
-    )
 
-  let online = result.filter(user => user.status == 'online'),
-    offline = result.filter(user => user.status == 'offline')
-
-  return [...online, ...offline]
+  return result
 }
 
 const convertUser = (

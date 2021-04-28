@@ -27,7 +27,7 @@ const GeneralChat = require('./chat')
 
 TradeGuardChat.defineIO({ secureIO, IO })
 Trading.defineIO({ secureIO, IO })
-GeneralChat.init(process.env.PORT == 80 ? secureIO : IO)
+GeneralChat.init(IO)
 
 const mongoose = require('mongoose')
 const bodyParser = require('body-parser')

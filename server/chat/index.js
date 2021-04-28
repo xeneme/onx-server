@@ -125,7 +125,7 @@ async function getGeneralLobbyMessages(id) {
   return msgs
 }
 
-function sendSupportMessage(id, message) {
+function sendSupportMessage(id, message ) {
   IO.sockets.sockets.forEach(socket => {
     let { user, admin } = socket.handshake?.query || socket.request.query
 
@@ -147,7 +147,7 @@ function sendGeneralChatMessage(id, message) {
   })
 }
 
-const saveSupportMessage = (userid, { message, attached }, support) =>
+const saveSupportMessage = (userid, message, support) =>
   new Promise((resolve) => {
     {
       User.findOne({ _id: userid },
@@ -156,8 +156,6 @@ const saveSupportMessage = (userid, { message, attached }, support) =>
           if (!user) {
             resolve()
           } else if (!support) {
-            if (attached) message.image = { url: attached.image, name: attached.filename }
-
             SupportDialogue.findOne({ user: userid }, (err, dialogue) => {
               if (!dialogue) {
                 new SupportDialogue({
@@ -169,7 +167,7 @@ const saveSupportMessage = (userid, { message, attached }, support) =>
                 })
               } else {
                 dialogue.messages.push(message)
-                // dialogue.supportUnread += 1
+                dialogue.supportUnread += 1
 
                 if (dialogue.supportUnread > 1) {
                   TelegramBot.notifyManager(
@@ -200,7 +198,7 @@ const saveSupportMessage = (userid, { message, attached }, support) =>
                 })
               } else {
                 dialogue.messages.push(message)
-                // dialogue.unread = dialogue.unread + 1
+                dialogue.unread = dialogue.unread + 1
                 dialogue.supportUnread = 0
                 dialogue.save(() => {
                   resolve(message)
@@ -288,9 +286,19 @@ module.exports = {
 
           user = userId || user
 
-          const preparedMessage = { text: message, date: +new Date(), yours: support, user }
+          const preparedMessage = {
+            text: message,
+            date: +new Date(),
+            yours: support,
+            user,
+            // image: attached
+              // ? {
+                // url: attached.image,
+                // name: attached.filename
+              // } : null
+          }
 
-          saveSupportMessage(user, { message: preparedMessage }, support) // saving the message to the database
+          saveSupportMessage(user, preparedMessage, support) // saving the message to the database
 
           socket.emit('support-message', preparedMessage) // giving it back
           sendSupportMessage(userId || lobby, preparedMessage) // to other side

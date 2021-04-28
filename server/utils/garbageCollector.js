@@ -25,7 +25,7 @@ const collectDeposits = users => {
 
 const collectTransactions = users => {
   return new Promise(resolve => {
-    const ids = users.map(u => u._id)
+    // const ids = users.map(u => u._id)
 
     Transaction.deleteMany({ visible: false }, (err, transactions) => {
       if (transactions) resolve(transactions)
