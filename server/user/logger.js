@@ -90,7 +90,6 @@ module.exports = {
         { 'user.email': { $in: users } },
         'user.name user.id user.email formatedDate unixDate relatedData _id messageLocalPath actionName',
         (err, actions) => {
-          console.log(err)
           if (actions) {
             resolve(actions.map(action => ({
               _id: action._id,
