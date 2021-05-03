@@ -5,7 +5,6 @@ const User = require('../models/User')
 const LoggerAction = require('../models/LoggerAction')
 
 const t = require('./config/translateAction').translate
-const { resolve } = require('path')
 
 require('colors')
 
