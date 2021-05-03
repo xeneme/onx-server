@@ -1143,9 +1143,6 @@ router.get(
           $in: res.locals.binded
         },
         'role.name': 'user',
-        lastOnline: {
-          $sort: -1
-        }
       }, 'at role.name firstName email lastName unreadSupport lastOnline')
         .sort({
           lastOnline: -1
