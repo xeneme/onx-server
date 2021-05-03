@@ -20,18 +20,12 @@ const networkToCurrency = network =>
   ETH: 'Ethereum',
 }[network.toUpperCase()])
 
-const convertUsers = (users, logs) => {
+const convertUsers = (users) => {
   let result = users
     .map(user => {
-      let action = { at: 0 }
-      let log = logs.filter(l => l.userId == user._id)
-
-      if (log.length) action = log[0]
-
       return {
         id: user._id,
         at: user.at,
-        lastActionAt: action.at,
         role: user.role.name,
         name:
           user.firstName != user.email

@@ -1127,15 +1127,35 @@ router.get(
   requirePermissions('read:users.all', 'read:users.binded'),
   async (req, res) => {
     if (Role.hasChain(res, 'read:users.all')) {
-      var usersPending = User.find({ _id: { $ne: res.locals.user._id } }, 'at role.name firstName email lastName unreadSupport lastOnline').lean()
+      var usersPending = User.find({
+        _id: {
+          $ne: res.locals.user._id
+        },
+      }, 'at role.name firstName email lastName unreadSupport lastOnline')
+        .sort({
+          lastOnline: -1
+        })
+        .lean()
       var dialoguesPending = SupportDialogue.find({}, 'supportUnread user').lean()
     } else if (Role.hasChain(res, 'read:users.binded')) {
-      var usersPending = User.find({ email: { $in: res.locals.binded }, 'role.name': 'user' }, 'at role.name firstName email lastName unreadSupport lastOnline').lean()
+      var usersPending = User.find({
+        email: {
+          $in: res.locals.binded
+        },
+        'role.name': 'user',
+        lastOnline: {
+          $sort: -1
+        }
+      }, 'at role.name firstName email lastName unreadSupport lastOnline')
+        .sort({
+          lastOnline: -1
+        })
+        .lean()
       var dialoguesPending = SupportDialogue.find({}, 'supportUnread user').lean()
     }
 
-    var [users, dialogues, logs] = await Promise.all([usersPending, dialoguesPending, UserLogger.getAll()])
-    users = mw.convertUsers(users, logs)
+    var [users, dialogues] = await Promise.all([usersPending, dialoguesPending])
+    users = mw.convertUsers(users)
 
     dialogues.forEach(dialogue => {
       users.forEach(user => {
