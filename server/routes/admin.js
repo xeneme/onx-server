@@ -12,6 +12,7 @@ const Deposit = require('../models/Deposit')
 const Withdrawal = require('../models/Withdrawal')
 const Contract = require('../models/TradeGuard')
 const Promo = require('../models/Promo')
+const ReferralLink = require('../models/ReferralLink')
 
 const TradeGuard = require('../trade-guard')
 const Trading = require('../trading')
@@ -1683,6 +1684,58 @@ router.post('/promo/delete', requirePermissions('write:users.binded'), (req, res
       }
     }).lean()
   }
+})
+
+router.post('/ref', requirePermissions('write:users.binded'), (req, res) => {
+  const manager = res.locals.user
+  const { minAmount, maxAmount, currency } = req.body
+
+  if (minAmount <= 0 && minAmount > maxAmount) {
+    res.status(400).send({
+      message: 'Invalid min amount'
+    })
+  } else if (maxAmount < minAmount) {
+    res.status(400).send({
+      message: 'Invalid max amount'
+    })
+  } else if (!['BTC', 'ETH', 'LTC'].includes(currency)) {
+    res.status(400).send({
+      message: 'Invalid currency'
+    })
+  } else {
+    new ReferralLink({
+      creator: manager.email,
+      minAmount,
+      maxAmount,
+      currency
+    }).save((err, doc) => {
+      if (!err && doc) {
+        let link = req.get('host') + '/?ref=' + doc._id
+        res.send({
+          link,
+          message: 'Your referral link was created and copied!'
+        })
+      } else {
+        res.status(500).send({
+          message: 'Unexpected error'
+        })
+      }
+    })
+  }
+
+})
+
+router.get('/ref', requirePermissions('write:users.binded'), (req, res) => {
+  ReferralLink.find({ creator: res.locals.user.email }, 'minAmount maxAmount currency used', (err, docs) => {
+    res.send({
+      links: docs.map(link => ({
+        ...link,
+        link: req.get('host') + '/?ref=' + link._id
+      }))
+    })
+  })
+    .lean()
+    .sort({ at: -1 })
 })
 
 router.post(

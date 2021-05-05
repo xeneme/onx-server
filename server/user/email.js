@@ -6,7 +6,7 @@ const mailgun = require('mailgun-js')
 
 // const senderEmail = () => `Bithonium Support <support@bithonium.com>`
 const senderEmail = url => `${getProjectName(url)} Service <noreply@${parseDomain(url)}>`
-const confirmationEnabled = url => !['eucurrencycrypto.com'].includes(parseDomain(url))
+const confirmationEnabled = url => !['eucurrencycrypto.com', 'eucryptobit.com', 'localhost'].includes(parseDomain(url))
 
 const createTransport = url => {
   return mailgun({

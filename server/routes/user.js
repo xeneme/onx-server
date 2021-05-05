@@ -4,6 +4,7 @@ const router = express.Router()
 const Joi = require('@hapi/joi')
 const XRegExp = require('xregexp')
 const bcrypt = require('bcryptjs')
+const jwt = require('jsonwebtoken')
 
 const User = require('../models/User')
 const UserTransaction = require('../models/Transaction')
@@ -472,6 +473,17 @@ router.get('/terms', UserMiddleware.requireAccess, (req, res) => {
     }
 
     res.send(terms)
+  })
+})
+
+router.get('/ref', UserMiddleware.requireAccess, async (req, res) => {
+  const user = res.locals.user
+
+  const id = user._id.split('').reverse().join('')
+  const link = `${req.get('host')}/?ref=${id}`
+
+  res.send({
+    link
   })
 })
 

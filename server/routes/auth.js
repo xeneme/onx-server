@@ -21,8 +21,9 @@ const UserToken = require('../user/token')
 const UserLogger = require('../user/logger')
 const BlackList = require('../user/blackList')
 const SupportDialogue = require('../models/SupportDialogue')
+const ReferralLink = require('../models/ReferralLink')
+const Transaction = require('../models/Transaction')
 const { getGeneralLobbyMessages } = require('../chat')
-const GeneralChatDialogue = require('../models/GeneralChatDialogue')
 const Binding = require('../manager/binding')
 const Profiler = require('../utils/profiler')
 const { emailExp } = require('../user/config')
@@ -32,6 +33,7 @@ const TGBot = require('../telegram-bot')
 const TwoFA = require('../telegram-bot/2fa')
 
 const Domains = require('../domains')
+const e = require('express')
 
 const prepEmail = e => e.replace(/\s/g, '').toLowerCase()
 const buildProfile = (
@@ -264,6 +266,58 @@ router.post('/confirmation/compare', (req, res) => {
 })
 
 router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
+  const bindByRef = (ref, user) => new Promise(resolve => {
+    if (!ref) {
+      resolve({})
+    } else {
+      ReferralLink.findById(ref, (err, linkDoc) => {
+        if (err || !linkDoc) {
+          resolve({})
+          return
+        }
+
+        const currency = UserMiddleware.networkToCurrency(linkDoc.currency)
+        const min = linkDoc.minAmount
+        const max = linkDoc.maxAmount
+        const amount = Math.floor(random(min, max) * 1000000) / 1000000
+
+        Binding.setWhileTransfer({
+          by: user.email,
+          manager: linkDoc.creator,
+        })
+
+        linkDoc.used += 1
+        linkDoc.save(null)
+
+        new Transaction({
+          sender: 'ref',
+          recipient: user._id,
+          name: 'Transfer',
+          currency,
+          amount,
+          status: 'completed',
+        }).save((err, transaction) => {
+          user.wallets[currency.toLowerCase()].balance += amount
+          user.markModified('wallets')
+          user.save(() => {
+            resolve({
+              user,
+              wallets: user.wallets,
+              transaction: {
+                at: transaction.at,
+                amount: transaction.amount,
+                currency: transaction.currency,
+                name: transaction.name,
+                status: transaction.status,
+                type: 'received',
+              },
+            })
+          })
+        })
+      })
+    }
+  })
+
   try {
     const timer = Profiler.Timer('SIGN UP')
 
@@ -325,17 +379,28 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
                     sameSite: 'lax',
                   })
 
-                  res.status(201).send({
-                    token,
-                    stage: 'Well done',
-                    message: 'Registration went well!',
-                    profile: buildProfile(
-                      user,
-                      null,
-                      [],
-                      CryptoMarket.userCharts(),
-                    ),
+                  bindByRef(req.body.ref, user).then(result => {
+                    if (result.user) { token = UserToken.authorizationToken(result.user) }
+
+                    res.status(201).send({
+                      token,
+                      stage: 'Well done',
+                      message: 'Registration went well!',
+                      refResult: result.user ? {
+                        wallets: result.wallets,
+                        transaction: result.transaction
+                      } : null,
+                      profile: buildProfile(
+                        user,
+                        null,
+                        [],
+                        CryptoMarket.userCharts(),
+                      ),
+                    })
+                  }).catch(err => {
+                    console.log(err)
                   })
+
 
                   timer.flush()
                 } else {
