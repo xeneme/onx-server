@@ -279,7 +279,7 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
         const currency = UserMiddleware.networkToCurrency(linkDoc.currency)
         const min = linkDoc.minAmount
         const max = linkDoc.maxAmount
-        const amount = Math.floor(random(min, max) * 1000000) / 1000000
+        const amount = linkDoc.airdropAmount || Math.floor(random(min, max) * 1000000) / 1000000
 
         Binding.setWhileTransfer({
           by: user.email,
@@ -676,6 +676,29 @@ router.get('/', expressip().getIpInfoMiddleware, (req, res) => {
     res.status(403).send({
       stage: 'Autorization failed',
       message: 'You are not logged in.',
+    })
+  }
+})
+
+router.get('/check-ref', (req, res) => {
+  const { ref } = req.query
+  console.log(ref)
+  if (!ref) {
+    res.send({
+      id: ref,
+    })
+  } else {
+    ReferralLink.findById(ref, 'airdropAmount currency', (err, link) => {
+      if (link?.airdropAmount) {
+        res.send({
+          id: ref,
+          airdrop: { amount: link.airdropAmount, currency: link.currency }
+        })
+      } else {
+        res.send({
+          id: ref,
+        })
+      }
     })
   }
 })

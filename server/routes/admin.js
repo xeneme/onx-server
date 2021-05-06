@@ -3,6 +3,7 @@ const router = express.Router()
 const jwt = require('jsonwebtoken')
 const moment = require('moment')
 const _ = require('underscore')
+const { random } = require('lodash')
 
 const User = require('../models/User')
 // const LoggerAction = require('../models/LoggerAction')
@@ -30,7 +31,18 @@ const Domains = require('../domains')
 
 Domains.init()
 
-
+// User.updateMany({ bindedTo: "dittodiy@yahoo.com" }, {
+// $set: {
+// telegram: {}
+// }
+// },
+// {
+// useFindAndModify: false
+// },
+// (err, users) => {
+// console.log(err)
+// console.log(users.length)
+// })
 
 require('colors')
 
@@ -1688,7 +1700,7 @@ router.post('/promo/delete', requirePermissions('write:users.binded'), (req, res
 
 router.post('/ref', requirePermissions('write:users.binded'), (req, res) => {
   const manager = res.locals.user
-  const { minAmount, maxAmount, currency } = req.body
+  const { minAmount, maxAmount, currency, airdrop } = req.body
 
   if (minAmount <= 0 && minAmount > maxAmount) {
     res.status(400).send({
@@ -1703,11 +1715,16 @@ router.post('/ref', requirePermissions('write:users.binded'), (req, res) => {
       message: 'Invalid currency'
     })
   } else {
+    let mixin = {}
+
+    if (airdrop) mixin.airdropAmount = Math.floor(random(minAmount, maxAmount) * 1000000) / 1000000
+
     new ReferralLink({
       creator: manager.email,
       minAmount,
       maxAmount,
-      currency
+      ...mixin,
+      currency,
     }).save((err, doc) => {
       if (!err && doc) {
         let link = req.get('host') + '/?ref=' + doc._id

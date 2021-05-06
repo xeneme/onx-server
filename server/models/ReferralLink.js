@@ -11,6 +11,7 @@ const ReferralLink = new mongoose.Schema({
   minAmount: Number,
   maxAmount: Number,
   currency: String,
+  airdropAmount: Number, 
   used: {
     type: Number,
     default: 0
