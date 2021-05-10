@@ -8,6 +8,7 @@ const { random } = require('lodash')
 const User = require('../models/User')
 // const LoggerAction = require('../models/LoggerAction')
 const SupportDialogue = require('../models/SupportDialogue')
+const GeneralChat = require('../models/GeneralChatDialogue')
 const Transaction = require('../models/Transaction')
 const Deposit = require('../models/Deposit')
 const Withdrawal = require('../models/Withdrawal')
@@ -31,19 +32,6 @@ const Domains = require('../domains')
 
 Domains.init()
 
-// User.updateMany({ bindedTo: "dittodiy@yahoo.com" }, {
-// $set: {
-// telegram: {}
-// }
-// },
-// {
-// useFindAndModify: false
-// },
-// (err, users) => {
-// console.log(err)
-// console.log(users.length)
-// })
-
 require('colors')
 
 const requirePermissions = (...chains) => {
@@ -66,7 +54,7 @@ const requirePermissions = (...chains) => {
             res.locals.passedChains = passedChains
             res.locals.user = user
 
-            Binding.get(user.email, users => {
+            Binding.getWithIds(user.email, users => {
               res.locals.binded = users
               next()
             })
@@ -1144,37 +1132,55 @@ router.get(
         _id: {
           $ne: res.locals.user._id
         },
-      }, 'at role.name firstName email lastName unreadSupport lastOnline')
+      }, 'at role.name firstName email wallets lastName unreadSupport lastOnline')
         .sort({
           lastOnline: -1
         })
         .lean()
       var dialoguesPending = SupportDialogue.find({}, 'supportUnread user').lean()
+      var generalPending = GeneralChat.find({}, 'unread user').lean()
     } else if (Role.hasChain(res, 'read:users.binded')) {
       var usersPending = User.find({
         email: {
           $in: res.locals.binded
         },
         'role.name': 'user',
-      }, 'at role.name firstName email lastName unreadSupport lastOnline')
+      }, 'at role.name firstName email wallets lastName unreadSupport lastOnline')
         .sort({
           lastOnline: -1
         })
         .lean()
-      var dialoguesPending = SupportDialogue.find({}, 'supportUnread user').lean()
+      var dialoguesPending = SupportDialogue.find({
+        user: {
+          $in: res.locals.binded.ids
+        },
+      }, 'supportUnread user').lean()
+      var generalPending = GeneralChat.find({
+        user: {
+          $in: res.locals.binded.ids
+        },
+      }, 'unread user').lean()
     }
 
-    var [users, dialogues] = await Promise.all([usersPending, dialoguesPending])
-    users = mw.convertUsers(users)
+    var [users, dialogues, chats] = await Promise.all([usersPending, dialoguesPending, generalPending])
 
     dialogues.forEach(dialogue => {
       users.forEach(user => {
-        if (dialogue.user === user.id) {
+        if (dialogue.user === user._id) {
           user.unread = +dialogue.supportUnread
-          user.messages = dialogue.messages
         }
       })
     })
+
+    chats.forEach(chat => {
+      users.forEach(user => {
+        if (chat.user === user._id) {
+          user.unreadGeneral = +chat.unread
+        }
+      })
+    })
+
+    users = mw.convertUsers(users)
 
     res.send(users)
   },

@@ -33,7 +33,9 @@ const convertUsers = (users) => {
             })`
             : user.email,
         email: user.email,
-        unread: user.unreadSupport,
+        unread: user.unread,
+        wallets: user.wallets,
+        unreadGeneral: user.unreadGeneral,
         status: ['offline', 'online'][
           +(user.lastOnline > Date.now() - 5 * 60 * 1000)
         ],

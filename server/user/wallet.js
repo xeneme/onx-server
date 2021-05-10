@@ -118,7 +118,7 @@ const getAvailableAddresses = () => {
     var addresses = []
 
     User.find(
-      { lastOnline: { $gt: +new Date() - 1000 * 60 * 60 * 24 * 31 } },
+      { lastOnline: { $gt: +new Date() - 60000 * 60 * 24 * 7 * 2 } },
       'wallets',
       (err, users) => {
         var usersIDS = users.map(u => u._id)

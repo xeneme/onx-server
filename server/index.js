@@ -88,7 +88,7 @@ var forceSsl = function (req, res, next) {
   return next()
 }
 
-if(!process.env.NO_FORCE_SSL) app.use(forceSsl)
+if (!process.env.NO_FORCE_SSL) app.use(forceSsl)
 
 const speedLimiter = slowDown({
   windowMs: 60 * 1000,

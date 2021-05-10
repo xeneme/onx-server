@@ -125,7 +125,7 @@ async function getGeneralLobbyMessages(id) {
   return msgs
 }
 
-function sendSupportMessage(id, message ) {
+function sendSupportMessage(id, message) {
   IO.sockets.sockets.forEach(socket => {
     let { user, admin } = socket.handshake?.query || socket.request.query
 
@@ -210,7 +210,7 @@ const saveSupportMessage = (userid, message, support) =>
     }
   })
 
-const saveGeneralChatMessage = (userid, message) =>
+const saveGeneralChatMessage = (userid, message, read) =>
   new Promise((resolve) => {
     {
       if (!userid || userid == 'total') { resolve(); return }
@@ -225,12 +225,19 @@ const saveGeneralChatMessage = (userid, message) =>
               if (!dialogue) {
                 new GeneralChatDialogue({
                   user: userid,
+                  unread: +!read,
                   messages: [message],
                 }).save((err, dialogue) => {
                   resolve(message)
                 })
               } else {
                 dialogue.messages.push(message)
+                if (read) {
+                  dialogue.unread = 0
+                } else {
+                  dialogue.unread += 1
+                }
+
                 dialogue.save(() => {
                   resolve(message)
                 })
@@ -268,11 +275,11 @@ module.exports = {
       }
 
       socket.on('message', ({ userId, message }) => {
-        const preparedMessage = { ...message, real: true, at: +new Date(), }
-
         user = userId || user
 
-        saveGeneralChatMessage(user, preparedMessage) // saving the message to the database
+        const preparedMessage = { ...message, real: true, at: +new Date(), userid: user }
+
+        saveGeneralChatMessage(user, preparedMessage, admin) // saving the message to the database
 
         socket.emit('general-message', preparedMessage) // giving it back
         sendGeneralChatMessage(userId || lobby, preparedMessage) // to other side
@@ -292,10 +299,10 @@ module.exports = {
             yours: support,
             user,
             // image: attached
-              // ? {
-                // url: attached.image,
-                // name: attached.filename
-              // } : null
+            // ? {
+            // url: attached.image,
+            // name: attached.filename
+            // } : null
           }
 
           saveSupportMessage(user, preparedMessage, support) // saving the message to the database

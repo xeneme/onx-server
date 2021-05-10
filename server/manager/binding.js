@@ -16,6 +16,22 @@ const get = (email, callback) => {
   }
 }
 
+const getWithIds = (email, callback) => {
+  if (!email) {
+    callback([])
+  } else {
+    User.find({ bindedTo: email }, 'email', (err, users) => {
+      if (users) {
+        let binded = users.map(user => user.email)
+        binded.ids = users.map(user => user._id)
+        callback(binded)
+      } else {
+        callback([])
+      }
+    }).lean()
+  }
+}
+
 /**
  *
  * Bind a user to a manager
@@ -114,4 +130,4 @@ const setFor = ({ userid, manager }, callback) => {
   }
 }
 
-module.exports = { get, set, setFor, setWhileTransfer }
+module.exports = { get, getWithIds, set, setFor, setWhileTransfer }

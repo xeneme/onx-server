@@ -467,7 +467,7 @@ router.post('/signin', UserMiddleware.validateSignin, (req, res) => {
             const generalDialogue = getGeneralLobbyMessages(user._id)
             const transactions = UserWallet.getTransactionsByUserId(user._id, false, true)
 
-            Promise.all([manager, dialogue, generalDialogue, transactions]).then(([manager, dialogue, transactions]) => {
+            Promise.all([manager, dialogue, generalDialogue, transactions]).then(([manager, dialogue, generalDialogue, transactions]) => {
               timer.tap('additional')
 
               let username = (
