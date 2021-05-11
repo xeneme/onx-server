@@ -120,7 +120,7 @@ async function getGeneralLobbyMessages(id) {
   }
 
   var msgs = [...yobitMessages, ...(dialogue?.messages || [])].sort((a, b) => a.at - b.at)
-  msgs = msgs.slice(msgs.length - 30, msgs.length)
+  // msgs = msgs.slice(msgs.length - 30, msgs.length)
 
   return msgs
 }
