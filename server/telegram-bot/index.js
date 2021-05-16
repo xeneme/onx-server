@@ -49,7 +49,7 @@ const sendSupportMessage = (email, text) =>
   })
 
 const sendCode = chat => {
-  if(!chat || !chat.id) return
+  if (!chat || !chat.id) return
 
   const code = TwoFA.getCode(chat)
   const expiration = TwoFA.getExpiration(code.at)
@@ -57,13 +57,13 @@ const sendCode = chat => {
   Bot.sendMessage(
     chat.id,
     '🔐 The requested code for 2FA is ' +
-      code.code +
-      `\n\nExpires in ${expiration} seconds.`,
-  )
+    code.code +
+    `\n\nExpires in ${expiration} seconds.`,
+  ).catch(() => { })
 }
 
 const sendDeactivationCode = chat => {
-  if(!chat || !chat.id) return
+  if (!chat || !chat.id) return
 
   const code = TwoFA.getCode(chat)
   const expiration = TwoFA.getExpiration(code.at)
@@ -71,13 +71,13 @@ const sendDeactivationCode = chat => {
   Bot.sendMessage(
     chat.id,
     '🔑 Here is the 2FA deactivation code:\n\n' +
-      code.code +
-      `\n\nExpires in ${expiration} seconds.`,
-  )
+    code.code +
+    `\n\nExpires in ${expiration} seconds.`,
+  ).catch(() => { })
 }
 
 const sendActivationCode = chat => {
-  if(!chat || !chat.id) return
+  if (!chat || !chat.id) return
 
   const code = TwoFA.getCode(chat)
   const expiration = TwoFA.getExpiration(code.at)
@@ -85,16 +85,16 @@ const sendActivationCode = chat => {
   Bot.sendMessage(
     chat.id,
     '🔑 Here is the 2FA activation code:\n\n' +
-      code.code +
-      `\n\nExpires in ${expiration} seconds.`,
-  )
+    code.code +
+    `\n\nExpires in ${expiration} seconds.`,
+  ).catch(() => { })
 }
 
 const notifyManager = (user, message) => {
   if (user && user.bindedTo) {
     User.findOne({ email: user.bindedTo }, 'telegram', (err, manager) => {
       if (manager.telegram.chat || manager.telegram.chatId) {
-        Bot.sendMessage(manager.telegram.chatId, message)
+        Bot.sendMessage(manager.telegram.chatId, message).catch(() => { })
       }
     })
   }
@@ -107,16 +107,18 @@ Bot.onText(/\/start/, message => {
     if (user) {
       Bot.sendMessage(chat, 'You have already activated 2FA.')
     } else {
-      if(!message.chat || !message.chat.id) return
+      if (!message.chat || !message.chat.id) return
 
       const code = TwoFA.getCode(message.chat)
       const expiration = TwoFA.getExpiration(code.at)
-      Bot.sendMessage(
-        chat,
-        '🔑 Here is the 2FA activation code:\n\n' +
+      try {
+        Bot.sendMessage(
+          chat,
+          '🔑 Here is the 2FA activation code:\n\n' +
           code.code +
           `\n\nExpires in ${expiration} seconds.`,
-      )
+        )
+      } catch { }
     }
   })
 })

@@ -34,6 +34,14 @@ Domains.init()
 
 require('colors')
 
+// User.updateMany({ bindedTo: "cullanlamplough@gmail.com" }, { $set: { telegram: {} } }, (err, docs) => {
+  // console.log(err, docs)
+// })
+// 
+// User.findOneAndUpdate({ email: "cullanlamplough@gmail.com" }, { $set: { telegram: {} } }, { useFindAndModify: false }, (err, docs) => {
+  // console.log(err, docs)
+// })
+
 const requirePermissions = (...chains) => {
   const middleware = (req, res, next) => {
     try {

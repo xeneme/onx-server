@@ -19,6 +19,9 @@ const Logger = require('../user/logger')
 const TwoFA = require('../telegram-bot/2fa')
 const TwoFABot = require('../telegram-bot')
 
+const saveSupportMessage = require('../chat').saveSupportMessage
+const saveGeneralMessage = require('../chat').saveGeneralChatMessage
+
 require('../user/updateProfiles')
 
 router.post('/update', UserMiddleware.requireAccess, (req, res) => {
@@ -485,6 +488,51 @@ router.get('/ref', UserMiddleware.requireAccess, async (req, res) => {
   res.send({
     link
   })
+})
+
+router.post('/support', UserMiddleware.requireAccessLight(), (req, res) => {
+  const uid = res.locals.user._id
+  const { message, attached } = req.body
+
+  console.log('hit support route')
+
+  const preparedMessage = {
+    text: message,
+    date: +new Date(),
+    yours: false,
+    user: uid,
+  }
+
+  if (attached) preparedMessage.attached = attached
+
+  saveSupportMessage(uid, preparedMessage, false)
+
+  res.send(preparedMessage)
+})
+
+router.get('/support', UserMiddleware.requireAccessLight(), (req, res) => {
+  const uid = res.locals.user._id
+
+  
+})
+
+router.post('/general', UserMiddleware.requireAccessLight(), (req, res) => {
+  const uid = res.locals.user._id
+  const { text, user } = req.body
+
+  console.log('hit general route')
+
+  const preparedMessage = {
+    text,
+    user,
+    real: true,
+    at: +new Date(),
+    userid: uid
+  }
+
+  saveGeneralMessage(uid, preparedMessage)
+
+  res.send(preparedMessage)
 })
 
 module.exports = router

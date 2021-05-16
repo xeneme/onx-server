@@ -151,6 +151,23 @@ module.exports = {
       res.sendStatus(403)
     }
   },
+  requireAccessLight: (props = '') => (req, res, next) => {
+    try {
+      const token = req.header('Authorization').split(' ')[1]
+      const userId = jwt.verify(token, process.env.SECRET).user
+
+      User.findById(userId, props, (err, match) => {
+        if (match) {
+          res.locals.user = match
+          next()
+        } else {
+          res.sendStatus(404)
+        }
+      }).lean()
+    } catch (err) {
+      res.sendStatus(403)
+    }
+  },
   validatePasswordResetToken: (req, res, next) => {
     try {
       const { userID, reset } = jwt.verify(req.body.token, process.env.SECRET)

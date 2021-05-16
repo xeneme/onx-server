@@ -249,7 +249,6 @@ const saveGeneralChatMessage = (userid, message, read) =>
   })
 
 
-
 module.exports = {
   init: io => {
     IO = io
@@ -313,5 +312,7 @@ module.exports = {
       })
     })
   },
-  getGeneralLobbyMessages
+  getGeneralLobbyMessages,
+  saveSupportMessage,
+  saveGeneralChatMessage
 }
