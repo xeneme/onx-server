@@ -145,9 +145,13 @@ db.once('open', () => {
 })
 
 app.use('/', (req, res, next) => {
-  if (blackListIPs.includes(blackList.ip(req))) {
-    res.end()
-  } else {
+  try {
+    const token = req.cookies['Authorization'].split(' ')[1]
+    const user = jwt.verify(token, process.env.SECRET).user
+
+    if(user.banned) res.end()
+    else next()
+  } catch {
     next()
   }
 })
