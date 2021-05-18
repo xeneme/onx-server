@@ -24,7 +24,7 @@ require('colors')
 
 CoinGecko.TIMEOUT = 9999999
 
-const SYNC_INTERVAL = 60000 * 1
+const SYNC_INTERVAL = 60000 * 5
 
 var currentPriceList = {}
 const CoinbaseClient = new Client({
