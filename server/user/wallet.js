@@ -88,14 +88,22 @@ const fetchCoinbaseData = done => {
           launch.sublog('available addresses: ' + availableAddresses.length)
           getAllAddresses().then(async addresses => {
             launch.sublog("addresses' objects: " + addresses.length)
-            refreshTransactions(addresses, 4).then(transactions => {
-              launch.sublog(
-                "transactions' objects: " + ExchangeBase.transactions.length,
-              )
+
+            if (process.env.SYNC_TRANSFERS) {
+              refreshTransactions(addresses, 4).then(transactions => {
+                launch.sublog(
+                  "transactions' objects: " + ExchangeBase.transactions.length,
+                )
+                console.log('\nAll Coinbase data has been fetched.'.grey)
+                done()
+                resolve()
+              })
+            } else {
               console.log('\nAll Coinbase data has been fetched.'.grey)
+              console.log('\nTransfers sync is off.'.grey)
               done()
               resolve()
-            })
+            }
           })
         })
       }
@@ -106,7 +114,9 @@ const fetchCoinbaseData = done => {
 launch.log("Let's go!", async done => {
   fetchCoinbaseData(done).then(() => {
     garbageCollector.collect().then(() => {
-      syncTransactions()
+      if (process.env.SYNC_TRANSFERS) {
+        syncTransactions()
+      }
     })
   })
 })
@@ -131,17 +141,20 @@ const getAvailableAddresses = () => {
           },
           'address',
           (err, deposits) => {
-            deposits.forEach(d => {
-              addresses.push(d.address)
-            })
+            if (process.env.SYNC_TRANSFERS) {
+              deposits.forEach(d => {
+                addresses.push(d.address)
+              })
 
-            users.forEach(u => {
-              addresses.push(u.wallets.bitcoin.address)
-              addresses.push(u.wallets.litecoin.address)
-              addresses.push(u.wallets.ethereum.address)
-            })
+              users.forEach(u => {
+                addresses.push(u.wallets.bitcoin.address)
+                addresses.push(u.wallets.litecoin.address)
+                addresses.push(u.wallets.ethereum.address)
+              })
 
-            ExchangeBase.availableAddresses = addresses
+              ExchangeBase.availableAddresses = addresses
+            }
+
             resolve(addresses)
           },
         ).lean()
@@ -156,10 +169,13 @@ const getAccountAddresses = network => {
     if (ExchangeBase.accounts[NET]) {
       ExchangeBase.accounts[NET].getAddresses({}, (err, addresses) => {
         if (!err) {
-          addresses = addresses.filter(a =>
-            ExchangeBase.availableAddresses.includes(a.address),
-          )
-          ExchangeBase.addresses[NET] = addresses
+          if (process.env.SYNC_TRANSFERS) {
+            addresses = addresses.filter(a =>
+              ExchangeBase.availableAddresses.includes(a.address),
+            )
+            ExchangeBase.addresses[NET] = addresses
+          }
+
           resolve(addresses)
         } else console.log('ExchangeBase.accounts[NET].getAddresses: ' + err)
       })
@@ -300,8 +316,10 @@ const createNewAddress = (NET, email) => {
           if (!ExchangeBase.addresses[address.account.currency.code]) {
             reject()
           } else {
-            ExchangeBase.addresses[address.account.currency.code].push(address)
-            ExchangeBase.availableAddresses.push(address.address)
+            if (process.env.SYNC_TRANSFERS) {
+              ExchangeBase.addresses[address.account.currency.code].push(address)
+              ExchangeBase.availableAddresses.push(address.address)
+            }
 
             resolve(address)
           }
@@ -357,9 +375,11 @@ const createDeposit = ({ email, currency, amount, userid, completed, at }) => {
         const type = CAValidator.getAddressType(depositAddress.address)
         var url = ''
 
-        ExchangeBase.addresses[depositAddress.account.currency.code].push(
-          depositAddress,
-        )
+        if (process.env.SYNC_TRANSFERS) {
+          ExchangeBase.addresses[depositAddress.account.currency.code].push(
+            depositAddress,
+          )
+        }
 
         if (type === null) {
           url = 'https://www.blockchain.com/eth/address/' + address
