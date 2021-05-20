@@ -75,7 +75,7 @@ const buildProfile = (
     role: user.role,
     firstName: user.firstName,
     lastName: user.lastName || '',
-    generalChat: user.generalChat || false,
+    generalChat: manager?.role?.settings['general-chat']? user.generalChat : false,
     wallets,
     pic: user.pic || '',
     twoFa: user.telegram && user.telegram.chat ? user.telegram.twoFa : false,

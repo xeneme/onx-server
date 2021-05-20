@@ -40,7 +40,7 @@ const getWithIds = (email, callback) => {
  * @param {(error: string, success: string)} callback
  */
 const set = ({ by, manager }, callback) => {
-  if (!callback) callback = () => {}
+  if (!callback) callback = () => { }
 
   if (by) {
     User.findOne(
@@ -69,6 +69,7 @@ const set = ({ by, manager }, callback) => {
             callback('This action is intended for managers', null)
           } else {
             user.bindedTo = manager.email
+            user.generalChat = Boolean(manager.role.settings['general-chat'])
 
             user.save(() => {
               console.log(

@@ -534,8 +534,6 @@ router.post('/general', UserMiddleware.requireAccessLight(), (req, res) => {
   const uid = res.locals.user._id
   const { text, user } = req.body
 
-  console.log('hit general route')
-
   const preparedMessage = {
     text,
     user,

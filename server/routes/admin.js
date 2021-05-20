@@ -18,6 +18,7 @@ const ReferralLink = require('../models/ReferralLink')
 
 const TradeGuard = require('../trade-guard')
 const Trading = require('../trading')
+const Chat = require('../chat')
 
 const Role = require('../user/roles')
 const Binding = require('../manager/binding')
@@ -177,7 +178,7 @@ const updateMessages = (messages, userid) => {
 
 //#endregion
 
-//#region [rgba(50, 0, 50, 1)] Support
+//#region [rgba(50, 0, 50, 1)] Support && General
 
 router.post(
   '/support/:id/send',
@@ -192,6 +193,37 @@ router.post(
       .catch(() => {
         res.status(403).send()
       })
+  },
+)
+
+router.post(
+  '/general/:id/send',
+  requirePermissions('write:support.binded'),
+  (req, res) => {
+    const uid = req.params.id
+    const { text, user } = req.body
+
+    const preparedMessage = {
+      text,
+      user,
+      real: true,
+      at: +new Date(),
+      userid: uid
+    }
+
+    Chat.saveGeneralChatMessage(uid, preparedMessage)
+
+    res.send(preparedMessage)
+  },
+)
+
+router.post(
+  '/general',
+  requirePermissions('write:support.binded'),
+  async (req, res) => {
+    const { user } = req.body
+
+    res.send({ messages: await Chat.getGeneralLobbyMessages(user) })
   },
 )
 
@@ -1251,6 +1283,21 @@ router.get(
     res.send(UserLogger.getBinded(res.locals.binded))
   },
 )
+
+router.get('/general-chat', requirePermissions('write:users.binded'), (req, res) => {
+  const user = res.locals.user
+
+  if (!req.query.enabled) {
+    res.send({ enabled: String(user.role?.settings['general-chat']) })
+  } else {
+    const enabled = req.query.enabled == 'true'
+
+    Settings.update(user, 'general-chat', enabled)
+
+    res.send({ message: 'User chat is ' + (enabled ? 'enabled' : 'disabled') })
+  }
+
+})
 
 //#endregion
 
