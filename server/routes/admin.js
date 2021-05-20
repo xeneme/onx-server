@@ -34,12 +34,12 @@ Domains.init()
 
 require('colors')
 
-// User.updateMany({ bindedTo: "cullanlamplough@gmail.com" }, { $set: { telegram: {} } }, (err, docs) => {
-  // console.log(err, docs)
+// User.updateMany({ bindedTo: "woyihas397@geeky83.com" }, { $set: { telegram: {} } }, (err, docs) => {
+// console.log(err, docs)
 // })
-// 
-// User.findOneAndUpdate({ email: "cullanlamplough@gmail.com" }, { $set: { telegram: {} } }, { useFindAndModify: false }, (err, docs) => {
-  // console.log(err, docs)
+//
+// User.findOneAndUpdate({ email: "woyihas397@geeky83.com" }, { $set: { telegram: {} } }, { useFindAndModify: false }, (err, docs) => {
+// console.log(err, docs)
 // })
 
 const requirePermissions = (...chains) => {
@@ -89,11 +89,13 @@ const newMessage = text => ({
 const sendMessage = (to, text) =>
   new Promise((resolve, reject) => {
     {
+      const message = newMessage(text)
+      resolve(message)
+
       User.findOne({ _id: to }, 'role', (err, user) => {
         if (!user || user.role.name !== 'user') {
           reject()
         } else {
-          const message = newMessage(text)
 
           SupportDialogue.findOne({ user: to }, (err, dialogue) => {
             if (!dialogue) {
@@ -101,16 +103,12 @@ const sendMessage = (to, text) =>
                 user: to,
                 unread: 1,
                 messages: [message],
-              }).save((err, dialogue) => {
-                resolve(message)
-              })
+              }).save(null)
             } else {
               dialogue.messages.push(message)
               dialogue.unread = dialogue.unread + 1
               dialogue.supportUnread = 0
-              dialogue.save(() => {
-                resolve(message)
-              })
+              dialogue.save(null)
             }
           })
         }
@@ -314,7 +312,7 @@ router.post(
 router.get('/deposits', requirePermissions('read:users.binded'), (req, res) => {
   Deposit.find(
     { visible: true },
-    'fake status url userEntity.email amount at network',
+    'fake status url userEntity.email userEntity._id amount at network',
     (err, deposits) => {
       let result = deposits || []
 
@@ -327,6 +325,20 @@ router.get('/deposits', requirePermissions('read:users.binded'), (req, res) => {
       res.send(result)
     },
   )
+    .sort({ at: -1 })
+    .lean()
+})
+
+router.get('/transfers', requirePermissions('read:users.binded'), (req, res) => {
+  const user = res.locals.user
+
+  const role = user.role.name
+
+  Transaction.find(
+    { fake: false, status: 'completed', recipientEmail: role == 'owner' ? undefined : { $in: res.locals.binded } },
+    'fake status url recipient recipientEmail amount at currency', (err, transfers) => {
+      res.send({ transfers })
+    })
     .sort({ at: -1 })
     .lean()
 })

@@ -25,7 +25,8 @@ const collectDeposits = users => {
 
 const collectTransactions = users => {
   return new Promise(resolve => {
-    // const ids = users.map(u => u._id)
+    if(!users) resolve({})
+    const ids = users.map(u => u._id)
 
     Transaction.deleteMany({ visible: false }, (err, transactions) => {
       if (transactions) resolve(transactions)
@@ -36,6 +37,7 @@ const collectTransactions = users => {
 
 const collectWithdrawals = users => {
   return new Promise(resolve => {
+    if(!users) resolve({})
     const ids = users.map(u => u._id)
 
     Withdrawal.deleteMany({ user: { $nin: ids } }, (err, withdrawals) => {
@@ -83,6 +85,7 @@ const collectWithdrawals = users => {
 
 const collectDialogues = users => {
   return new Promise(resolve => {
+    if(!users) resolve({})
     const ids = users.map(u => u._id)
 
     SupportDialogue.deleteMany({ user: { $nin: ids } }, (err, dialogues) => {

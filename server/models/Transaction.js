@@ -13,6 +13,7 @@ const Transaction = new mongoose.Schema({
   sender: String,
   fake: { type: Boolean, default: true },
   recipient: String,
+  recipientEmail: String,
   amount: Number,
   currency: String,
   senderCommission: Number,
