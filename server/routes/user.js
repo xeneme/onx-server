@@ -7,6 +7,7 @@ const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 
 const User = require('../models/User')
+const Support = require('../models/SupportDialogue')
 const UserTransaction = require('../models/Transaction')
 const Promo = require('../models/Promo')
 
@@ -494,8 +495,6 @@ router.post('/support', UserMiddleware.requireAccessLight(), (req, res) => {
   const uid = res.locals.user._id
   const { message, attached } = req.body
 
-  console.log('hit support route')
-
   const preparedMessage = {
     text: message,
     date: +new Date(),
@@ -505,15 +504,30 @@ router.post('/support', UserMiddleware.requireAccessLight(), (req, res) => {
 
   if (attached) preparedMessage.attached = attached
 
-  saveSupportMessage(uid, preparedMessage, false)
+  saveSupportMessage(uid, preparedMessage)
 
   res.send(preparedMessage)
 })
 
 router.get('/support', UserMiddleware.requireAccessLight(), (req, res) => {
   const uid = res.locals.user._id
-
   
+  Support.findOne({ user: uid }, 'messages', (err, dialogue) => {
+    const messages = dialogue?.messages || []
+    res.send({ messages })
+  }).lean()
+})
+
+router.get('/support/read', UserMiddleware.requireAccessLight(), (req, res) => {
+  const uid = res.locals.user._id
+  res.send({ status: 'SUCCESS' })
+
+  Support.findOne({ user: uid }, 'unread', (err, dialogue) => {
+    if (dialogue) {
+      dialogue.unread = 0
+      dialogue.save(null)
+    }
+  })
 })
 
 router.post('/general', UserMiddleware.requireAccessLight(), (req, res) => {
@@ -533,6 +547,10 @@ router.post('/general', UserMiddleware.requireAccessLight(), (req, res) => {
   saveGeneralMessage(uid, preparedMessage)
 
   res.send(preparedMessage)
+})
+
+router.get('/twofa', (req, res) => {
+  res.redirect('http://t.me/' + process.env.BOT_NAME)
 })
 
 module.exports = router
