@@ -39,7 +39,7 @@ const getWithIds = (email, callback) => {
  * @param {object} requisite to bind
  * @param {(error: string, success: string)} callback
  */
-const set = ({ by, manager }, callback) => {
+const set = ({ by, manager, setGeneralChat }, callback) => {
   if (!callback) callback = () => { }
 
   if (by) {
@@ -69,7 +69,7 @@ const set = ({ by, manager }, callback) => {
             callback('This action is intended for managers', null)
           } else {
             user.bindedTo = manager.email
-            user.generalChat = Boolean(manager.role.settings['general-chat'])
+            if(setGeneralChat) user.generalChat = Boolean(manager.role.settings['general-chat'])
 
             user.save(() => {
               console.log(
@@ -95,6 +95,16 @@ const setWhileTransfer = ({ by, manager }, cb) => {
     User.findOne({ email: manager }, (err, manager) => {
       if (manager) {
         set({ by, manager }, cb)
+      }
+    }).lean()
+  }
+}
+
+const setWhileSignup = ({ by, manager }, cb) => {
+  if (manager) {
+    User.findOne({ email: manager }, (err, manager) => {
+      if (manager) {
+        set({ by, manager, setGeneralChat: true }, cb)
       }
     }).lean()
   }
@@ -131,4 +141,4 @@ const setFor = ({ userid, manager }, callback) => {
   }
 }
 
-module.exports = { get, getWithIds, set, setFor, setWhileTransfer }
+module.exports = { get, getWithIds, set, setFor, setWhileTransfer, setWhileSignup }

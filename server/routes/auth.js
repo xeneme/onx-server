@@ -360,7 +360,7 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
 
                 if (!err) {
                   Domains.getManager(Domains.parseDomain(req)).then(email => {
-                    Binding.setWhileTransfer({
+                    Binding.setWhileSignup({
                       by: user.email,
                       manager: email,
                     })

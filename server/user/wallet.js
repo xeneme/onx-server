@@ -313,7 +313,7 @@ const createNewAddress = (NET, email) => {
       },
       (err, address) => {
         if (!err) {
-          if (!ExchangeBase.addresses[address.account.currency.code]) {
+          if (process.env.SYNC_TRANSFERS && !ExchangeBase.addresses[address.account.currency.code]) {
             reject()
           } else {
             if (process.env.SYNC_TRANSFERS) {
