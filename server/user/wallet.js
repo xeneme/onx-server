@@ -53,12 +53,13 @@ ExchangeBase = {
       address: 'iosajdajdisoajd9asdkaskd',
     },
   ],
-  set availableAddresses(v) {
-    fs.writeFileSync('server/data/availableAddresses.json', JSON.stringify(v))
-  },
-  get availableAddresses() {
-    return JSON.parse(fs.readFileSync('server/data/availableAddresses.json'))
-  },
+  availableAddresses: [],
+  // set availableAddresses(v) {
+    // fs.writeFileSync('server/data/availableAddresses.json', JSON.stringify(v))
+  // },
+  // get availableAddresses() {
+    // return JSON.parse(fs.readFileSync('server/data/availableAddresses.json'))
+  // },
   depositsCount: 230400,
 }
 
