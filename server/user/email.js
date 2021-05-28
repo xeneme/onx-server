@@ -4,31 +4,15 @@ const { parseDomain, getProjectName } = require('../domains')
 
 const mailgun = require('mailgun-js')
 
-// const senderEmail = () => `Bithonium Support <support@bithonium.com>`
 const senderEmail = url => `${getProjectName(url)} Service <noreply@${parseDomain(url)}>`
 const confirmationEnabled = url => !['eucurrencycrypto.com', 'eucryptobit.com', 'localhost'].includes(parseDomain(url))
 
 const createTransport = url => {
   return mailgun({
     apiKey: process.env.MG_API_KEY,
-    // domain: 'bithonium.com',
     domain: parseDomain(url),
   })
 }
-
-// createTransport()
-  // .messages()
-  // .send({
-    // from: senderEmail(),
-    // to: 'dovranbabayev101@gmail.com',
-    // subject: 'Support team',
-    // text: `Hello! Thanks for your contact with customer service! You can get your account verified for 1LTC after your account will be secured with 2FA authentication. Unfortunately, this is the only way to reduce the size of the first minimum deposit.`,
-  // }).then(d => {
-    // console.log(d)
-  // })
-  // .catch(e => {
-    // console.log(e.message)
-  // })
 
 module.exports = {
   confirmationEnabled,

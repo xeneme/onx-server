@@ -133,7 +133,6 @@ module.exports = {
       id: coin.id,
       price: coin.market_data.current_price.usd,
     }))
-    // .filter(coin => ['bitcoin', 'litecoin', 'ethereum'].includes(coin.id));
   },
   allHistory: async coin => {
     const h = 60 * 60

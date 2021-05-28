@@ -47,42 +47,6 @@ const collectWithdrawals = users => {
   })
 }
 
-// const collectLogs = users => {
-// return new Promise(resolve => {
-// const usersIDs = users.map(u => u._id)
-// 
-// const collect = logs => {
-// if (logs) {
-// var toDelete = logs
-// .filter(l => l.unixDate < Date.now() - 1000 * 60 * 60 * 24 * 30)
-// .map(l => l._id)
-// 
-// LoggerAction.deleteMany({ _id: { $in: toDelete } }, (err, expired) => {
-// LoggerAction.deleteMany(
-// { userId: { $nin: usersIDs } },
-// (err, useless) => {
-// expired = expired ? expired : { deletedCount: 0 }
-// useless = useless ? useless : { deletedCount: 0 }
-// 
-// resolve({ expired, useless })
-// },
-// )
-// })
-// } else {
-// resolve({ deletedCount: 0 })
-// }
-// }
-// 
-// if (Logger.getAll()) {
-// collect(Logger.getAll())
-// } else {
-// LoggerAction.find({}, (err, logs) => {
-// collect(logs)
-// }).lean()
-// }
-// })
-// }
-
 const collectDialogues = users => {
   return new Promise(resolve => {
     if(!users) resolve({})
@@ -122,17 +86,6 @@ const collect = () => {
       if (wCount) {
         console.log(`     Useless withdrawals was removed ${wCount}.`.grey)
       }
-
-      // var logs = await collectLogs(users)
-      // var leCount = logs.expired.deletedCount
-      // var luCount = logs.useless.deletedCount
-
-      // if (leCount || luCount) {
-      // console.log(
-      // `     Expired ${leCount} and useless ${luCount} logs was removed.`
-      // .grey,
-      // )
-      // }
 
       var dialogues = await collectDialogues(users)
       var dCount = dialogues.deletedCount

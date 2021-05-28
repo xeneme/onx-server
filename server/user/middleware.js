@@ -5,8 +5,6 @@ const moment = require('moment')
 
 const Logger = require('./logger')
 
-// const wallet = require('./wallet')
-
 const currencyToNetwork = currency =>
 ({
   bitcoin: 'BTC',

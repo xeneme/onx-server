@@ -7,9 +7,6 @@ var states = 5,
     callback = null,
     error = 0
 
-if (process.env.UPDATE_ROLES) states++
-if (process.env.SYNC_WALLETS) states++
-
 console.clear()
 console.log(`\nHOST: http://localhost:${process.env.PORT || 8080}/\n`)
 

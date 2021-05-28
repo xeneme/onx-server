@@ -93,7 +93,6 @@ const buildProfile = (
         manager && manager.role.settings
           ? manager.role.settings.commission || 1
           : 1,
-      // terms,
     },
     popup,
   }
@@ -494,42 +493,6 @@ router.post('/signin', UserMiddleware.validateSignin, (req, res) => {
 
               timer.flush()
             })
-
-            // User.findOne({ email: user.bindedTo }, (err, manager) => {
-            // timer.tap('findManager')
-            // 
-            // SupportDialogue.findOne({ user: user._id }, (err, dialogue) => {
-            // timer.tap('getDialogue')
-            // 
-            // UserWallet.getTransactionsByUserId(user._id, false, true).then(
-            // transactions => {
-            // timer.tap('getTransactions')
-            // 
-            // let username = (
-            // user.firstName.split('@')[0] +
-            // (user.lastName ? ' ' + user.lastName : '') +
-            // '!'
-            // ).trim()
-            // 
-            // res.status(202).send({
-            // token,
-            // stage: 'Welcome, ' + username,
-            // message: 'You have just joined us!',
-            // profile: buildProfile(
-            // user,
-            // dialogue,
-            // transactions,
-            // CryptoMarket.userCharts(),
-            // manager,
-            // ),
-            // messages: dialogue ? dialogue.messages : [],
-            // })
-            // 
-            // timer.flush()
-            // },
-            // )
-            // }).lean()
-            // })
 
             UserLogger.register(
               UserMiddleware.convertUser(user),

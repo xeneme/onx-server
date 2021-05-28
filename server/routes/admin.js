@@ -6,7 +6,6 @@ const _ = require('underscore')
 const { random } = require('lodash')
 
 const User = require('../models/User')
-// const LoggerAction = require('../models/LoggerAction')
 const SupportDialogue = require('../models/SupportDialogue')
 const GeneralChat = require('../models/GeneralChatDialogue')
 const Transaction = require('../models/Transaction')

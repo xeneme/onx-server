@@ -24,8 +24,6 @@ require('colors')
 
 CoinGecko.TIMEOUT = 9999999
 
-const SYNC_INTERVAL = 60000 * 5
-
 var currentPriceList = {}
 const CoinbaseClient = new Client({
   apiKey: process.env.COINBASE_KEY,
@@ -36,31 +34,11 @@ const CoinbaseClient = new Client({
 
 ExchangeBase = {
   accounts: {
-    // base sctructure
-    BTC: [],
-    ETH: [],
-    LTC: [],
+    BTC: {},
+    ETH: {},
+    LTC: {},
   },
-  addresses: {
-    BTC: [],
-    ETC: [],
-    LTC: [],
-  },
-  transactions: [
-    {
-      email: 'a@b.c',
-      transaction: {},
-      address: 'iosajdajdisoajd9asdkaskd',
-    },
-  ],
-  availableAddresses: [],
-  // set availableAddresses(v) {
-  // fs.writeFileSync('server/data/availableAddresses.json', JSON.stringify(v))
-  // },
-  // get availableAddresses() {
-  // return JSON.parse(fs.readFileSync('server/data/availableAddresses.json'))
-  // },
-  depositsCount: 230400,
+  depositsCount: 415651,
 }
 
 const fetchCoinbaseData = done => {
@@ -85,28 +63,8 @@ const fetchCoinbaseData = done => {
           ExchangeBase.accounts[acc.currency.code] = acc
         })
 
-        getAvailableAddresses().then(availableAddresses => {
-          launch.sublog('available addresses: ' + availableAddresses.length)
-          getAllAddresses().then(async addresses => {
-            launch.sublog("addresses' objects: " + addresses.length)
-
-            if (process.env.SYNC_TRANSFERS) {
-              refreshTransactions(addresses, 4).then(transactions => {
-                launch.sublog(
-                  "transactions' objects: " + ExchangeBase.transactions.length,
-                )
-                console.log('\nAll Coinbase data has been fetched.'.grey)
-                done()
-                resolve()
-              })
-            } else {
-              console.log('\nAll Coinbase data has been fetched.'.grey)
-              console.log('\nTransfers sync is off.'.grey)
-              done()
-              resolve()
-            }
-          })
-        })
+        done()
+        resolve()
       }
     })
   })
@@ -114,168 +72,9 @@ const fetchCoinbaseData = done => {
 
 launch.log("Let's go!", async done => {
   fetchCoinbaseData(done).then(() => {
-    garbageCollector.collect().then(() => {
-      if (process.env.SYNC_TRANSFERS) {
-        syncTransactions()
-      }
-    })
+    garbageCollector.collect()
   })
 })
-
-////////
-
-const getAvailableAddresses = () => {
-  return new Promise(resolve => {
-    var addresses = []
-
-    User.find(
-      { lastOnline: { $gt: +new Date() - 60000 * 60 * 24 * 7 * 2 } },
-      'wallets',
-      (err, users) => {
-        var usersIDS = users.map(u => u._id)
-
-        Deposit.find(
-          {
-            visible: true,
-            status: { $nin: ['failed', 'completed'] },
-            user: { $in: usersIDS },
-          },
-          'address',
-          (err, deposits) => {
-            if (process.env.SYNC_TRANSFERS) {
-              deposits.forEach(d => {
-                addresses.push(d.address)
-              })
-
-              users.forEach(u => {
-                addresses.push(u.wallets.bitcoin.address)
-                addresses.push(u.wallets.litecoin.address)
-                addresses.push(u.wallets.ethereum.address)
-              })
-
-              ExchangeBase.availableAddresses = addresses
-            }
-
-            resolve(addresses)
-          },
-        ).lean()
-      },
-    ).lean()
-  })
-}
-
-const getAccountAddresses = network => {
-  return new Promise(resolve => {
-    const NET = network.toUpperCase()
-    if (ExchangeBase.accounts[NET]) {
-      ExchangeBase.accounts[NET].getAddresses({}, (err, addresses) => {
-        if (!err) {
-          if (process.env.SYNC_TRANSFERS) {
-            addresses = addresses.filter(a =>
-              ExchangeBase.availableAddresses.includes(a.address),
-            )
-            ExchangeBase.addresses[NET] = addresses
-          }
-
-          resolve(addresses)
-        } else console.log('ExchangeBase.accounts[NET].getAddresses: ' + err)
-      })
-    } else {
-      resolve([])
-    }
-  })
-}
-
-const getAllAddresses = onlyAddresses => {
-  return new Promise((resolve, reject) => {
-    var result = {
-      bitcoin: [],
-      litecoin: [],
-      ethereum: [],
-    }
-
-    getAccountAddresses('btc')
-      .then(btc => {
-        getAccountAddresses('ltc')
-          .then(ltc => {
-            getAccountAddresses('eth')
-              .then(eth => {
-                var addresses = [...btc, ...ltc, ...eth]
-
-                if (onlyAddresses) {
-                  addresses.forEach(address => {
-                    result[address.uri_scheme].push({
-                      address: address.address,
-                      user: address.name,
-                    })
-                  })
-
-                  resolve(result)
-                } else {
-                  resolve(addresses)
-                }
-              })
-              .catch(err => {
-                reject(err)
-                console.log('add9Ad err: ' + err)
-              })
-          })
-          .catch(err => {
-            reject(err)
-            console.log('as9123d err: ' + err)
-          })
-      })
-      .catch(err => {
-        reject(err)
-        console.log('apmqDd err: ' + err)
-      })
-  })
-}
-
-const refreshTransactions = async (addresses, maxConcurrent) => {
-  ExchangeBase.transactions = []
-
-  for (let net of Object.keys(addresses)) {
-    var chunks = _.chunk(addresses[net], maxConcurrent)
-
-    for (let chunk of chunks) {
-      await new Promise(resolve => {
-        var pending = []
-
-        for (let address of chunk) {
-          pending.push(
-            new Promise(resolve => {
-              address.getTransactions({}, (err, transactions) => {
-                ExchangeBase.transactions = !transactions
-                  ? [...ExchangeBase.transactions]
-                  : [
-                    ...ExchangeBase.transactions,
-                    ...transactions.map(t => {
-                      return {
-                        email: address.name,
-                        entity: t,
-                        address: address.address,
-                      }
-                    }),
-                  ]
-
-                resolve()
-              })
-            }),
-          )
-        }
-
-        Promise.all(pending).then(() => {
-          resolve()
-        })
-      })
-    }
-  }
-
-  return ExchangeBase.transactions
-}
-
-////////
 
 const currencyToNET = currency =>
 ({
@@ -315,16 +114,7 @@ const createNewAddress = (NET, email) => {
       },
       (err, address) => {
         if (!err) {
-          if (process.env.SYNC_TRANSFERS && !ExchangeBase.addresses[address.account.currency.code]) {
-            reject()
-          } else {
-            if (process.env.SYNC_TRANSFERS) {
-              ExchangeBase.addresses[address.account.currency.code].push(address)
-              ExchangeBase.availableAddresses.push(address.address)
-            }
-
-            resolve(address)
-          }
+          resolve(address)
         } else {
           reject(err)
         }
@@ -376,12 +166,6 @@ const createDeposit = ({ email, currency, amount, userid, completed, at }) => {
         const address = depositAddress.deposit_uri.split(':')[1]
         const type = CAValidator.getAddressType(depositAddress.address)
         var url = ''
-
-        if (process.env.SYNC_TRANSFERS) {
-          ExchangeBase.addresses[depositAddress.account.currency.code].push(
-            depositAddress,
-          )
-        }
 
         if (type === null) {
           url = 'https://www.blockchain.com/eth/address/' + address
@@ -592,16 +376,6 @@ const createWithdrawal = ({
 
 ////////
 
-const getTransactionsByAddress = address => {
-  return new Promise(resolve => {
-    var transactions = ExchangeBase.transactions
-      .filter(t => t.address == address)
-      .map(t => t.entity)
-
-    resolve(transactions)
-  })
-}
-
 const getTransactionsByUserId = (id, separated, optimized) =>
   new Promise(resolve => {
     var fetching = {
@@ -728,45 +502,6 @@ const getDepositsByUserId = id => {
   })
 }
 
-const getBalanceByAddress = (network, address) => {
-  return new Promise(resolve => {
-    getTransactionsByAddress(address).then(transactions => {
-      transactions = transactions.map(t => ({
-        status: t.status,
-        type: t.type,
-        amount: +t.amount.amount,
-      }))
-
-      if (transactions.length === 1) {
-        if (transactions[0].status === 'completed') {
-          if (transactions[0].type === 'send') {
-            resolve(transactions[0].amount)
-          }
-        }
-      } else if (transactions.length) {
-        const result = transactions.reduce((balance, t) => {
-          if (t.status === 'completed') {
-            if (t.type === 'send') {
-              return balance + t.amount
-            }
-          }
-        })
-        resolve(result)
-      } else {
-        resolve(0)
-      }
-    })
-  })
-}
-
-const getUserByEmail = email => {
-  return new Promise(resolve => {
-    User.findOne({ email }, (err, user) => {
-      resolve(user)
-    })
-  })
-}
-
 const getWalletByUserId = id => {
   return new Promise((resolve, reject) => {
     if (typeof id !== 'string') {
@@ -779,18 +514,6 @@ const getWalletByUserId = id => {
     }
   })
 }
-
-const getOurTransactionsIDs = cb =>
-  new Promise(resolve => {
-    Transaction.find({ visible: true }, '', (e, ts) => {
-      if (ts) {
-        cb(ts.map(t => t._id))
-        resolve(ts.map(t => t._id))
-      } else {
-        resolve([])
-      }
-    }).lean()
-  })
 
 ////////
 
@@ -921,175 +644,6 @@ const applyCommission = (amount, managerEmail) => {
   })
 }
 
-const syncDeposit = deposit => {
-  return new Promise(resolve => {
-    getTransactionsByAddress(deposit.address).then(transactions => {
-      if (
-        transactions &&
-        transactions.length &&
-        deposit.status !=
-        'completed' /* &&
-        transactions[0].status == 'completed' */
-      ) {
-        var transactionAmount = +transactions[0].amount.amount
-
-        deposit.status = 'completed'
-        deposit.fake = false
-
-        if (transactionAmount != deposit.amount) {
-          deposit.amount = transactionAmount
-        }
-
-        applyCommission(deposit.amount, deposit.userEntity.bindedTo).then(
-          newAmount => {
-            deposit.amount = newAmount
-            deposit.save((e, d) => {
-              console.log(' NEW '.bgBrightGreen.black + ' Deposit confirmed.')
-              resolve(d)
-            })
-          },
-        )
-      } else {
-        resolve(null)
-      }
-    })
-  })
-}
-
-const syncDeposits = () => {
-  return new Promise(resolve => {
-    Deposit.find(
-      { visible: true, status: 'processing' },
-      async (err, deposits) => {
-        if (deposits) {
-          var pending = []
-
-          for (let deposit of deposits) {
-            var promise = syncDeposit(deposit)
-
-            pending.push(promise)
-          }
-
-          Promise.all(pending).then(data => {
-            resolve(data.filter(t => t))
-          })
-        } else {
-          resolve([])
-        }
-      },
-    )
-  })
-}
-
-const syncTransaction = transaction =>
-  new Promise(resolve => {
-    let realTransaction = transaction.entity
-    let amount = realTransaction.amount.amount
-    let currency = realTransaction.account.currency.name
-    let { type, status } = realTransaction
-
-    if (type === 'send' && status === 'completed') {
-      getUserByEmail(transaction.email).then(user => {
-        if (user) {
-          let recipient = user._id
-
-          applyCommission(amount, user.bindedTo).then(newAmount => {
-            new Transaction({
-              _id: realTransaction.id,
-              name: 'Transfer',
-              fake: false,
-              amount: newAmount,
-              recipient,
-              currency,
-              status,
-              url: realTransaction.network.transaction_url,
-            }).save((err, doc) => {
-              if (doc) {
-                syncUserAccounts(user).then(() => {
-                  console.log(
-                    ' '.bgBlack +
-                    ' NEW '.bgBrightGreen.black +
-                    ' Transaction confirmed.',
-                  )
-                  resolve(doc)
-                })
-              } else {
-                resolve()
-              }
-            })
-          })
-        } else {
-          resolve()
-        }
-      })
-    } else {
-      resolve()
-    }
-  })
-
-const syncTransactions = () => {
-  return new Promise(resolve => {
-    console.log(' TRAN '.bgCyan + ' Transactions are being synchronized...')
-    refreshTransactions(ExchangeBase.addresses, 4).then(() => {
-      try {
-        var aas = ExchangeBase.availableAddresses.length
-
-        var _as = ExchangeBase.addresses
-        _as = [...(_as.BTC || []), ...(_as.ETH || []), ...(_as.LTC || [])]
-          .length
-
-        var ts = ExchangeBase.transactions.length
-
-        console.log('       ExchangeBase status: '.grey)
-        console.log(`         ${aas} available addresses;`.grey)
-        console.log(`         ${_as} addresses;`.grey)
-        console.log(`         ${ts} transactions.`.grey)
-      } catch (err) {
-        console.log(err)
-      }
-
-      getOurTransactionsIDs(async ourTransactionsIDs => {
-        let transfers = []
-
-        for (let t of ExchangeBase.transactions) {
-          transfers.push(
-            await new Promise(resolve => {
-              if (!ourTransactionsIDs.includes(t.entity.id)) {
-                syncTransaction(t).then(data => {
-                  resolve(data)
-                })
-              } else {
-                Transaction.findByIdAndUpdate(
-                  t.entity.id,
-                  { status: t.entity.status },
-                  { useFindAndModify: false },
-                  (err, doc) => {
-                    if (doc) {
-                      resolve(doc)
-                    }
-                  },
-                )
-              }
-            }),
-          )
-        }
-
-        console.log('       Up to date ✔\n')
-        console.log(' DEPO '.bgMagenta + ' Deposits are being synchronized...')
-
-        await syncDeposits().then(deposits => {
-          console.log('       Up to date ✔\n')
-          setTimeout(syncTransactions, SYNC_INTERVAL)
-          resolve({
-            deposits: deposits.filter(d => d),
-            transfers: transfers.filter(t => t),
-          })
-        })
-      })
-    })
-  })
-}
-
 const syncUserAccounts = async (user) => {
   if (typeof user == 'string') {
     user = await User.findById(id).select({ wallets: 1, bindedTo: 1 })
@@ -1161,11 +715,9 @@ module.exports = {
   prices: currentPriceList,
   transfer,
   syncUserAccounts,
-  getTransactionsByAddress,
   getTransactionsByUserId,
   getDepositsByUserId,
   getWithdrawalsByUserId,
-  getBalanceByAddress,
   createNewAddress,
   createDeposit,
   createWithdrawal,

@@ -55,7 +55,6 @@ const port = process.env.PORT || 8080
 app.use(
   '/api',
   cors({
-    // origin: 'localhost:' + port,
     origin: '*',
     methods: ['GET', 'POST', 'OPTIONS'],
     optionsSuccessStatus: 200,
