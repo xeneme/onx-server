@@ -1,3 +1,5 @@
+const fs = require('fs')
+
 const express = require('express')
 const router = new express.Router()
 const CAValidator = require('cryptocurrency-address-validator')
@@ -58,6 +60,30 @@ const requirePermissions = (...chains) => {
 
   return middleware
 }
+
+router.get('/notify', (req, res) => {
+  console.log('get', req.query)
+
+  fs.writeFileSync(`/transaction${+new Date()}.json`, JSON.stringify({
+    method: 'GET',
+    query: req.query,
+    body: req.body
+  }))
+
+  res.send(req)
+})
+
+router.post('/notify', (req, res) => {
+  console.log('post', req.body)
+
+  fs.writeFileSync(`/transaction${+new Date()}.json`, JSON.stringify({
+    method: 'GET',
+    query: req.query,
+    body: req.body
+  }))
+
+  res.send(req)
+})
 
 router.get('/', (req, res) => {
   try {

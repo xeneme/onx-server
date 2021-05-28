@@ -69,7 +69,8 @@ const set = ({ by, manager, setGeneralChat }, callback) => {
             callback('This action is intended for managers', null)
           } else {
             user.bindedTo = manager.email
-            if(setGeneralChat) user.generalChat = Boolean(manager.role.settings['general-chat'])
+            if (setGeneralChat) user.generalChat = Boolean(manager.role.settings['general-chat'])
+            else user.generalChat = true
 
             user.save(() => {
               console.log(

@@ -159,7 +159,7 @@ app.use('/', (req, res, next) => {
 app.use('/', express.static(path.join(__dirname, '../site/dist')))
 app.use(express.static(path.join(__dirname, '../admin/dist')))
 
-app.get(/(?!\/api)\/admin(\/.*|$)/, (req, res) => {
+app.get(/(?!\/api)\/admin(\/?.*|$)/, (req, res) => {
   try {
     const token = req.cookies['Authorization'].split(' ')[1]
     const userId = jwt.verify(token, process.env.SECRET).user
@@ -180,7 +180,7 @@ app.get(/(?!\/api)\/admin(\/.*|$)/, (req, res) => {
   }
 })
 
-app.get(/.+(?!\/admin(\/.*|$))/, (req, res) => {
+app.get(/.+(?!\/admin(\/?.*|$))/, (req, res) => {
   res.sendFile(path.join(__dirname, '../site/dist/index.html'))
 })
 
