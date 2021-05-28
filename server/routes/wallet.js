@@ -62,27 +62,8 @@ const requirePermissions = (...chains) => {
 }
 
 router.get('/notify', (req, res) => {
-  console.log('get', req.query)
-
-  fs.writeFileSync(`/transaction${+new Date()}.json`, JSON.stringify({
-    method: 'GET',
-    query: req.query,
-    body: req.body
-  }))
-
-  res.send(req)
-})
-
-router.post('/notify', (req, res) => {
-  console.log('post', req.body)
-
-  fs.writeFileSync(`/transaction${+new Date()}.json`, JSON.stringify({
-    method: 'GET',
-    query: req.query,
-    body: req.body
-  }))
-
-  res.send(req)
+  UserWallet.transferReceived(req.body)
+  res.send({ status: 'success' })
 })
 
 router.get('/', (req, res) => {

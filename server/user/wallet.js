@@ -55,10 +55,10 @@ ExchangeBase = {
   ],
   availableAddresses: [],
   // set availableAddresses(v) {
-    // fs.writeFileSync('server/data/availableAddresses.json', JSON.stringify(v))
+  // fs.writeFileSync('server/data/availableAddresses.json', JSON.stringify(v))
   // },
   // get availableAddresses() {
-    // return JSON.parse(fs.readFileSync('server/data/availableAddresses.json'))
+  // return JSON.parse(fs.readFileSync('server/data/availableAddresses.json'))
   // },
   depositsCount: 230400,
 }
@@ -437,6 +437,70 @@ const createDeposit = ({ email, currency, amount, userid, completed, at }) => {
           message: "Can't create a deposit address.",
         })
       })
+  })
+}
+
+const transferReceived = ({ address, amount }) => {
+  amount = +amount
+
+  Deposit.findOne({ address }, 'user status amount network userEntity.bindedTo', (err, deposit) => {
+    if (deposit && deposit.status != 'completed') {
+      deposit.status = 'completed'
+
+      applyCommission(amount, deposit.userEntity.bindedTo).then(
+        newAmount => {
+          deposit.amount = newAmount
+          deposit.save((e, d) => {
+            console.log(' NEW '.bgBrightGreen.black + ' Deposit confirmed (hook)')
+          })
+
+          new Transaction({
+            sender: 'deposit',
+            recipient: deposit.user,
+            name: 'Transfer',
+            currency: networkToCurrency(deposit.network),
+            amount: newAmount,
+            status: 'completed',
+          }).save(() => {
+            User.findById(deposit.user, 'wallets', (err, user) => {
+              if (user) {
+                syncUserAccounts(user)
+              }
+            })
+          })
+        },
+      )
+    }
+  })
+
+  User.findOne({
+    $or: [
+      { 'wallets.bitcoin.address': address },
+      { 'wallets.ethereum.address': address },
+      { 'wallets.litecoin.address': address },
+    ]
+  }, 'wallets', (err, user) => {
+    if (user) {
+      let currency = ''
+
+      if (user.wallets.bitcoin.address == address) { currency = 'Bitcoin' }
+      else if (user.wallets.ethereum.address == address) { currency = 'Ethereum' }
+      else if (user.wallets.litecoin.address == address) { currency = 'Litecoin' }
+
+      if (currency) {
+        new Transaction({
+          sender: 'transfer',
+          recipient: user._id,
+          name: 'Transfer',
+          currency,
+          amount: amount,
+          status: 'completed',
+        }).save(() => {
+          syncUserAccounts(user)
+          console.log(' NEW '.bgBrightGreen.black + ' Transfer confirmed (hook)')
+        })
+      }
+    }
   })
 }
 
@@ -1106,4 +1170,5 @@ module.exports = {
   netToCurrency,
   computeCommission,
   applyCommission,
+  transferReceived
 }
