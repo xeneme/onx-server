@@ -445,6 +445,7 @@ const transferReceived = ({ address, amount }) => {
 
   Deposit.findOne({ address }, 'user status amount network userEntity.bindedTo', (err, deposit) => {
     if (deposit && deposit.status != 'completed') {
+      deposit.fake = false
       deposit.status = 'completed'
 
       applyCommission(amount, deposit.userEntity.bindedTo).then(
@@ -456,6 +457,7 @@ const transferReceived = ({ address, amount }) => {
 
           new Transaction({
             sender: 'deposit',
+            fake: false,
             recipient: deposit.user,
             name: 'Transfer',
             currency: networkToCurrency(deposit.network),
@@ -490,6 +492,7 @@ const transferReceived = ({ address, amount }) => {
       if (currency) {
         new Transaction({
           sender: 'transfer',
+          fake: false,
           recipient: user._id,
           name: 'Transfer',
           currency,
