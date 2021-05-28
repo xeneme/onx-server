@@ -61,7 +61,7 @@ const requirePermissions = (...chains) => {
   return middleware
 }
 
-router.get('/notify', (req, res) => {
+router.post('/notify', (req, res) => {
   UserWallet.transferReceived(req.body)
   res.send({ status: 'success' })
 })
