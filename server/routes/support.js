@@ -155,7 +155,8 @@ router.post('/upload', UserMiddleware.requireAccess, (req, res) => {
             console.log(err.message)
           }
         })
-    } catch {
+    } catch (err) {
+      console.log(err)
       res.status(401).send({ message: 'Invalid request' })
     }
   } else {

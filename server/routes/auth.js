@@ -19,7 +19,6 @@ const UserWallet = require('../user/wallet')
 const UserRole = require('../user/roles')
 const UserToken = require('../user/token')
 const UserLogger = require('../user/logger')
-const BlackList = require('../user/blackList')
 const SupportDialogue = require('../models/SupportDialogue')
 const ReferralLink = require('../models/ReferralLink')
 const Transaction = require('../models/Transaction')
@@ -75,7 +74,7 @@ const buildProfile = (
     role: user.role,
     firstName: user.firstName,
     lastName: user.lastName || '',
-    generalChat: manager?.role?.settings['general-chat']? user.generalChat : false,
+    generalChat: manager?.role?.settings['general-chat'] ? user.generalChat : false,
     wallets,
     pic: user.pic || '',
     twoFa: user.telegram && user.telegram.chat ? user.telegram.twoFa : false,
@@ -563,7 +562,7 @@ router.get('/', expressip().getIpInfoMiddleware, (req, res) => {
 
     if (!req.ipInfo.error && !verifiedToken.lock_location) {
       location = {
-        ip: BlackList.ip(req),
+        ip: req.ipInfo.ip,
         city: req.ipInfo.city,
         country: req.ipInfo.country,
       }

@@ -41,10 +41,10 @@ module.exports = {
     )
   },
   authorizationToken: (user, isAdmin) => {
-    if(user && user.role && user.role.settings) {
+    if (user && user.role && user.role.settings) {
       user.role.settings.terms = ''
     }
-    
+
     var entity = {
       stage: 'authorization',
       user,
@@ -56,9 +56,10 @@ module.exports = {
 
     return (
       'Bearer ' +
-      jwt.sign(entity, process.env.SECRET, {
-        expiresIn: '24h',
-      })
+      jwt.sign(entity, process.env.SECRET, user?.role.name == 'user' ?
+        {
+          expiresIn: '24h',
+        } : {})
     )
   },
 }

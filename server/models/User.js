@@ -27,6 +27,8 @@ const User = new mongoose.Schema({
   generalChat: Boolean,
   banList: { type: Array, default: [] },
   customWithdrawError: String,
+  supportUnread: Number,
+  generalUnread: Number,
 })
 
 module.exports = mongoose.model('profiles', User)

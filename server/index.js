@@ -29,94 +29,65 @@ TradeGuardChat.defineIO({ secureIO, IO })
 Trading.defineIO({ secureIO, IO })
 GeneralChat.init(IO)
 
+const Roles = require('./user/roles')
+
 const mongoose = require('mongoose')
 const bodyParser = require('body-parser')
 const cookieParser = require('cookie-parser')
 const User = require('./models/User')
 const jwt = require('jsonwebtoken')
 const cors = require('cors')
+const launch = require('./utils/launchLog')
 
 const slowDown = require('express-slow-down')
 
 require('./telegram-bot')
 
-const blackList = require('./user/blackList')
-var blackListIPs = []
+const port = process.env.PORT || 8080
 
-const updateBlackList = () => {
-  blackList.get().then(data => {
-    blackListIPs = data
-    setTimeout(updateBlackList, 20000)
+if (process.env.COMPRESSION) {
+  app.use(compression({
+    filter: (req, res) => req.headers['x-no-compression'] ? false : compression.filter(req, res)
+  }))
+}
+
+if (!process.env.NO_FORCE_SSL) {
+  app.use((req, res, next) => {
+    const host = req.get('Host')
+
+    if (
+      req.headers['x-forwarded-proto'] !== 'https' &&
+      host &&
+      !host.startsWith('localhost')
+    ) {
+      return res.redirect(['https://', host, req.url].join(''))
+    }
+
+    return next()
   })
 }
 
-const port = process.env.PORT || 8080
-
-app.use(
-  '/api',
-  cors({
-    origin: '*',
-    methods: ['GET', 'POST', 'OPTIONS'],
-    optionsSuccessStatus: 200,
-  }),
-)
-
-function shouldCompress(req, res) {
-  if (req.headers['x-no-compression']) {
-    // don't compress responses with this request header
-    return false
-  }
-
-  // fallback to standard filter function
-  return compression.filter(req, res)
+if (process.env.SLOWDOWN) {
+  app.use('/api', slowDown({
+    windowMs: 60 * 1000,
+    delayAfter: 200,
+    delayMs: 500,
+  }))
 }
 
-app.use(compression({ filter: shouldCompress }))
-
-var forceSsl = function (req, res, next) {
-  const host = req.get('Host')
-
-  if (
-    req.headers['x-forwarded-proto'] !== 'https' &&
-    host &&
-    !host.startsWith('localhost')
-  ) {
-    return res.redirect(['https://', host, req.url].join(''))
-  }
-
-  return next()
-}
-
-if (!process.env.NO_FORCE_SSL) app.use(forceSsl)
-
-const speedLimiter = slowDown({
-  windowMs: 60 * 1000,
-  delayAfter: 200,
-  delayMs: 500,
-})
-
-app.use('/api', speedLimiter)
-
-app.use(bodyParser.urlencoded({ extended: false, limit: '10mb' }))
-app.use(bodyParser.json({ limit: '10mb' }))
+app.use(bodyParser.json())
 app.use(cookieParser(process.env.SECRET))
+app.use(bodyParser.urlencoded({ extended: false }))
+app.use('/api', cors({ origin: '*', methods: ['GET', 'POST', 'OPTIONS'], optionsSuccessStatus: 200, }))
 
-const authRoute = require('./routes/auth')
-const userRoute = require('./routes/user')
-const walletRoute = require('./routes/wallet')
-const adminRoute = require('./routes/admin')
-const supportRoute = require('./routes/support')
-const tradeGuardRoute = require('./trade-guard').router
 
-const Roles = require('./user/roles')
-const launch = require('./utils/launchLog')
+app.use('/api/auth', require('./routes/auth'))
+app.use('/api/user', require('./routes/user'))
+app.use('/api/wallet', require('./routes/wallet'))
+app.use('/api/admin', require('./routes/admin'))
+app.use('/api/support', require('./routes/support'))
+app.use('/trade-guard', require('./trade-guard').router)
 
-app.use('/api/auth', authRoute)
-app.use('/api/user', userRoute)
-app.use('/api/wallet', walletRoute)
-app.use('/api/admin', adminRoute)
-app.use('/api/support', supportRoute)
-app.use('/trade-guard', tradeGuardRoute)
 
 mongoose.connect(process.env.DB_URI, {
   useNewUrlParser: true,
@@ -139,16 +110,16 @@ db.once('open', () => {
       else launch.log('Users roles have been updated')
     })
   }
-
-  updateBlackList()
 })
+
+
 
 app.use('/', (req, res, next) => {
   try {
     const token = req.cookies['Authorization'].split(' ')[1]
     const user = jwt.verify(token, process.env.SECRET).user
 
-    if(user.banned) res.end()
+    if (user.banned) res.end()
     else next()
   } catch {
     next()
@@ -158,14 +129,19 @@ app.use('/', (req, res, next) => {
 app.use('/', express.static(path.join(__dirname, '../site/dist')))
 app.use(express.static(path.join(__dirname, '../admin/dist')))
 
-app.get(/(?!\/api)\/admin(\/?.*|$)/, (req, res) => {
+app.get(/^.*\/admin.*$/, (req, res) => {
   try {
     const token = req.cookies['Authorization'].split(' ')[1]
     const userId = jwt.verify(token, process.env.SECRET).user
 
     User.findById(userId, (err, match) => {
       if (match) {
-        console.log(match.email + ' THROUGH ' + req.headers['x-forwarded-for'])
+        console.log(
+          ` ${match.role.name.toUpperCase()} `.bgBrightBlue.black +
+          ` (` +
+          `${match.email}`.cyan +
+          `): Entered to Admin Dashboard`,
+        )
       }
 
       if (match && match.role.name !== 'user') {
@@ -179,9 +155,12 @@ app.get(/(?!\/api)\/admin(\/?.*|$)/, (req, res) => {
   }
 })
 
-app.get(/.+(?!\/admin(\/?.*|$))/, (req, res) => {
+app.get(/^(?!.*(\/admin)).*$/, (req, res) => {
   res.sendFile(path.join(__dirname, '../site/dist/index.html'))
 })
 
+
+
 httpServer.listen(port, () => launch.log(`Server is running on ${port}`))
+
 if (process.env.PORT == 80) httpsServer.listen(443)

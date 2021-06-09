@@ -150,13 +150,16 @@ const saveSupportMessage = (userid, message, support) =>
   new Promise((resolve) => {
     {
       User.findOne({ _id: userid },
-        'role email firstName lastName bindedTo',
+        'role email firstName lastName bindedTo supportUnread',
         (err, user) => {
           if (!user) {
             resolve()
           } else if (!support) {
             SupportDialogue.findOne({ user: userid }, (err, dialogue) => {
               if (!dialogue) {
+                user.supportUnread = 1
+                user.save({})
+
                 new SupportDialogue({
                   user: userid,
                   supportUnread: 1,
@@ -167,6 +170,9 @@ const saveSupportMessage = (userid, message, support) =>
               } else {
                 dialogue.messages.push(message)
                 dialogue.supportUnread += 1
+
+                user.supportUnread = dialogue.supportUnread
+                user.save({})
 
                 if (dialogue.supportUnread > 1) {
                   TelegramBot.notifyManager(
@@ -199,13 +205,14 @@ const saveSupportMessage = (userid, message, support) =>
                 dialogue.messages.push(message)
                 dialogue.unread = dialogue.unread + 1
                 dialogue.supportUnread = 0
+
                 dialogue.save(() => {
                   resolve(message)
                 })
               }
             })
           }
-        }).lean()
+        })
     }
   })
 
@@ -215,13 +222,16 @@ const saveGeneralChatMessage = (userid, message, read) =>
       if (!userid || userid == 'total') { resolve(); return }
 
       User.findOne({ _id: userid },
-        'role email firstName lastName bindedTo',
+        'role email firstName lastName bindedTo generalUnread',
         (err, user) => {
           if (!user) {
             resolve()
           } else {
             GeneralChatDialogue.findOne({ user: userid }, (err, dialogue) => {
               if (!dialogue) {
+                user.generalUnread = +!read
+                user.save({})
+
                 new GeneralChatDialogue({
                   user: userid,
                   unread: +!read,
@@ -237,13 +247,16 @@ const saveGeneralChatMessage = (userid, message, read) =>
                   dialogue.unread += 1
                 }
 
+                user.generalUnread = dialogue.unread
+                user.save({})
+
                 dialogue.save(() => {
                   resolve(message)
                 })
               }
             })
           }
-        }).lean()
+        })
     }
   })
 

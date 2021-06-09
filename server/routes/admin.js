@@ -28,6 +28,8 @@ const UserWallet = require('../user/wallet')
 const UserLogger = require('../user/logger')
 const UserConfig = require('../user/config')
 
+const Profiler = require('../utils/profiler')
+
 const Domains = require('../domains')
 
 Domains.init()
@@ -116,6 +118,25 @@ const sendMessage = (to, text) =>
     }
   })
 
+
+// SupportDialogue.find({}, 'user unread supportUnread', (err, docs) => {
+// docs = docs.filter(d => d.supportUnread)
+// 
+// User.find({ _id: { $in: docs.map(d => d.user) } }, 'upportUnread', (err, users) => {
+// users.forEach((user, i) => {
+// docs.forEach(d => {
+// if (d.user == user._id && user) {
+// user.supportUnread = d.supportUnread
+// user.save({}, (err, doc) => {
+// if (err) console.log(err)
+// else console.log('succeed ' + doc._id)
+// })
+// }
+// })
+// })
+// })
+// })
+
 const getUserAndDialogue = (user, read) =>
   new Promise((resolve, reject) => {
     User.findOne({ _id: user }, (err, result) => {
@@ -128,13 +149,17 @@ const getUserAndDialogue = (user, read) =>
               dialogue.supportUnread = 0
               dialogue.save(null)
             }
+
+            result.supportUnread = dialogue.supportUnread
+            result.save({})
+
             resolve(dialogue.messages)
           } else {
             resolve([])
           }
         }).lean(!read)
       }
-    }).lean()
+    })
   })
 
 const getDialogue = (user, read) =>
@@ -210,7 +235,7 @@ router.post(
       userid: uid
     }
 
-    Chat.saveGeneralChatMessage(uid, preparedMessage)
+    Chat.saveGeneralChatMessage(uid, preparedMessage, true)
 
     res.send(preparedMessage)
   },
@@ -1178,62 +1203,52 @@ router.get(
   '/users',
   requirePermissions('read:users.all', 'read:users.binded'),
   async (req, res) => {
+    const page = req.query.page || 0
+    var query = {}
+
     if (Role.hasChain(res, 'read:users.all')) {
-      var usersPending = User.find({
+      query = {
         _id: {
           $ne: res.locals.user._id
         },
-      }, 'at role.name firstName email wallets lastName unreadSupport lastOnline')
+      }
+
+      var usersPending = User.find(query, 'at role.name firstName email wallets lastName supportUnread generalUnread lastOnline',
+        { skip: 8 * (page - 1), limit: 16 - (8 * page) }
+      )
         .sort({
           lastOnline: -1
         })
         .lean()
-      var dialoguesPending = SupportDialogue.find({}, 'supportUnread user').lean()
-      var generalPending = GeneralChat.find({}, 'unread user').lean()
     } else if (Role.hasChain(res, 'read:users.binded')) {
+      query = {
+        email: {
+          $in: res.locals.binded
+        },
+        'role.name': 'user',
+      }
+
       var usersPending = User.find({
         email: {
           $in: res.locals.binded
         },
         'role.name': 'user',
-      }, 'at role.name firstName email wallets lastName unreadSupport lastOnline')
+      }, 'at role.name firstName email wallets lastName supportUnread generalUnread lastOnline',
+        { skip: 8 * page, limit: 8 }
+      )
         .sort({
           lastOnline: -1
         })
         .lean()
-      var dialoguesPending = SupportDialogue.find({
-        user: {
-          $in: res.locals.binded.ids
-        },
-      }, 'supportUnread user').lean()
-      var generalPending = GeneralChat.find({
-        user: {
-          $in: res.locals.binded.ids
-        },
-      }, 'unread user').lean()
     }
 
-    var [users, dialogues, chats] = await Promise.all([usersPending, dialoguesPending, generalPending])
+    var users = await usersPending
 
-    dialogues.forEach(dialogue => {
-      users.forEach(user => {
-        if (dialogue.user === user._id) {
-          user.unread = +dialogue.supportUnread
-        }
-      })
-    })
-
-    chats.forEach(chat => {
-      users.forEach(user => {
-        if (chat.user === user._id) {
-          user.unreadGeneral = +chat.unread
-        }
-      })
-    })
+    const count = await User.countDocuments(query)
 
     users = mw.convertUsers(users)
 
-    res.send(users)
+    res.send({ users, totalPages: Math.ceil(count / 8) })
   },
 )
 
