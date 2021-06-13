@@ -12,6 +12,7 @@ const UserTransaction = require('../models/Transaction')
 const Promo = require('../models/Promo')
 
 const Binding = require('../manager/binding')
+const Notification = require('../manager/notification')
 
 const UserMiddleware = require('../user/middleware')
 const UserToken = require('../user/token')
@@ -491,8 +492,9 @@ router.get('/ref', UserMiddleware.requireAccess, async (req, res) => {
   })
 })
 
-router.post('/support', UserMiddleware.requireAccessLight(), (req, res) => {
-  const uid = res.locals.user._id
+router.post('/support', UserMiddleware.requireAccessLight('firstName lastName email bindedTo'), (req, res) => {
+  const user = res.locals.user
+  const uid = user._id
   const { message, attached } = req.body
 
   const preparedMessage = {
@@ -502,7 +504,18 @@ router.post('/support', UserMiddleware.requireAccessLight(), (req, res) => {
     user: uid,
   }
 
-  if (attached) preparedMessage.attached = attached
+  if (attached) {
+    preparedMessage.attached = attached
+  }
+
+  if (user.bindedTo) {
+    Notification.create({
+      manager: user.bindedTo,
+      scope: 'support',
+      user,
+      text: message
+    })
+  }
 
   saveSupportMessage(uid, preparedMessage)
 
@@ -511,7 +524,7 @@ router.post('/support', UserMiddleware.requireAccessLight(), (req, res) => {
 
 router.get('/support', UserMiddleware.requireAccessLight(), (req, res) => {
   const uid = res.locals.user._id
-  
+
   Support.findOne({ user: uid }, 'messages', (err, dialogue) => {
     const messages = dialogue?.messages || []
     res.send({ messages })

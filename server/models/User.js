@@ -29,6 +29,7 @@ const User = new mongoose.Schema({
   customWithdrawError: String,
   supportUnread: Number,
   generalUnread: Number,
+  notifications: Array,
 })
 
 module.exports = mongoose.model('profiles', User)
