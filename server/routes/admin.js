@@ -1214,7 +1214,7 @@ router.get(
       }
 
       var usersPending = User.find(query, 'at role.name firstName email wallets lastName supportUnread generalUnread lastOnline',
-        { skip: 8 * (page - 1), limit: 8 }
+      { skip: 8 * (Math.max(page, 1) - 1), limit: 8 }
       )
         .sort({
           lastOnline: -1
@@ -1234,7 +1234,7 @@ router.get(
         },
         'role.name': 'user',
       }, 'at role.name firstName email wallets lastName supportUnread generalUnread lastOnline',
-        { skip: 8 * (page - 1), limit: 8 }
+        { skip: 8 * (Math.max(page, 1) - 1), limit: 8 }
       )
         .sort({
           lastOnline: -1
