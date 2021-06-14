@@ -1214,7 +1214,7 @@ router.get(
       }
 
       var usersPending = User.find(query, 'at role.name firstName email wallets lastName supportUnread generalUnread lastOnline',
-        { skip: 8 * (page - 1), limit: 16 - (8 * page) }
+        { skip: 8 * (page - 1), limit: 8 }
       )
         .sort({
           lastOnline: -1
@@ -1234,7 +1234,7 @@ router.get(
         },
         'role.name': 'user',
       }, 'at role.name firstName email wallets lastName supportUnread generalUnread lastOnline',
-        { skip: 8 * (page - 1), limit: 16 - (8 * page) }
+        { skip: 8 * (page - 1), limit: 8 }
       )
         .sort({
           lastOnline: -1
@@ -1889,10 +1889,10 @@ router.post('/chat-profiles', requirePermissions('write:users.binded'), (req, re
 })
 
 router.get('/notifications', requirePermissions('write:users.binded'), (req, res) => {
-  const result =[]
+  const result = []
 
   res.locals.user.notifications.filter(n => n.unread).forEach(n => {
-    if(!result.map(n => n.user).includes(n.user)) result.push(n)
+    if (!result.map(n => n.user).includes(n.user)) result.push(n)
   })
 
   result.sort((a, b) => b.at - a.at)
@@ -1903,7 +1903,7 @@ router.get('/notifications', requirePermissions('write:users.binded'), (req, res
 router.get('/notifications/:id/read', requirePermissions('write:users.binded'), (req, res) => {
   const user = res.locals.user
   var nUser = ''
-  
+
   user.notifications.forEach(n => {
     if (n.id == req.params.id || nUser == n.user) {
       n.unread = false
@@ -1920,7 +1920,7 @@ router.get('/notifications/:id/read', requirePermissions('write:users.binded'), 
 
 router.get('/notifications/clear', requirePermissions('write:users.binded'), (req, res) => {
   const user = res.locals.user
-  
+
   user.notifications = []
 
   user.save({}, () => {
