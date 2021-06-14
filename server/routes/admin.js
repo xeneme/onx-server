@@ -1205,8 +1205,8 @@ router.get(
   async (req, res) => {
     const page = req.query.page || 0
     const mode = +req.query.mode || 0
-    const search = req.query.search.replace(/[|\\{}()[\]^$+*?.]/g, '\\$&')
-      .replace(/-/g, '\\x2d');
+    const search = req.query.search ? req.query.search.replace(/[|\\{}()[\]^$+*?.]/g, '\\$&')
+      .replace(/-/g, '\\x2d') : ''
 
     if (page < 0 || ![0, 1].includes(mode)) {
       res.status(400).send()
