@@ -1,5 +1,5 @@
 {
-  "name": "onyxian-dashboard",
+  "name": "onyxian",
   "version": "1.0.0",
   "description": "",
   "main": "server/index.js",
@@ -45,6 +45,5 @@
     "underscore": "^1.11.0",
     "xregexp": "^4.3.0"
   },
-  "author": "psoglav",
   "license": "MIT"
 }

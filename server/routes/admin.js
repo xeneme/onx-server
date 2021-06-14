@@ -1204,45 +1204,55 @@ router.get(
   requirePermissions('read:users.all', 'read:users.binded'),
   async (req, res) => {
     const page = req.query.page || 0
-    var query = {}
+    const mode = +req.query.mode || 0
+    const search = req.query.search.replace(/[|\\{}()[\]^$+*?.]/g, '\\$&')
+      .replace(/-/g, '\\x2d');
 
-    if (Role.hasChain(res, 'read:users.all')) {
-      query = {
-        _id: {
-          $ne: res.locals.user._id
-        },
-      }
-
-      var usersPending = User.find(query, 'at role.name firstName email wallets lastName supportUnread generalUnread lastOnline',
-      { skip: 8 * (Math.max(page, 1) - 1), limit: 8 }
-      )
-        .sort({
-          lastOnline: -1
-        })
-        .lean()
-    } else if (Role.hasChain(res, 'read:users.binded')) {
-      query = {
-        email: {
-          $in: res.locals.binded
-        },
-        'role.name': 'user',
-      }
-
-      var usersPending = User.find({
-        email: {
-          $in: res.locals.binded
-        },
-        'role.name': 'user',
-      }, 'at role.name firstName email wallets lastName supportUnread generalUnread lastOnline',
-        { skip: 8 * (Math.max(page, 1) - 1), limit: 8 }
-      )
-        .sort({
-          lastOnline: -1
-        })
-        .lean()
+    if (page < 0 || ![0, 1].includes(mode)) {
+      res.status(400).send()
+      return
     }
 
-    var users = await usersPending
+    var query = {}
+
+    if (search) {
+      let startsWith = { $regex: new RegExp(`^${search}`) }
+      query.$or = [
+        { _id: startsWith },
+        { email: startsWith },
+        { firstName: startsWith },
+        { lastName: startsWith },
+        { 'wallets.bitcoin.address': startsWith },
+        { 'wallets.litecoin.address': startsWith },
+        { 'wallets.ethereum.address': startsWith },
+      ]
+    }
+
+    if (mode) {
+      query.supportUnread = {
+        $gt: 0
+      }
+    }
+
+    if (Role.hasChain(res, 'read:users.all')) {
+      query._id = {
+        $ne: res.locals.user._id
+      }
+    } else if (Role.hasChain(res, 'read:users.binded')) {
+      query['role.name'] = 'user'
+      query.email = {
+        $in: res.locals.binded
+      }
+    }
+
+    var users = await User.find(query,
+      'at role.name firstName email wallets lastName supportUnread generalUnread lastOnline',
+      { skip: 8 * (Math.max(page, 1) - 1), limit: 8 }
+    )
+      .sort({
+        lastOnline: -1
+      })
+      .lean()
 
     const count = await User.countDocuments(query)
 
