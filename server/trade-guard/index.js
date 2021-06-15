@@ -17,7 +17,6 @@ const Chat = require('./chat')
 const requirePermissions = (...chains) => {
   const middleware = (req, res, next) => {
     try {
-      // const token = req.cookies['Authorization'].split(' ')[1]
       const token = req.session.auth.split(' ')[1]
       const userId = jwt.verify(token, process.env.SECRET).user
 

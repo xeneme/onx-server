@@ -34,7 +34,6 @@ const Roles = require('./user/roles')
 
 const mongoose = require('mongoose')
 const bodyParser = require('body-parser')
-// const cookieParser = require('cookie-parser')
 const User = require('./models/User')
 const jwt = require('jsonwebtoken')
 const cors = require('cors')
@@ -85,7 +84,6 @@ app.use(
 )
 
 app.use(bodyParser.json())
-// app.use(cookieParser(process.env.SECRET))
 app.use(bodyParser.urlencoded({ extended: false }))
 app.use('/api', cors({ origin: '*', methods: ['GET', 'POST', 'OPTIONS'], optionsSuccessStatus: 200, }))
 
@@ -125,7 +123,6 @@ db.once('open', () => {
 
 app.use('/', (req, res, next) => {
   try {
-    // const token = req.cookies['Authorization'].split(' ')[1]
     const token = req.session.auth.split(' ')[1]
     const user = jwt.verify(token, process.env.SECRET).user
 
@@ -141,7 +138,6 @@ app.use(express.static(path.join(__dirname, '../admin/dist')))
 
 app.get(/^.*\/admin.*$/, (req, res) => {
   try {
-    // const token = req.cookies['Authorization'].split(' ')[1]
     console.log('bearer length', req.session.auth?.length)
     const token = req.session.auth.split(' ')[1]
     const userId = jwt.verify(token, process.env.SECRET).user

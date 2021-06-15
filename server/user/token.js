@@ -45,6 +45,8 @@ module.exports = {
       user.role.settings.terms = ''
     }
 
+    user.notifications = []
+
     var entity = {
       stage: 'authorization',
       user,
