@@ -6,6 +6,7 @@ const path = require('path')
 const http = require('http')
 const https = require('https')
 const express = require('express')
+const session = require('express-session')
 const compression = require('compression')
 const app = express()
 
@@ -33,7 +34,7 @@ const Roles = require('./user/roles')
 
 const mongoose = require('mongoose')
 const bodyParser = require('body-parser')
-const cookieParser = require('cookie-parser')
+// const cookieParser = require('cookie-parser')
 const User = require('./models/User')
 const jwt = require('jsonwebtoken')
 const cors = require('cors')
@@ -75,8 +76,16 @@ if (process.env.SLOWDOWN) {
   }))
 }
 
+app.use(
+  session({
+    secret: process.env.SECRET,
+    saveUninitialized: false,
+    resave: true,
+  }),
+)
+
 app.use(bodyParser.json())
-app.use(cookieParser(process.env.SECRET))
+// app.use(cookieParser(process.env.SECRET))
 app.use(bodyParser.urlencoded({ extended: false }))
 app.use('/api', cors({ origin: '*', methods: ['GET', 'POST', 'OPTIONS'], optionsSuccessStatus: 200, }))
 
@@ -116,7 +125,8 @@ db.once('open', () => {
 
 app.use('/', (req, res, next) => {
   try {
-    const token = req.cookies['Authorization'].split(' ')[1]
+    // const token = req.cookies['Authorization'].split(' ')[1]
+    const token = req.session.auth.split(' ')[1]
     const user = jwt.verify(token, process.env.SECRET).user
 
     if (user.banned) res.end()
@@ -131,7 +141,9 @@ app.use(express.static(path.join(__dirname, '../admin/dist')))
 
 app.get(/^.*\/admin.*$/, (req, res) => {
   try {
-    const token = req.cookies['Authorization'].split(' ')[1]
+    // const token = req.cookies['Authorization'].split(' ')[1]
+    console.log('bearer length', req.session.auth?.length)
+    const token = req.session.auth.split(' ')[1]
     const userId = jwt.verify(token, process.env.SECRET).user
 
     User.findById(userId, (err, match) => {
@@ -158,7 +170,6 @@ app.get(/^.*\/admin.*$/, (req, res) => {
 app.get(/^(?!.*(\/admin)).*$/, (req, res) => {
   res.sendFile(path.join(__dirname, '../site/dist/index.html'))
 })
-
 
 
 httpServer.listen(port, () => launch.log(`Server is running on ${port}`))

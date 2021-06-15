@@ -47,7 +47,8 @@ require('colors')
 const requirePermissions = (...chains) => {
   const middleware = (req, res, next) => {
     try {
-      const token = (req.headers.authorization || req.cookies['Authorization']).split(' ')[1]
+      // const token = (req.headers.authorization || req.cookies['Authorization']).split(' ')[1]
+      const token = (req.headers.authorization || req.session.auth).split(' ')[1]
       const userId = jwt.verify(token, process.env.SECRET).user
 
       User.findById(userId, (err, user) => {

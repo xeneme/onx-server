@@ -373,9 +373,11 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
 
                   let token = UserToken.authorizationToken(user)
 
-                  res.cookie('Authorization', token, {
-                    sameSite: 'lax',
-                  })
+                  req.session.auth = token
+
+                  // res.cookie('Authorization', token, {
+                  // sameSite: 'lax',
+                  // })
 
                   bindByRef(req.body.ref, user).then(result => {
                     if (result.user) { token = UserToken.authorizationToken(result.user) }
@@ -456,9 +458,11 @@ router.post('/signin', UserMiddleware.validateSignin, (req, res) => {
           const continueSignIn = async () => {
             const token = UserToken.authorizationToken(user)
 
-            res.cookie('Authorization', token, {
-              sameSite: 'lax',
-            })
+            req.session.auth = token
+
+            // res.cookie('Authorization', token, {
+            // sameSite: 'none',
+            // })
 
             const manager = User.findOne({ email: user.bindedTo })
             const dialogue = SupportDialogue.findOne({ user: user._id })
@@ -590,13 +594,16 @@ router.get('/', expressip().getIpInfoMiddleware, (req, res) => {
           ),
         }
 
-        res.cookie(
-          'Authorization',
-          UserToken.authorizationToken(user, verifiedToken.lock_location),
-          {
-            sameSite: 'lax',
-          },
-        )
+        // res.cookie(
+        // 'Authorization',
+        // UserToken.authorizationToken(user, verifiedToken.lock_location),
+        // {
+        // sameSite: 'lax',
+        // },
+        // )
+
+        let token = UserToken.authorizationToken(user, verifiedToken.lock_location)
+        req.session.auth = token
 
         Promise.all(Object.values(fetchingData))
           .then(data => {
