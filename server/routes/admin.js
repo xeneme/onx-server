@@ -1064,7 +1064,7 @@ router.get(
     else {
       const me = res.locals.user
 
-      User.findById(req.query.id, (err, user) => {
+      User.findById(req.query.id, 'email banned banList generalChat role.name wallets at firstName lastName email lastOnline customWithdrawError location', (err, user) => {
         if (err || !user) {
           res.sendStatus(404)
         } else {
