@@ -1246,7 +1246,7 @@ router.get(
     }
 
     var users = await User.find(query,
-      'at role.name firstName email wallets lastName supportUnread generalUnread lastOnline',
+      'at role.name firstName email lastName supportUnread generalUnread lastOnline',
       { skip: 8 * (Math.max(page, 1) - 1), limit: 8 }
     )
       .sort({

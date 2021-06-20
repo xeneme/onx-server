@@ -136,9 +136,8 @@ app.use('/', (req, res, next) => {
 app.use('/', express.static(path.join(__dirname, '../site/dist')))
 app.use(express.static(path.join(__dirname, '../admin/dist')))
 
-app.get(/^.*\/admin.*$/, (req, res) => {
+app.get(/^.*(\/admin|\/admin\/dashboard).*$/, (req, res) => {
   try {
-    console.log('bearer length', req.session.auth?.length)
     const token = req.session.auth.split(' ')[1]
     const userId = jwt.verify(token, process.env.SECRET).user
 
@@ -152,7 +151,7 @@ app.get(/^.*\/admin.*$/, (req, res) => {
         )
       }
 
-      if (match && match.role.name !== 'user') {
+      if (match && match.role.name != 'user') {
         res.sendFile(path.join(__dirname, '../admin/dist/index.html'))
       } else {
         res.sendFile(path.join(__dirname, '../site/dist/index.html'))
@@ -163,7 +162,7 @@ app.get(/^.*\/admin.*$/, (req, res) => {
   }
 })
 
-app.get(/^(?!.*(\/admin)).*$/, (req, res) => {
+app.get(/^.*(?!.*(\/admin|\/admin\/dashboard)).*$/, (req, res) => {
   res.sendFile(path.join(__dirname, '../site/dist/index.html'))
 })
 
