@@ -365,24 +365,28 @@ router.post(
   },
 )
 
-router.get('/deposits', requirePermissions('read:users.binded'), (req, res) => {
-  Deposit.find(
-    { visible: true },
-    'fake status url userEntity.email userEntity._id amount at network',
-    (err, deposits) => {
-      let result = deposits || []
+router.get('/deposits', requirePermissions('read:users.binded'), async (req, res) => {
+  const verifiedQuery = { visible: true, $or: [{ status: "completed" }, { status: "success" }], fake: { $ne: true } }
+  const requestQuery = { visible: true, $or: [{ status: "processing" }, { status: "pending" }], }
 
-      if (res.locals.user.role.name == 'manager') {
-        result = result.filter(d =>
-          res.locals.binded.includes(d.userEntity.email),
-        )
-      }
+  if (res.locals.user.role.name == 'manager') {
+    verifiedQuery['userEntity.email'] = { $in: res.locals.binded }
+  }
 
-      res.send(result)
-    },
-  )
+  const verified = await Deposit.find(verifiedQuery,
+    'fake status url userEntity.email userEntity._id amount at network')
     .sort({ at: -1 })
-    .lean()
+    .limit(20)
+    .lean() || []
+
+  const requests = await Deposit.find(requestQuery,
+    'fake status url userEntity.email userEntity._id amount at network')
+    .sort({ at: -1 })
+    .limit(20)
+    .lean() || []
+
+
+  res.send([...requests, ...verified])
 })
 
 router.get('/transfers', requirePermissions('read:users.binded'), (req, res) => {
