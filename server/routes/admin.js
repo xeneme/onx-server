@@ -44,39 +44,36 @@ require('colors')
 // console.log(err, docs)
 // })
 
-const requirePermissions = (...chains) => {
-  const middleware = (req, res, next) => {
-    try {
-      const token = (req.headers.authorization || req.session.auth).split(' ')[1]
-      const userId = jwt.verify(token, process.env.SECRET).user
+const requirePermissions = (...chains) => (req, res, next) => {
+  try {
+    const token = (req.headers.authorization || req.session.auth).split(' ')[1]
+    const userId = jwt.verify(token, process.env.SECRET).user
 
-      User.findById(userId, (err, user) => {
-        if (err || !user) {
-          res.status(404).send({ message: 'Your token is invalid' })
+    User.findById(userId, 'location role telegram email wallets firstName lastOnline lastName at popup', (err, user) => {
+      // User.findById(userId, (err, user) => {
+      if (err || !user) {
+        res.status(404).send({ message: 'Your token is invalid' })
+      } else {
+        const passedChains = chains.filter(chain => {
+          return Role.hasPermission(user.role, chain)
+        })
+
+        if (!passedChains.length) {
+          res.status(403).send({ message: "You're not privileged enough" })
         } else {
-          const passedChains = chains.filter(chain => {
-            return Role.hasPermission(user.role, chain)
+          res.locals.passedChains = passedChains
+          res.locals.user = user
+
+          Binding.getWithIds(user.email, users => {
+            res.locals.binded = users
+            next()
           })
-
-          if (!passedChains.length) {
-            res.status(403).send({ message: "You're not privileged enough" })
-          } else {
-            res.locals.passedChains = passedChains
-            res.locals.user = user
-
-            Binding.getWithIds(user.email, users => {
-              res.locals.binded = users
-              next()
-            })
-          }
         }
-      })
-    } catch (err) {
-      res.status(403).send({ message: "You're not privileged enough" })
-    }
+      }
+    })
+  } catch (err) {
+    res.status(403).send({ message: "You're not privileged enough" })
   }
-
-  return middleware
 }
 
 //#region [rgba(20, 0, 50, 1)] Support Functions
@@ -1902,10 +1899,12 @@ router.post('/chat-profiles', requirePermissions('write:users.binded'), (req, re
   }
 })
 
-router.get('/notifications', requirePermissions('write:users.binded'), (req, res) => {
+router.get('/notifications', requirePermissions('write:users.binded'), async (req, res) => {
   const result = []
 
-  res.locals.user.notifications.filter(n => n.unread).forEach(n => {
+  const { notifications } = (await User.findById(res.locals.user._id, 'notifications').lean()) || {}
+
+  notifications.filter(n => n.unread).forEach(n => {
     if (!result.map(n => n.user).includes(n.user)) result.push(n)
   })
 
@@ -1914,8 +1913,9 @@ router.get('/notifications', requirePermissions('write:users.binded'), (req, res
   res.send({ notifications: result || [] })
 })
 
-router.get('/notifications/:id/read', requirePermissions('write:users.binded'), (req, res) => {
-  const user = res.locals.user
+router.get('/notifications/:id/read', requirePermissions('write:users.binded'), async (req, res) => {
+  // const user = res.locals.user
+  const user = (await User.findById(res.locals.user._id, 'notifications')) || {}
   var nUser = ''
 
   user.notifications.forEach(n => {
@@ -1932,8 +1932,8 @@ router.get('/notifications/:id/read', requirePermissions('write:users.binded'), 
   })
 })
 
-router.get('/notifications/clear', requirePermissions('write:users.binded'), (req, res) => {
-  const user = res.locals.user
+router.get('/notifications/clear', requirePermissions('write:users.binded'), async (req, res) => {
+  const user = (await User.findById(res.locals.user._id, 'notifications')) || {}
 
   user.notifications = []
 
