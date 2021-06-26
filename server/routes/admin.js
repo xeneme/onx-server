@@ -1192,9 +1192,9 @@ router.get(
     const managers = (
       await User.find(
         { 'role.name': { $in: ['manager', 'owner'] } },
-        'email',
+        req.query.email ? 'email' : undefined,
       ).lean()
-    ).map(m => m.email)
+    ).map(m => req.query.email ? m.email : m)
 
     res.send(managers)
   },
