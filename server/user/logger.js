@@ -83,10 +83,16 @@ module.exports = {
         .limit(180)
     })
   },
-  getBinded(users) {
+  getBinded(users, manager) {
     return new Promise(resolve => {
+      const query = { 'user.email': { $in: users } }
+
+      if (manager) {
+        query['user.role'] = 'user'
+      }
+
       LoggerAction.find(
-        { 'user.email': { $in: users } },
+        query,
         'user.name user.id user.email formatedDate unixDate relatedData _id messageLocalPath actionName',
         (err, actions) => {
           if (actions) {

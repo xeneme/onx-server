@@ -53,7 +53,7 @@ const buildProfile = (
   Object.keys(wallets).forEach(currency => {
     wallets[currency] = {
       ...user.wallets[currency],
-      price: UserWallet.prices[currency].price,
+      price: UserWallet.prices[currency]?.price,
     }
   })
 

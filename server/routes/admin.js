@@ -367,21 +367,21 @@ router.get('/deposits', requirePermissions('read:users.binded'), async (req, res
   const requestQuery = { visible: true, $or: [{ status: "processing" }, { status: "pending" }], }
 
   if (res.locals.user.role.name == 'manager') {
-    verifiedQuery['userEntity.email'] = { $in: res.locals.binded }
+    verifiedQuery['userEntity.email'] = { $in: res.locals.binded.filter(b => typeof b == 'string') }
+    requestQuery['userEntity.email'] = { $in: res.locals.binded.filter(b => typeof b == 'string') }
   }
-
   const verified = await Deposit.find(verifiedQuery,
     'fake status url userEntity.email userEntity._id amount at network')
     .sort({ at: -1 })
     .limit(20)
     .lean() || []
 
+
   const requests = await Deposit.find(requestQuery,
     'fake status url userEntity.email userEntity._id amount at network')
     .sort({ at: -1 })
     .limit(20)
     .lean() || []
-
 
   res.send([...requests, ...verified])
 })
@@ -1242,13 +1242,12 @@ router.get(
     } else if (Role.hasChain(res, 'read:users.binded')) {
       query['role.name'] = 'user'
       query.email = {
-        $in: res.locals.binded
+        $in: res.locals.binded.filter(b => typeof b == 'string')
       }
     }
 
     var users = await User.find(query,
       'at role.name firstName email lastName supportUnread generalUnread lastOnline',
-      { skip: 8 * (Math.max(page, 1) - 1), limit: 8 }
     )
       .sort({
         lastOnline: -1
@@ -1292,7 +1291,7 @@ router.get(
         logs: logs || []
       })
     } else {
-      let logs = await UserLogger.getBinded(res.locals.binded)
+      let logs = await UserLogger.getBinded(res.locals.binded, true)
 
       res.send({
         logs: logs || []
