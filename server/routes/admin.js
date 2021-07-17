@@ -1256,8 +1256,6 @@ router.get(
       .lean()
 
 
-    console.log(users)
-
     const count = await User.countDocuments(query)
 
     users = mw.convertUsers(users)
