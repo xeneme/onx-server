@@ -1248,11 +1248,15 @@ router.get(
 
     var users = await User.find(query,
       'at role.name firstName email lastName supportUnread generalUnread lastOnline',
+      { skip: 8 * (Math.max(page, 1) - 1), limit: 8 }
     )
       .sort({
         lastOnline: -1
       })
       .lean()
+
+
+    console.log(users)
 
     const count = await User.countDocuments(query)
 
