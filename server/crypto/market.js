@@ -123,7 +123,7 @@ function updateUserCharts() {
 }
 
 updateUserCharts()
-setInterval(updateUserCharts, 60000)
+setInterval(updateUserCharts, 10 * 60000)
 
 module.exports = {
   subdivideGraph,

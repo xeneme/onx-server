@@ -32,7 +32,7 @@ const sendMessage = (contract, message, side, icon) => {
     side,
     icon,
   }
-  
+
   Object.values(IO).forEach(io => {
     io.to(contract._id).emit('message', message)
   })
@@ -96,7 +96,7 @@ const defineIO = value => {
         }).lean()
       })
 
-      socket.on('disconnect', () => {
+      socket.on('disconnect', (s) => {
         leaveContract(socket.id)
       })
     })

@@ -192,6 +192,8 @@ const startExchange = pin => {
 router.get('/connect', (req, res, next) => {
   const pin = req.query.pin
 
+  console.log('connects')
+
   if (!pin || !pin.match(/^\d+$/)) {
     next()
   } else {
