@@ -392,7 +392,7 @@ router.get('/transfers', requirePermissions('read:users.binded'), (req, res) => 
   const role = user.role.name
 
   Transaction.find(
-    { fake: false, status: 'completed', recipientEmail: role == 'owner' ? undefined : { $in: res.locals.binded } },
+    { fake: false, status: 'completed', recipient: role == 'owner' ? undefined : { $in: res.locals.binded.ids } },
     'fake status url recipient recipientEmail amount at currency', (err, transfers) => {
       res.send({ transfers })
     })
