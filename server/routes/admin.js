@@ -388,15 +388,20 @@ router.get('/deposits', requirePermissions('read:users.binded'), async (req, res
 
 router.get('/transfers', requirePermissions('read:users.binded'), (req, res) => {
   const user = res.locals.user
-
   const role = user.role.name
+  const filter = { fake: false, status: 'completed', }
+
+  if (role == 'manager') {
+    filter.recipinet = { $in: res.locals.binded.ids }
+  }
 
   Transaction.find(
-    { fake: false, status: 'completed', recipient: role == 'owner' ? undefined : { $in: res.locals.binded.ids } },
+    filter,
     'fake status url recipient recipientEmail amount at currency', (err, transfers) => {
       res.send({ transfers })
     })
     .sort({ at: -1 })
+    .limit(20)
     .lean()
 })
 
