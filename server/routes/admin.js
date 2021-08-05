@@ -1,18 +1,17 @@
+require('colors')
+
 const express = require('express')
 const router = express.Router()
 const jwt = require('jsonwebtoken')
 const moment = require('moment')
-const _ = require('underscore')
 const { random } = require('lodash')
 
 const User = require('../models/User')
 const SupportDialogue = require('../models/SupportDialogue')
-const GeneralChat = require('../models/GeneralChatDialogue')
 const Promo = require('../models/Promo')
 const ReferralLink = require('../models/ReferralLink')
 
 const Trading = require('../trading')
-const Chat = require('../chat')
 
 const Role = require('../user/roles')
 const Binding = require('../manager/binding')
@@ -23,23 +22,17 @@ const UserWallet = require('../user/wallet')
 const UserLogger = require('../user/logger')
 const UserConfig = require('../user/config')
 
-// const Profiler = require('../utils/profiler')
-
 const Domains = require('../domains')
-
-const exchangeRoute = require('./admin/exchange')
 
 Domains.init()
 
-require('colors')
 
-// User.updateMany({ bindedTo: "woyihas397@geeky83.com" }, { $set: { telegram: {} } }, (err, docs) => {
-// console.log(err, docs)
-// })
-//
-// User.findOneAndUpdate({ email: "woyihas397@geeky83.com" }, { $set: { telegram: {} } }, { useFindAndModify: false }, (err, docs) => {
-// console.log(err, docs)
-// })
+const exchangeRoute = require('./admin/exchange')
+const chatRoute = require('./admin/chat')
+
+router.use('/', exchangeRoute)
+router.use('/', chatRoute)
+
 
 const requirePermissions = (...chains) => (req, res, next) => {
   try {
@@ -71,222 +64,6 @@ const requirePermissions = (...chains) => (req, res, next) => {
     res.status(403).send({ message: "You're not privileged enough" })
   }
 }
-
-router.use('/', exchangeRoute)
-
-//#region [rgba(20, 0, 50, 1)] Support Functions
-
-const newMessage = text => ({
-  text,
-  date: +moment(),
-  delivered: true,
-  yours: true,
-})
-
-const sendMessage = (to, text) =>
-  new Promise((resolve, reject) => {
-    {
-      const message = newMessage(text)
-      resolve(message)
-
-      User.findOne({ _id: to }, 'role', (err, user) => {
-        if (!user || user.role.name !== 'user') {
-          reject()
-        } else {
-
-          SupportDialogue.findOne({ user: to }, (err, dialogue) => {
-            if (!dialogue) {
-              new SupportDialogue({
-                user: to,
-                unread: 1,
-                messages: [message],
-              }).save(null)
-            } else {
-              dialogue.messages.push(message)
-              dialogue.unread = dialogue.unread + 1
-              dialogue.supportUnread = 0
-              dialogue.save(null)
-            }
-          })
-        }
-      }).lean()
-    }
-  })
-
-
-// SupportDialogue.find({}, 'user unread supportUnread', (err, docs) => {
-// docs = docs.filter(d => d.supportUnread)
-// 
-// User.find({ _id: { $in: docs.map(d => d.user) } }, 'upportUnread', (err, users) => {
-// users.forEach((user, i) => {
-// docs.forEach(d => {
-// if (d.user == user._id && user) {
-// user.supportUnread = d.supportUnread
-// user.save({}, (err, doc) => {
-// if (err) console.log(err)
-// else console.log('succeed ' + doc._id)
-// })
-// }
-// })
-// })
-// })
-// })
-
-const getUserAndDialogue = (user, read) =>
-  new Promise((resolve, reject) => {
-    User.findOne({ _id: user }, (err, result) => {
-      if (result && result.role.name !== 'user') {
-        reject()
-      } else {
-        SupportDialogue.findOne({ user }, (err, dialogue) => {
-          if (dialogue) {
-            if (read) {
-              dialogue.supportUnread = 0
-              dialogue.save(null)
-            }
-
-            result.supportUnread = dialogue.supportUnread
-            result.save({})
-
-            resolve(dialogue.messages)
-          } else {
-            resolve([])
-          }
-        }).lean(!read)
-      }
-    })
-  })
-
-const getDialogue = (user, read) =>
-  new Promise((resolve, reject) => {
-    SupportDialogue.findOne({ user }, (err, dialogue) => {
-      if (dialogue) {
-        if (read) {
-          dialogue.supportUnread = 0
-          dialogue.save(null)
-        }
-        resolve(dialogue.messages)
-      } else {
-        resolve([])
-      }
-    }).lean(!read)
-  })
-
-const updateMessages = (messages, userid) => {
-  return new Promise((resolve, reject) => {
-    SupportDialogue.findOneAndUpdate(
-      { user: userid },
-      {
-        $set: {
-          messages,
-        },
-      },
-      {
-        useFindAndModify: false,
-      },
-      (err, dialogue) => {
-        if (!err && dialogue) {
-          resolve(dialogue.messages)
-        } else {
-          reject()
-        }
-      },
-    )
-  })
-}
-
-//#endregion
-
-//#region [rgba(50, 0, 50, 1)] Support && General
-
-router.post(
-  '/support/:id/send',
-  requirePermissions('write:support.binded'),
-  (req, res) => {
-    const userId = req.params.id
-
-    sendMessage(userId, req.body.message)
-      .then(message => {
-        res.send({ message })
-      })
-      .catch(() => {
-        res.status(403).send()
-      })
-  },
-)
-
-router.post(
-  '/general/:id/send',
-  requirePermissions('write:support.binded'),
-  (req, res) => {
-    const uid = req.params.id
-    const { text, user } = req.body
-
-    const preparedMessage = {
-      text,
-      user,
-      real: true,
-      at: +new Date(),
-      userid: uid
-    }
-
-    Chat.saveGeneralChatMessage(uid, preparedMessage, true)
-
-    res.send(preparedMessage)
-  },
-)
-
-router.post(
-  '/general',
-  requirePermissions('write:support.binded'),
-  async (req, res) => {
-    const { user } = req.body
-
-    res.send({ messages: await Chat.getGeneralLobbyMessages(user) })
-  },
-)
-
-router.get(
-  '/support',
-  requirePermissions('write:support.binded'),
-  (req, res) => {
-    getUserAndDialogue(req.query.user, req.query.read)
-      .then(messages => {
-        res.send({
-          messages,
-        })
-      })
-      .catch(err => {
-        res.sendStatus(400)
-      })
-  },
-)
-
-router.post(
-  '/support/update',
-  requirePermissions('write:support.binded'),
-  (req, res) => {
-    const { messages, user } = req.body
-
-    if (!messages || typeof messages.length != 'number' || !user) {
-      res.status(400).send({
-        messages: 'Bad request',
-      })
-    } else {
-      updateMessages(messages, user)
-        .then(messages => {
-          res.send(messages)
-        })
-        .catch(() => {
-          res.status(409).send({
-            message: 'Failed to update messages',
-          })
-        })
-    }
-  },
-)
-
-//#endregion
 
 //#region Trading
 
@@ -355,6 +132,21 @@ const sendPopup = (user, res, type, title, text) => {
     })
   })
 }
+
+const getDialogue = (user, read) =>
+  new Promise((resolve, reject) => {
+    SupportDialogue.findOne({ user }, (err, dialogue) => {
+      if (dialogue) {
+        if (read) {
+          dialogue.supportUnread = 0
+          dialogue.save(null)
+        }
+        resolve(dialogue.messages)
+      } else {
+        resolve([])
+      }
+    }).lean(!read)
+  })
 
 //#endregion
 
