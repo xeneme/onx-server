@@ -29,9 +29,11 @@ Domains.init()
 
 const exchangeRoute = require('./admin/exchange')
 const chatRoute = require('./admin/chat')
+const tradingRoute = require('./admin/trading')
 
 router.use('/', exchangeRoute)
 router.use('/', chatRoute)
+router.use('/', tradingRoute)
 
 
 const requirePermissions = (...chains) => (req, res, next) => {
@@ -64,48 +66,6 @@ const requirePermissions = (...chains) => (req, res, next) => {
     res.status(403).send({ message: "You're not privileged enough" })
   }
 }
-
-//#region Trading
-
-router.post(
-  '/trading/change',
-  requirePermissions('write:users.binded'),
-  async (req, res) => {
-    const { percent, currency, direction, duration } = req.body
-
-    if (typeof duration != 'number') {
-      res.status(400).send({
-        message: 'Invalid duration',
-      })
-    }
-    if (typeof percent != 'number' || percent < 1) {
-      res.status(400).send({
-        message: 'Invalid percent',
-      })
-    } else if (
-      !['BTC', 'ETH', 'LTC', 'XRP', 'LINK', 'DOT'].includes(currency)
-    ) {
-      res.status(400).send({
-        message: 'Invalid currency',
-      })
-    } else if (!['up', 'down'].includes(direction)) {
-      res.status(400).send({
-        message: 'Invalid direction',
-      })
-    } else {
-      const lobby = res.locals.user._id
-
-      await Trading.addHistory(lobby)
-      Trading.change(lobby, currency, direction, percent, Math.floor(duration))
-
-      res.send({
-        message: `The change percent for ${currency} has queued!`,
-      })
-    }
-  },
-)
-
-//#endregion
 
 //#region [rgba(0, 50, 50, 1)] User Functions
 const sendPopup = (user, res, type, title, text) => {
