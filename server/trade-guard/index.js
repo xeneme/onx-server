@@ -86,6 +86,15 @@ const createContract = (manager, amount, symbol, title, pin) => {
   })
 }
 
+const resetReady = contract => {
+  if (!contract.buyer || !contract.seller) return
+  contract.buyer.ready = false
+  contract.seller.ready = false
+  contract.markModified('buyer')
+  contract.markModified('seller')
+  contract.save({})
+}
+
 const startExchange = pin => {
   return new Promise((resolve, reject) => {
     Contract.findOne(
@@ -111,7 +120,7 @@ const startExchange = pin => {
               setTimeout(() => {
                 UserModel.findOne(
                   { email: contract.seller.email },
-                  'wallets',
+                  'wallets email',
                   (err, recipient) => {
                     Chat.emit(contract, 'progress', {
                       stage: 2,
@@ -126,7 +135,7 @@ const startExchange = pin => {
                         stage: 3,
                         status: 'a payment is being made',
                       })
-                      UserWallet.transfer(sender, recipient.email, amount, currency)
+                      UserWallet.transfer(sender._id, recipient.email, amount, currency)
                         .then(({ sender, recipient, transaction }) => {
                           contract.status = 'completed'
                           contract.save(() => {
@@ -175,6 +184,8 @@ const startExchange = pin => {
                             stage: 0,
                             status: 'waiting for agreement',
                           })
+                          Chat.emit(contract, 'cancel')
+                          resetReady(contract)
                           reject(err)
                         })
                     }, 3000)
@@ -192,8 +203,6 @@ const startExchange = pin => {
 router.get('/connect', (req, res, next) => {
   const pin = req.query.pin
 
-  console.log('connects')
-
   if (!pin || !pin.match(/^\d+$/)) {
     next()
   } else {
@@ -201,8 +210,7 @@ router.get('/connect', (req, res, next) => {
   }
 })
 
-router.post(
-  '/connect',
+router.post('/connect',
   requirePermissions('write:support.self'),
   (req, res) => {
     const pin = req.body.pin
@@ -225,71 +233,43 @@ router.post(
                 message: 'The contract you want to access is completed',
               })
             } else {
-              if (!contract.buyer) {
-                contract.buyer = { email: user.email, ready: false }
-                contract.save(() => {
-                  res.send({
-                    _id: contract._id,
-                    pin: contract.pin,
-                    messages: contract.messages,
-                    title: contract.title,
-                    amount: contract.amount,
-                    symbol: contract.symbol,
-                    timestamp: contract.timestamp,
-                    status: contract.status,
-                    side: 'buyer',
-                    ready: false,
-                  })
-                })
-              } else if (!contract.seller) {
-                contract.seller = { email: user.email, ready: false }
-                contract.save(() => {
-                  res.send({
-                    _id: contract._id,
-                    pin: contract.pin,
-                    messages: contract.messages,
-                    title: contract.title,
-                    amount: contract.amount,
-                    symbol: contract.symbol,
-                    timestamp: contract.timestamp,
-                    status: contract.status,
-                    side: 'seller',
-                    ready: false,
-                  })
-                })
-              } else {
-                if (user.email == contract.buyer.email) {
-                  res.send({
-                    _id: contract._id,
-                    pin: contract.pin,
-                    messages: contract.messages,
-                    title: contract.title,
-                    amount: contract.amount,
-                    symbol: contract.symbol,
-                    timestamp: contract.timestamp,
-                    status: contract.status,
-                    side: 'buyer',
-                    ready: contract.buyer.ready,
-                  })
-                } else if (user.email == contract.seller.email) {
-                  res.send({
-                    _id: contract._id,
-                    pin: contract.pin,
-                    messages: contract.messages,
-                    title: contract.title,
-                    amount: contract.amount,
-                    symbol: contract.symbol,
-                    timestamp: contract.timestamp,
-                    status: contract.status,
-                    side: 'seller',
-                    ready: contract.seller.ready,
-                  })
-                } else {
+              var resMixin = { side: contract.creator == user.email ? 'buyer' : 'seller' }
+
+              if (resMixin.side == 'buyer') {
+                if (!contract.buyer) {
+                  contract.buyer = { email: user.email, ready: false }
+                } else if (user.email != contract.buyer.email) {
                   res.status(403).send({
                     message: "Can't access this contract",
                   })
+                  return
+                } else {
+                  resMixin.ready = contract.buyer.ready
+                }
+              } else {
+                if (!contract.seller) {
+                  contract.seller = { email: user.email, ready: false }
+                } else if (user.email != contract.seller.email) {
+                  res.status(403).send({
+                    message: "Can't access this contract",
+                  })
+                  return
                 }
               }
+
+              contract.save(() => {
+                res.send({
+                  _id: contract._id,
+                  pin: contract.pin,
+                  messages: contract.messages,
+                  title: contract.title,
+                  amount: contract.amount,
+                  symbol: contract.symbol,
+                  timestamp: contract.timestamp,
+                  status: contract.status,
+                  ...resMixin
+                })
+              })
             }
           } else {
             res.status(404).send({
@@ -306,8 +286,7 @@ router.post(
   },
 )
 
-router.get(
-  '/contract/ready',
+router.get('/contract/ready',
   requirePermissions('write:transactions.self'),
   (req, res) => {
     let pin = req.query.pin
@@ -374,7 +353,7 @@ router.get(
                         res.send({ ...sender, ready })
                       })
                       .catch(err => {
-                        res.status(401).send({ ...err, ready })
+                        res.status(401).send({ ...err, ready: false })
                       })
                   } else {
                     res.send({
@@ -417,8 +396,7 @@ router.get(
   },
 )
 
-router.get(
-  '/contract/succeed',
+router.get('/contract/succeed',
   requirePermissions('write:transactions.self'),
   (req, res) => {
     let pin = req.query.pin
