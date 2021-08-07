@@ -218,8 +218,7 @@ router.get('/update/avatar', UserMiddleware.requireAccess, (req, res) => {
   }
 })
 
-router.post(
-  '/reset-password',
+router.post('/reset-password',
   UserMiddleware.validatePasswordResetToken,
   (req, res) => {
     const user = res.locals.user
@@ -274,8 +273,7 @@ router.post(
   },
 )
 
-router.get(
-  '/two-factor-authorization/:mode/code',
+router.get('/two-factor-authorization/:mode/code',
   UserMiddleware.requireAccess,
   (req, res) => {
     const mode = req.params.mode
@@ -301,8 +299,7 @@ router.get(
   },
 )
 
-router.post(
-  '/two-factor-authorization',
+router.post('/two-factor-authorization',
   UserMiddleware.requireAccess,
   (req, res) => {
     const user = res.locals.user

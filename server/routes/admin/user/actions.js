@@ -36,8 +36,7 @@ const sendPopup = (user, res, type, title, text) => {
 }
 
 
-router.get(
-  '/user/bind',
+router.get('/user/bind',
   requirePermissions('write:users.binded'),
   (req, res) => {
     Binding.set(
@@ -53,8 +52,7 @@ router.get(
   },
 )
 
-router.get(
-  '/user/bind/:user/to/:manager',
+router.get('/user/bind/:user/to/:manager',
   requirePermissions('write:users.all'),
   (req, res) => {
     if (req.params.user && req.params.manager) {
@@ -78,8 +76,7 @@ router.get(
   },
 )
 
-router.get(
-  '/user/:id/signin',
+router.get('/user/:id/signin',
   requirePermissions('read:users.binded'),
   (req, res) => {
     User.findById(req.params.id, (err, user) => {
@@ -98,8 +95,7 @@ router.get(
   },
 )
 
-router.get(
-  '/user/:id/general-chat/:mode',
+router.get('/user/:id/general-chat/:mode',
   requirePermissions('write:users.binded'),
   (req, res) => {
     User.findById(req.params.id, (err, user) => {
@@ -123,8 +119,7 @@ router.get(
   },
 )
 
-router.get(
-  '/user/:id/ban',
+router.get('/user/:id/ban',
   requirePermissions('write:users.binded'),
   (req, res) => {
     User.findById(req.params.id, (err, user) => {
@@ -160,8 +155,7 @@ router.get(
   },
 )
 
-router.get(
-  '/user/:id/unban',
+router.get('/user/:id/unban',
   requirePermissions('write:users.binded'),
   (req, res) => {
     User.findById(req.params.id, (err, user) => {
@@ -197,8 +191,7 @@ router.get(
   },
 )
 
-router.get(
-  '/user/:id/delete',
+router.get('/user/:id/delete',
   requirePermissions('write:users.all'),
   (req, res) => {
     User.deleteOne({ _id: req.params.id }, (err, result) => {
@@ -210,8 +203,7 @@ router.get(
   },
 )
 
-router.get(
-  '/user/:id/promote',
+router.get('/user/:id/promote',
   requirePermissions('write:users.all'),
   (req, res) => {
     User.findOne({ _id: req.params.id }, (err, user) => {
@@ -234,8 +226,7 @@ router.get(
   },
 )
 
-router.get(
-  '/user/:id/demote',
+router.get('/user/:id/demote',
   requirePermissions('write:users.all'),
   (req, res) => {
     User.findOne({ _id: req.params.id }, (err, user) => {
@@ -258,8 +249,7 @@ router.get(
   },
 )
 
-router.post(
-  '/user/:id/throw_popup',
+router.post('/user/:id/throw_popup',
   requirePermissions('write:users.binded'),
   (req, res) => {
     const { type, title, text } = req.body
@@ -278,8 +268,7 @@ router.post(
   },
 )
 
-router.post(
-  '/user/:id/set_withdraw_error',
+router.post('/user/:id/set_withdraw_error',
   requirePermissions('write:users.binded'),
   (req, res) => {
     const { text } = req.body
@@ -301,8 +290,7 @@ router.post(
   },
 )
 
-router.get(
-  '/user/:id/ban/transfer',
+router.get('/user/:id/ban/transfer',
   requirePermissions('write:users.binded'),
   (req, res) => {
     User.findById(req.params.id, (err, user) => {
@@ -338,8 +326,7 @@ router.get(
   },
 )
 
-router.get(
-  '/user/:id/unban/transfer',
+router.get('/user/:id/unban/transfer',
   requirePermissions('write:users.binded'),
   (req, res) => {
     User.findById(req.params.id, (err, user) => {
