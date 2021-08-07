@@ -143,7 +143,6 @@ router.post(
             })
           })
           .catch(err => {
-            console.log(err)
             new UserTransaction({
               sender,
               name: 'Transfer',

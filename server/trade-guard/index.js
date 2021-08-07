@@ -74,7 +74,7 @@ const createContract = (manager, amount, symbol, title, pin) => {
             status: 'waiting for agreement',
           }).save(contract => {
             setTimeout(() => {
-              Contract.findByIdAndDelete(contract._id, null)
+              Contract.findByIdAndDelete(contract?._id, null)
             }, 1000 * 60 * 30) // 30 min
             resolve(contract)
           })
