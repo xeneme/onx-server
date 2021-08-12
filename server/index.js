@@ -1,11 +1,12 @@
 require('dotenv/config')
 require('colors')
+require('./utils/polyfill')
 
 const fs = require('fs')
 const path = require('path')
+const express = require('express')
 const http = require('http')
 const https = require('https')
-const express = require('express')
 const session = require('express-session')
 const compression = require('compression')
 const app = express()

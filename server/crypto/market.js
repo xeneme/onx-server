@@ -4,14 +4,6 @@ const CoinGeckoClient = new CoinGecko()
 
 var userCharts = {}
 
-Array.prototype.max = function () {
-  return Math.max.apply(null, this)
-}
-
-Array.prototype.min = function () {
-  return Math.min.apply(null, this)
-}
-
 const normalize = (array, toMin, toMax) => {
   toMin = Math.min(toMin, toMax)
   toMax = Math.max(toMin, toMax)
