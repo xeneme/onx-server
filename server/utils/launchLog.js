@@ -2,25 +2,23 @@ require('colors')
 
 /* prettier-ignore */
 var states = 5,
-    state = 0,
-    callbackExecuted = false,
-    callback = null,
-    error = 0
+  state = 0,
+  callbackExecuted = false,
+  callback = null,
+  error = 0
 
-console.clear()
 console.log(`\nHOST: http://localhost:${process.env.PORT || 8080}/\n`)
 
 module.exports = {
   log: (text, cb) => {
-    if(error) return
+    if (error) return
 
     state++
 
     if (cb) callback = cb
 
     console.log(
-      ` [${state}/${states}] `.bgCyan + ` ${text}${
-        state == states + +Boolean(callback) ? '.' : '...'
+      ` [${state}/${states}] `.bgCyan + ` ${text}${state == states + +Boolean(callback) ? '.' : '...'
       }`,
     )
 
