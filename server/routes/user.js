@@ -4,7 +4,6 @@ const router = express.Router()
 const Joi = require('@hapi/joi')
 const XRegExp = require('xregexp')
 const bcrypt = require('bcryptjs')
-const jwt = require('jsonwebtoken')
 
 const User = require('../models/User')
 const Support = require('../models/SupportDialogue')
@@ -24,7 +23,7 @@ const TwoFABot = require('../telegram-bot')
 const saveSupportMessage = require('../chat').saveSupportMessage
 const saveGeneralMessage = require('../chat').saveGeneralChatMessage
 
-require('../user/updateProfiles')
+// require('../user/updateProfiles')
 
 router.post('/update', UserMiddleware.requireAccess, (req, res) => {
   const userId = UserMiddleware.parseUserId(req, res)
