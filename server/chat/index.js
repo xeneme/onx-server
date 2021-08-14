@@ -216,7 +216,7 @@ const saveSupportMessage = (userid, message, support) =>
     }
   })
 
-const saveGeneralChatMessage = (userid, message, read) =>
+const saveGeneralMessage = (userid, message, read) =>
   new Promise((resolve) => {
     {
       if (!userid || userid == 'total') { resolve(); return }
@@ -290,7 +290,7 @@ module.exports = {
 
         const preparedMessage = { ...message, real: true, at: +new Date(), userid: user }
 
-        saveGeneralChatMessage(user, preparedMessage, admin) // saving the message to the database
+        saveGeneralMessage(user, preparedMessage, admin) // saving the message to the database
 
         socket.emit('general-message', preparedMessage) // giving it back
         sendGeneralChatMessage(userId || lobby, preparedMessage) // to other side
@@ -326,5 +326,5 @@ module.exports = {
   },
   getGeneralLobbyMessages,
   saveSupportMessage,
-  saveGeneralChatMessage
+  saveGeneralMessage
 }

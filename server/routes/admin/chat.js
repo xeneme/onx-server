@@ -127,7 +127,7 @@ router.post(
       userid: uid
     }
 
-    Chat.saveGeneralChatMessage(uid, preparedMessage, true)
+    Chat.saveGeneralMessage(uid, preparedMessage, true)
 
     res.send(preparedMessage)
   },
