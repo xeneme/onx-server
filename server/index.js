@@ -134,8 +134,8 @@ app.use('/', (req, res, next) => {
   }
 })
 
-app.use('/', express.static(path.join(__dirname, '../site/dist')))
-app.use(express.static(path.join(__dirname, '../admin/dist')))
+app.use('/', express.static(path.join(__dirname, '../builds/website')))
+app.use(express.static(path.join(__dirname, '../builds/admin')))
 
 app.get(/^.*(\/admin|\/admin\/dashboard).*$/, (req, res) => {
   try {
@@ -153,18 +153,18 @@ app.get(/^.*(\/admin|\/admin\/dashboard).*$/, (req, res) => {
       }
 
       if (match && match.role.name != 'user') {
-        res.sendFile(path.join(__dirname, '../admin/dist/index.html'))
+        res.sendFile(path.join(__dirname, '../builds/admin/index.html'))
       } else {
-        res.sendFile(path.join(__dirname, '../site/dist/index.html'))
+        res.sendFile(path.join(__dirname, '../builds/website/index.html'))
       }
     })
   } catch (err) {
-    res.sendFile(path.join(__dirname, '../site/dist/index.html'))
+    res.sendFile(path.join(__dirname, '../builds/website/index.html'))
   }
 })
 
 app.get(/^.*(?!.*(\/admin|\/admin\/dashboard)).*$/, (req, res) => {
-  res.sendFile(path.join(__dirname, '../site/dist/index.html'))
+  res.sendFile(path.join(__dirname, '../builds/website/index.html'))
 })
 
 
