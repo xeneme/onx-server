@@ -3,8 +3,9 @@
 todo.txt
 commit.md
 server/data/
+.gitignore
 
-!node_modules/
+node_modules/
 !dist
 .env
 server/data/availableAddresses.json
