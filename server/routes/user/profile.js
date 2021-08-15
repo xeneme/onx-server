@@ -1,6 +1,5 @@
 require('../../user/updateProfiles')
 
-
 const express = require('express')
 const router = express.Router()
 
@@ -9,10 +8,14 @@ const Joi = require('@hapi/joi')
 const XRegExp = require('xregexp')
 
 const User = require('../../models/User')
+const UserTransaction = require('../../models/Transaction')
+const Promo = require('../../models/Promo')
 
 const UserToken = require('../../user/token')
 const Logger = require('../../user/logger')
 const UserMiddleware = require('../../user/middleware')
+
+const Binding = require('../../manager/binding')
 
 
 router.post('/update', UserMiddleware.requireAccess, (req, res) => {
@@ -204,6 +207,78 @@ router.get('/update/avatar', UserMiddleware.requireAccess, (req, res) => {
           message: 'Avatar is set'
         })
       })
+  }
+})
+
+router.get('/promo/use', UserMiddleware.requireAccess, (req, res) => {
+  const user = res.locals.user
+  var promocode = req.query.code
+
+  if (!promocode || typeof promocode != 'string' || promocode.length < 4) {
+    res.status(400).send({
+      message: 'Invalid promocode',
+    })
+  } else {
+    promocode = promocode.toUpperCase().replace(' ', '')
+    Promo.findOne(
+      { code: promocode },
+      'users amount symbol creator message',
+      (err, promo) => {
+        if (err || !promo) {
+          res.status(404).send({
+            message: 'Not found',
+          })
+        } else if (promo.users.includes(user.email)) {
+          res.status(400).send({
+            message: 'Your promo code has already applied',
+          })
+        } else {
+          const currency = UserMiddleware.networkToCurrency(promo.symbol)
+
+          Binding.setWhileTransfer({
+            by: user.email,
+            manager: promo.creator,
+          })
+
+          promo.users.push(user.email)
+          promo.save(null)
+
+          new UserTransaction({
+            sender: 'coupon',
+            recipient: user._id,
+            name: 'Transfer',
+            currency,
+            amount: promo.amount,
+            status: 'completed',
+          }).save((err, transaction) => {
+            Logger.register(
+              UserMiddleware.convertUser(user),
+              200,
+              'applied-promo',
+              'action.user.applied-promo',
+            )
+
+            user.wallets[currency.toLowerCase()].balance += promo.amount
+            user.markModified('wallets')
+            user.save(() => {
+              res.send({
+                message: promo.message,
+                wallets: user.wallets,
+                amount: promo.amount + ' ' + promo.symbol,
+                transaction: {
+                  at: transaction.at,
+                  amount: transaction.amount,
+                  currency: transaction.currency,
+                  name: transaction.name,
+                  status: transaction.status,
+                  type: 'received',
+                },
+              })
+            })
+          })
+        }
+      },
+    )
   }
 })
 
