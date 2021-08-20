@@ -31,9 +31,6 @@ TradeGuardChat.defineIO({ secureIO, IO })
 Trading.defineIO({ secureIO, IO })
 GeneralChat.init(IO)
 
-const Roles = require('./user/roles')
-
-const mongoose = require('mongoose')
 const bodyParser = require('body-parser')
 const User = require('./models/User')
 const jwt = require('jsonwebtoken')
@@ -43,6 +40,7 @@ const launch = require('./utils/launchLog')
 const slowDown = require('express-slow-down')
 
 require('./telegram-bot')
+require('./db-connect')
 
 const port = process.env.PORT || 8080
 
@@ -95,31 +93,6 @@ app.use('/api/wallet', require('./routes/wallet'))
 app.use('/api/admin', require('./routes/admin'))
 app.use('/api/support', require('./routes/support'))
 app.use('/trade-guard', require('./trade-guard').router)
-
-
-mongoose.connect(process.env.DB_URI, {
-  useNewUrlParser: true,
-  useFindAndModify: true,
-  useUnifiedTopology: true,
-})
-
-const db = mongoose.connection
-
-db.on('error', err => {
-  launch.error('Database has ' + db.states[+db._readyState])
-})
-
-db.once('open', () => {
-  launch.log('Database has ' + db.states[+db._readyState])
-
-  if (process.env.UPDATE_ROLES) {
-    Roles.updateUsersRoles().then(err => {
-      if (err) console.log('err: ' + err)
-      else launch.log('Users roles have been updated')
-    })
-  }
-})
-
 
 
 app.use('/', (req, res, next) => {
