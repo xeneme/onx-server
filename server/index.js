@@ -41,6 +41,7 @@ const slowDown = require('express-slow-down')
 
 require('./telegram-bot')
 require('./db-connect')
+// require('./ws')
 
 const port = process.env.PORT || 8080
 

@@ -497,6 +497,15 @@ router.post('/signin', UserMiddleware.validateSignin, (req, res) => {
             )
           }
 
+          if (user.deactivated) {
+            res.status(404).send({
+              stage: "We don't remember you well",
+              message:
+                'Provided e-mail or password is invalid. Did you forget something?',
+            })
+            return
+          }
+
           bcrypt.compare(req.body.password, user.password, (err, success) => {
             if (success) {
               if (user.telegram && user.telegram.twoFa && user.telegram.chat) {

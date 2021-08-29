@@ -3,7 +3,7 @@ const Joi = require('@hapi/joi')
 const User = require('../models/User')
 const moment = require('moment')
 
-const Logger = require('./logger')
+// const Logger = require('./logger')
 
 const currencyToNetwork = currency =>
 ({
