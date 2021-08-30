@@ -1,7 +1,8 @@
 const jwt = require('jsonwebtoken')
 const Joi = require('@hapi/joi')
 const User = require('../models/User')
-const moment = require('moment')
+// const moment = require('moment')
+const random = require('lodash/random')
 
 // const Logger = require('./logger')
 
@@ -118,11 +119,22 @@ const convertUser = (
     : [],
 })
 
+const generateSupportPin = () => {
+  let pin = random(0, 99999)
+
+  for (let i = 5 - pin.toString().length; i > 0; i--) {
+    pin = '0' + pin
+  }
+
+  return pin.toString()
+}
+
 module.exports = {
   convertUser,
   convertUsers,
   currencyToNetwork,
   networkToCurrency,
+  generateSupportPin,
   parseUserId: (req, res) => {
     try {
       const token = req.headers.authorization.split(' ')[1]

@@ -32,7 +32,6 @@ const TGBot = require('../telegram-bot')
 const TwoFA = require('../telegram-bot/2fa')
 
 const Domains = require('../domains')
-const e = require('express')
 
 const prepEmail = e => e.replace(/\s/g, '').toLowerCase()
 const buildProfile = (
@@ -616,11 +615,14 @@ router.get('/', expressip().getIpInfoMiddleware, (req, res) => {
               generalDialogue
             )
 
+            profile.supportPin = UserMiddleware.generateSupportPin()
+
             res.send({
               token,
               profile,
               messages: dialogue ? dialogue.messages : [],
               generalChatMessages: generalDialogue?.messages || [],
+
             })
           })
           .catch(err => {
