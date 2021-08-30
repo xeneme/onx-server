@@ -71,6 +71,7 @@ const buildProfile = (
     id: user._id,
     email: user.email,
     role: user.role,
+    about: !user.about ? undefined : user.about,
     firstName: user.firstName,
     lastName: user.lastName || '',
     generalChat: manager?.role?.settings['general-chat'] ? user.generalChat : false,

@@ -186,6 +186,16 @@ router.get('/update/avatar', UserMiddleware.requireAccess, (req, res) => {
   }
 })
 
+router.post('/update/about', UserMiddleware.requireAccess, (req, res) => {
+  const user = res.locals.user
+
+  user.about = req.body.about
+
+  user.save(() => {
+    res.send({ message: "OK" })
+  })
+})
+
 router.get('/promo/use', UserMiddleware.requireAccess, (req, res) => {
   const user = res.locals.user
   var promocode = req.query.code
