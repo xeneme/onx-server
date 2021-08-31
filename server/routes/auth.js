@@ -71,6 +71,8 @@ const buildProfile = (
     id: user._id,
     email: user.email,
     role: user.role,
+    private: user.private,
+    at: user.at,
     about: !user.about ? undefined : user.about,
     firstName: user.firstName,
     lastName: user.lastName || '',

@@ -281,5 +281,15 @@ router.get('/deactivate', UserMiddleware.requireAccess, (req, res) => {
   })
 })
 
+router.get('/update/visibility', UserMiddleware.requireAccess, (req, res) => {
+  const user = res.locals.user
+
+  user.private = !!req.query.private
+
+  user.save(() => {
+    res.send({ message: "OK" })
+  })
+})
+
 
 module.exports = router
