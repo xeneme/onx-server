@@ -4,6 +4,7 @@ const router = express.Router()
 const TwoFABot = require('../../telegram-bot')
 const TwoFA = require('../../telegram-bot/2fa')
 
+const User = require('../../models/User')
 const UserMiddleware = require('../../user/middleware')
 
 
