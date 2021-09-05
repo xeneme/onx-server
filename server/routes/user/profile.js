@@ -113,7 +113,7 @@ router.post('/update/password', UserMiddleware.requireAccess, (req, res) => {
           const hashedPassword = bcrypt.hashSync(req.body.newPassword, salt)
 
           User.findByIdAndUpdate(
-            userId,
+            user.id,
             {
               $set: {
                 password: hashedPassword,
