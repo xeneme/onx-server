@@ -1,4 +1,3 @@
-const fs = require('fs')
 const _ = require('underscore')
 const Client = require('coinbase/lib/Client')
 const CoinGecko = require('coingecko-api')
@@ -37,8 +36,10 @@ ExchangeBase = {
     BTC: {},
     ETH: {},
     LTC: {},
+    USDC: {},
   },
   depositsCount: 415651,
+  availableCoins: ['BTC', 'ETH', 'LTC', 'USDC']
 }
 
 const fetchCoinbaseData = done => {
@@ -48,11 +49,11 @@ const fetchCoinbaseData = done => {
       if (err) {
         launch.error('Failed to connect to Coinbase account (' + err + ')')
       } else {
-        accs = accs.filter(a => ['BTC', 'ETH', 'LTC'].includes(a.currency.code))
+        accs = accs.filter(a => ExchangeBase.availableCoins.includes(a.currency.code))
 
         launch.sublog('accounts: ' + accs.length)
 
-        if (accs && accs.length != 3) {
+        if (accs && accs.length != ExchangeBase.availableCoins.length) {
           console.log(
             'CoinBase: The list of available accounts is not complete.',
           )
@@ -81,13 +82,15 @@ const currencyToNET = currency =>
   bitcoin: 'BTC',
   litecoin: 'LTC',
   ethereum: 'ETH',
+  'usd coin': 'USDC',
 }[currency.toLowerCase()])
 
 const netToCurrency = net =>
 ({
   BTC: 'bitcoin',
-  LTC: 'litecoin',
   ETH: 'ethereum',
+  LTC: 'litecoin',
+  USDC: 'usd coin',
 }[net.toUpperCase()])
 
 ////////
@@ -116,7 +119,7 @@ const createNewAddress = (NET, email) => {
         if (!err) {
           resolve(address)
         } else {
-          reject(err)
+          reject('createNewAddress', err)
         }
       },
     )
@@ -133,8 +136,8 @@ const createUserWallets = async email => {
       new Promise(resolve => {
         createNewAddress(NET, email)
           .then(newAddress => {
-            const address = newAddress.deposit_uri.split(':')[1]
-            const currency = newAddress.deposit_uri.split(':')[0]
+            const address = newAddress.address
+            const currency = newAddress.account.currency.name.toLowerCase()
 
             wallets[currency] = {
               balance: 0,
@@ -687,13 +690,7 @@ const syncUserAccounts = async (user) => {
   })
 
   withdrawals.forEach(({ amount, network }) => {
-    let currency = {
-      BTC: "bitcoin",
-      ETH: "ethereum",
-      LTC: "litecoin",
-    }[network]
-
-    wallets[currency] -= amount
+    wallets[netToCurrency(network)] -= amount
   })
 
   Object.entries(wallets).forEach(([c, b]) => {
@@ -725,5 +722,6 @@ module.exports = {
   netToCurrency,
   computeCommission,
   applyCommission,
-  transferReceived
+  transferReceived,
+  base: ExchangeBase
 }

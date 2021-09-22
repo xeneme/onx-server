@@ -48,6 +48,7 @@ const buildProfile = (
     bitcoin: null,
     ethereum: null,
     litecoin: null,
+    'usd coin': null
   }
 
   Object.keys(wallets).forEach(currency => {

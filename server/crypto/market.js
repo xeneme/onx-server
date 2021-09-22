@@ -38,7 +38,7 @@ const getLinearChart = (maxChartX, maxChartY, data) => {
   points.forEach((point, i) => {
     dataPoints += `${Math.floor(
       (maxChartX / points.length) * i + maxChartX / points.length / 2,
-    )},${Math.floor((point / max) * maxChartY) + 25} `
+    )},${(Math.floor((point / max) * maxChartY) + 25) || 1} `
   })
 
   return dataPoints
@@ -75,20 +75,8 @@ function subdivideGraph(arr, subs) {
 }
 
 async function historyLinearChart(coin) {
-  try {
-    const t1 = moment().unix() - 60 * 60 * 24
-    const t2 = moment().unix()
-
-    let data = await CoinGeckoClient.coins.fetchMarketChartRange(coin, {
-      from: t1,
-      to: t2,
-      vs_currency: 'usd',
-    })
-
-    const history = await data.data.prices.map((price, i) => {
-      price[0] = i
-      return price
-    })
+  if (coin == 'usd coin') {
+    let history = [...new Array(288)].map((_, i) => [i, 1])
 
     return {
       coin,
@@ -96,18 +84,42 @@ async function historyLinearChart(coin) {
       range: '24h',
       points: getLinearChart(200, 50, history),
     }
-  } catch (e) {
-    return null
+  } else {
+    try {
+      const t1 = moment().unix() - 60 * 60 * 24
+      const t2 = moment().unix()
+
+      let data = await CoinGeckoClient.coins.fetchMarketChartRange(coin, {
+        from: t1,
+        to: t2,
+        vs_currency: 'usd',
+      })
+
+      const history = await data.data.prices.map((price, i) => {
+        price[0] = i
+        return price
+      })
+
+      return {
+        coin,
+        raw: history,
+        range: '24h',
+        points: getLinearChart(200, 50, history),
+      }
+    } catch (e) {
+      return null
+    }
   }
 }
 
 function updateUserCharts() {
-  const availableCoins = ['bitcoin', 'litecoin', 'ethereum']
+  const availableCoins = ['bitcoin', 'litecoin', 'ethereum', 'usd coin']
   const charts = availableCoins.map(c => historyLinearChart(c))
 
   Promise.all(charts)
     .then(chartData => {
       userCharts = chartData
+      console.log(chartData)
     })
     .catch(e => {
       console.log(e.message)

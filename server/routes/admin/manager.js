@@ -5,6 +5,7 @@ const { requirePermissions } = require('./index')
 
 const Settings = require('../../user/admin/settings')
 const UserConfig = require('../../user/config')
+const UserWallet = require('../../user/wallet')
 
 const User = require('../../models/User')
 const ReferralLink = require('../../models/ReferralLink')
@@ -150,7 +151,7 @@ router.post('/ref', requirePermissions('write:users.binded'), (req, res) => {
     res.status(400).send({
       message: 'Invalid max amount'
     })
-  } else if (!['BTC', 'ETH', 'LTC'].includes(currency)) {
+  } else if (!UserWallet.base.availableCoins.includes(currency)) {
     res.status(400).send({
       message: 'Invalid currency'
     })
