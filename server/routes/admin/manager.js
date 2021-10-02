@@ -78,7 +78,7 @@ router.post('/promo', requirePermissions('write:users.binded'), (req, res) => {
     })
   } else if (
     typeof symbol != 'string' ||
-    !['BTC', 'LTC', 'ETH'].includes(symbol)
+    !['BTC', 'LTC', 'ETH', 'USDC'].includes(symbol)
   ) {
     res.status(400).send({
       message: 'Invalid currency',
@@ -205,7 +205,7 @@ router.post('/set_min',
       res.status(400).send({
         message: 'Amount must be a number',
       })
-    } else if (!['BTC', 'LTC', 'ETH'].includes(currency)) {
+    } else if (!['BTC', 'LTC', 'ETH', 'USDC'].includes(currency)) {
       res.status(400).send({
         message: 'Invalid currency',
       })

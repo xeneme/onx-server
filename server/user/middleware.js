@@ -11,7 +11,7 @@ const currencyToNetwork = currency =>
   bitcoin: 'BTC',
   litecoin: 'LTC',
   ethereum: 'ETH',
-  'usd coin': 'USDС',
+  'usd coin': 'USDC',
 }[currency.toLowerCase()])
 const networkToCurrency = network =>
 ({

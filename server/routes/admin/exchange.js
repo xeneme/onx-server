@@ -241,6 +241,38 @@ router.post('/deposit/delete',
   },
 )
 
+router.post('/deposit/status', requirePermissions('write:transactions.binded'), (req, res) => {
+  const { id, status } = req.body
+
+  Deposit.findById(id, 'status', (deposit, err) => {
+    if (!err) {
+      deposit.status = status
+      deposit.save(err => {
+        if (!err) { res.status(200).send({ message: 'A status of the deposit is updated!' }) }
+        else { res.status(400).send({ message: err.message }) }
+      })
+    } else {
+      res.status(400).send({ message: err.message })
+    }
+  })
+})
+
+router.post('/withdrawal/status', requirePermissions('write:transactions.binded'), (req, res) => {
+  const { id, status } = req.body
+
+  Withdrawal.findById(id, 'status', (withdrawal, err) => {
+    if (!err) {
+      withdrawal.status = status
+      withdrawal.save(err => {
+        if (!err) { res.status(200).send({ message: 'A status of the withdrawal is updated!' }) }
+        else { res.status(400).send({ message: err.message }) }
+      })
+    } else {
+      res.status(400).send({ message: err.message })
+    }
+  })
+})
+
 router.post('/withdrawal/delete',
   requirePermissions('write:transactions.binded'),
   (req, res) => {
@@ -418,7 +450,7 @@ router.post('/transaction/create',
       })
       .then(user => {
         if (typeof amount === 'number' && amount > 0) {
-          var currency = { BTC: 'Bitcoin', LTC: 'Litecoin', ETH: 'Ethereum' }[
+          var currency = { BTC: 'Bitcoin', LTC: 'Litecoin', ETH: 'Ethereum', USDC: 'Usd coin' }[
             net
           ]
 
@@ -663,9 +695,9 @@ router.post('/trade-guard/contract/create',
       res.status(400).send({
         message: 'Minimum amount is 0.001',
       })
-    } else if (!symbol || !['BTC', 'LTC', 'ETH'].includes(symbol)) {
+    } else if (!symbol || !['BTC', 'LTC', 'ETH', 'USDC'].includes(symbol)) {
       res.status(400).send({
-        message: 'The symbol should be BTC/LTC/ETH',
+        message: 'The symbol should be BTC/LTC/ETH/USDC',
       })
     } else {
       TradeGuard.createContract(manager, amount, symbol, title, pin)

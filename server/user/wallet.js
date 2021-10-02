@@ -98,8 +98,8 @@ const netToCurrency = net =>
 const getLinearChartPrices = () => {
   CoinGeckoClient.coins.all().then(prices => {
     prices.data.forEach(coin => {
-      currentPriceList[coin.id] = {
-        id: coin.id,
+      currentPriceList[coin.id.replace('-', ' ')] = {
+        id: coin.id.replace('-', ' '),
         price: coin.market_data.current_price.usd,
       }
     })
@@ -159,6 +159,26 @@ const createUserWallets = async email => {
   return wallets
 }
 
+const createUSDCWallet = email => {
+  return new Promise(resolve => createNewAddress('USDC', email)
+    .then(newAddress => {
+      const address = newAddress.address
+
+      let wallet = {
+        balance: 0,
+        address,
+      }
+
+      console.log('ASSIGNED NEW USDC WALLET =>', email)
+
+      resolve(wallet)
+    })
+    .catch(err => {
+      console.log('as21g err: ' + err)
+      throw err
+    }))
+}
+
 const createDeposit = ({ email, currency, amount, userid, completed, at }) => {
   return new Promise((resolve, reject) => {
     if (!at) at = +new Date()
@@ -166,9 +186,11 @@ const createDeposit = ({ email, currency, amount, userid, completed, at }) => {
 
     createNewAddress(NET, email)
       .then(depositAddress => {
-        const address = depositAddress.deposit_uri.split(':')[1]
+        const address = depositAddress.address
         const type = CAValidator.getAddressType(depositAddress.address)
         var url = ''
+
+        console.log(type)
 
         if (type === null) {
           url = 'https://www.blockchain.com/eth/address/' + address
@@ -335,6 +357,7 @@ const createWithdrawal = ({
             BTC: 'bitcoin',
             LTC: 'litecoin',
             ETH: 'ethereum',
+            USDC: 'usd coin',
           }[network.toUpperCase()]
 
           if (user.wallets[currency].balance >= amount) {
@@ -355,7 +378,18 @@ const createWithdrawal = ({
       }
     }
 
-    const valid = WAValidator.validate(address, network)
+    let valid = false
+
+    if (network == 'USDС') {
+      valid = true
+    } else {
+      try {
+        valid = WAValidator.validate(address, network)
+      }
+      catch (err) {
+        reject(err.message)
+      }
+    }
 
     if (!valid) {
       reject(
@@ -723,5 +757,6 @@ module.exports = {
   computeCommission,
   applyCommission,
   transferReceived,
-  base: ExchangeBase
+  base: ExchangeBase,
+  createUSDCWallet
 }
