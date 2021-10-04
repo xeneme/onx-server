@@ -28,6 +28,14 @@ String.prototype.toCurrency = function (lower) {
   }[this.toUpperCase()]
 }
 
+String.prototype.isSymbol = function () {
+  return ['BTC', 'LTC', 'ETH', 'USDC'].includes(this.toUpperCase())
+}
+
+String.prototype.isCurrency = function () {
+  return ['bitcoin', 'litecoin', 'ethereum', 'usd coin'].includes(this.toLowerCase())
+}
+
 Promise.prototype.delay = function (miliseconds) {
   return new Promise(resolve => {
     setTimeout(resolve, miliseconds)
