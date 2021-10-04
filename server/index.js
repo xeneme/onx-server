@@ -1,6 +1,6 @@
+require('./utils/polyfill')
 require('dotenv/config')
 require('colors')
-require('./utils/polyfill')
 
 const fs = require('fs')
 const path = require('path')

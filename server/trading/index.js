@@ -1,3 +1,4 @@
+const { delay } = require('../utils/time')
 const Market = require('../crypto/market')
 
 var IO,
@@ -139,6 +140,8 @@ const Graph = {
     for (let [net, currency] of coins) {
       if (!Data.realHistory[net]['1h']) {
         Data.realHistory[net] = await Market.allHistory(currency)
+        console.log(`\n  => Trading Module: ${currency} history is loaded. ` + (net != 'XRP' ? `\n     Fetching another one in 30sec...\n` : '\n     Done\n'))
+        await delay(30000)
       }
     }
 
@@ -313,8 +316,12 @@ const defineIO = value => {
   IO = value
 }
 
-Graph.updateRealHistory()
+Graph.updateRealHistory().then(() => {
+  console.log('Trading Module: all charts are updated')
+})
+
 Orders.updatePrice()
+
 setInterval(Graph.applyFakedHistory, 4000)
 setInterval(Orders.createOrder, Helper.randomDelay())
 setInterval(Orders.updatePrice, 60000)

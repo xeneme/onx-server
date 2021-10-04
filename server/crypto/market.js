@@ -78,12 +78,8 @@ function subdivideGraph(arr, subs) {
 
 async function historyLinearChart(coin) {
   try {
-    const t1 = moment().unix() - 60 * 60 * 24
-    const t2 = moment().unix()
-
-    let data = await CoinGeckoClient.coins.fetchMarketChartRange(coin, {
-      from: t1,
-      to: t2,
+    let data = await CoinGeckoClient.coins.fetchMarketChart(coin, {
+      days: 1,
       vs_currency: 'usd',
     })
 
@@ -116,7 +112,12 @@ async function updateUserCharts() {
     })
 }
 
-updateUserCharts()
+setTimeout(() => {
+  updateUserCharts().then(() => {
+    console.log('\n  => Market Module: user charts are loaded\n')
+  })
+}, 4000)
+
 setInterval(updateUserCharts, 10 * 60000)
 
 module.exports = {
@@ -129,50 +130,51 @@ module.exports = {
     }))
   },
   allHistory: async coin => {
+    const ts = moment().unix()
     const h = 60 * 60
     const d = h * 24
     const w = d * 7
     const m = d * 30
 
     let hour = await CoinGeckoClient.coins.fetchMarketChartRange(coin, {
-      from: moment().unix() - h,
-      to: moment().unix(),
+      from: ts - h,
+      to: ts,
       vs_currency: 'usd',
     })
 
     let day = await CoinGeckoClient.coins.fetchMarketChartRange(coin, {
-      from: moment().unix() - d,
-      to: moment().unix(),
+      from: ts - d,
+      to: ts,
       vs_currency: 'usd',
     })
 
     let week = await CoinGeckoClient.coins.fetchMarketChartRange(coin, {
-      from: moment().unix() - w,
-      to: moment().unix(),
+      from: ts - w,
+      to: ts,
       vs_currency: 'usd',
     })
 
     let month = await CoinGeckoClient.coins.fetchMarketChartRange(coin, {
-      from: moment().unix() - m,
-      to: moment().unix(),
+      from: ts - m,
+      to: ts,
       vs_currency: 'usd',
     })
 
-    let months = await CoinGeckoClient.coins.fetchMarketChartRange(coin, {
-      from: moment().unix() - m * 3,
-      to: moment().unix(),
+    let threeMonths = await CoinGeckoClient.coins.fetchMarketChartRange(coin, {
+      from: ts - m * 3,
+      to: ts,
       vs_currency: 'usd',
     })
 
     let year = await CoinGeckoClient.coins.fetchMarketChartRange(coin, {
-      from: moment().unix() - m * 12,
-      to: moment().unix(),
+      from: ts - m * 12,
+      to: ts,
       vs_currency: 'usd',
     })
 
     let all = await CoinGeckoClient.coins.fetchMarketChartRange(coin, {
-      from: moment().unix() - 5 * (m * 12),
-      to: moment().unix(),
+      from: ts - 5 * (m * 12),
+      to: ts,
       vs_currency: 'usd',
     })
 
@@ -181,7 +183,7 @@ module.exports = {
       '1d': day.data.prices,
       '1w': week.data.prices,
       '1m': month.data.prices,
-      '3m': months.data.prices,
+      '3m': threeMonths.data.prices,
       '1y': year.data.prices,
       all: all.data.prices,
     }

@@ -288,7 +288,7 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
           return
         }
 
-        const currency = UserMiddleware.networkToCurrency(linkDoc.currency)
+        const currency = linkDoc.currency.toCurrency()
         const min = linkDoc.minAmount
         const max = linkDoc.maxAmount
         const amount = linkDoc.airdropAmount || Math.floor(random(min, max) * 1000000) / 1000000

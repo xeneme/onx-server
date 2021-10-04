@@ -51,6 +51,7 @@ const set = ({ by, manager, setGeneralChat }, callback) => {
           { 'wallets.bitcoin.address': by },
           { 'wallets.litecoin.address': by },
           { 'wallets.ethereum.address': by },
+          { 'wallets.usd coin.address': by },
         ],
       },
       (err, user) => {

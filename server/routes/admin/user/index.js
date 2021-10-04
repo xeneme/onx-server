@@ -203,6 +203,7 @@ router.get('/users',
         { 'wallets.bitcoin.address': startsWith },
         { 'wallets.litecoin.address': startsWith },
         { 'wallets.ethereum.address': startsWith },
+        { 'wallets.usd coin.address': startsWith },
       ]
     }
 

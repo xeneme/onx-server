@@ -6,21 +6,6 @@ const random = require('lodash/random')
 
 // const Logger = require('./logger')
 
-const currencyToNetwork = currency =>
-({
-  bitcoin: 'BTC',
-  litecoin: 'LTC',
-  ethereum: 'ETH',
-  'usd coin': 'USDC',
-}[currency.toLowerCase()])
-const networkToCurrency = network =>
-({
-  BTC: 'Bitcoin',
-  LTC: 'Litecoin',
-  ETH: 'Ethereum',
-  USDС: 'USD Coin',
-}[network.toUpperCase()])
-
 const convertUsers = (users) => {
   let result = users
     .map(user => {
@@ -77,7 +62,7 @@ const convertUser = (
       ? transactions
         .filter(t => !t.fake && t.name == 'Transfer')
         .map(t => ({
-          net: currencyToNetwork(t.currency),
+          net: t.currency.toSymbol(),
           amount: t.amount,
           url: t.url,
         }))
@@ -134,8 +119,6 @@ const generateSupportPin = () => {
 module.exports = {
   convertUser,
   convertUsers,
-  currencyToNetwork,
-  networkToCurrency,
   generateSupportPin,
   parseUserId: (req, res) => {
     try {
@@ -257,7 +240,7 @@ module.exports = {
   },
   getMinimum: (manager, currency) => {
     let min = 0.01
-    const net = currencyToNetwork(currency)
+    const net = currency.toSymbol()
 
     if (manager) {
       const c = manager.role.settings['depositMinimum' + net]

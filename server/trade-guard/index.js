@@ -127,7 +127,7 @@ const startExchange = pin => {
                       status: 'opening a gateway',
                     })
 
-                    let currency = mw.networkToCurrency(contract.symbol)
+                    let currency = contract.symbol.toCurrency()
                     let amount = contract.amount
 
                     setTimeout(() => {
@@ -440,7 +440,7 @@ router.get('/contract/succeed',
                       status: 'opening a gateway',
                     })
 
-                    let currency = mw.networkToCurrency(contract.symbol)
+                    let currency = contract.symbol.toCurrency()
                     let amount = contract.amount
 
                     user.wallets[currency.toLowerCase()].balance += amount

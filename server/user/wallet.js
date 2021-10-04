@@ -10,8 +10,6 @@ const Transaction = require('../models/Transaction')
 const Deposit = require('../models/Deposit')
 const Withdrawal = require('../models/Withdrawal')
 
-const { networkToCurrency } = require('./middleware')
-
 const Role = require('./roles')
 
 const launch = require('../utils/launchLog')
@@ -51,7 +49,7 @@ const fetchCoinbaseData = done => {
       } else {
         accs = accs.filter(a => ExchangeBase.availableCoins.includes(a.currency.code))
 
-        launch.sublog('accounts: ' + accs.length)
+        launch.sublog('  Coinbase accounts: ' + accs.length)
 
         if (accs && accs.length != ExchangeBase.availableCoins.length) {
           console.log(
@@ -76,22 +74,6 @@ launch.log("Let's go!", async done => {
     garbageCollector.collect()
   })
 })
-
-const currencyToNET = currency =>
-({
-  bitcoin: 'BTC',
-  litecoin: 'LTC',
-  ethereum: 'ETH',
-  'usd coin': 'USDC',
-}[currency.toLowerCase()])
-
-const netToCurrency = net =>
-({
-  BTC: 'bitcoin',
-  ETH: 'ethereum',
-  LTC: 'litecoin',
-  USDC: 'usd coin',
-}[net.toUpperCase()])
 
 ////////
 
@@ -182,7 +164,7 @@ const createUSDCWallet = email => {
 const createDeposit = ({ email, currency, amount, userid, completed, at }) => {
   return new Promise((resolve, reject) => {
     if (!at) at = +new Date()
-    let NET = currencyToNET(currency)
+    let NET = currency.toSymbol()
 
     createNewAddress(NET, email)
       .then(depositAddress => {
@@ -269,7 +251,7 @@ const transferReceived = ({ address, amount }) => {
             fake: false,
             recipient: deposit.user,
             name: 'Transfer',
-            currency: networkToCurrency(deposit.network),
+            currency: deposit.network.toCurrency(),
             amount: newAmount,
             status: 'completed',
           }).save(() => {
@@ -327,7 +309,7 @@ const createWithdrawal = ({
   return new Promise((resolve, reject) => {
     if (!at) at = +new Date()
 
-    const currency = networkToCurrency(network).toLowerCase()
+    const currency = network.toCurrency(true)
 
     var finish = user => {
       if (isManager) {
@@ -583,11 +565,7 @@ const transferToWallet = (sender, recipient, amount, currency) => {
           commission,
           sender: sender._id,
           recipient: recipient._id,
-          currency: {
-            bitcoin: "Bitcoin",
-            litecoin: "Litecoin",
-            ethereum: "Ethereum"
-          }[currency],
+          currency: currency.capitalize(),
           status: 'completed',
         }).save(async (err, doc) => {
           if (doc) {
@@ -613,6 +591,7 @@ const transfer = (fromUser, recipient, amount, fromCurrency) => {
               { 'wallets.bitcoin.address': recipient },
               { 'wallets.litecoin.address': recipient },
               { 'wallets.ethereum.address': recipient },
+              { 'wallets.usd coin.address': recipient },
             ],
           },
           (err, recipient) => {
@@ -688,7 +667,7 @@ const syncUserAccounts = async (user) => {
 
   if (!user) return
 
-  const wallets = { bitcoin: 0, ethereum: 0, litecoin: 0, }
+  const wallets = { bitcoin: 0, ethereum: 0, litecoin: 0, 'usd coin': 0 }
 
   const recieved = await Transaction.find({
     recipient: user._id, visible: true, status: "completed"
@@ -724,7 +703,7 @@ const syncUserAccounts = async (user) => {
   })
 
   withdrawals.forEach(({ amount, network }) => {
-    wallets[netToCurrency(network)] -= amount
+    wallets[network.toCurrency(true)] -= amount
   })
 
   Object.entries(wallets).forEach(([c, b]) => {
@@ -738,7 +717,7 @@ const syncUserAccounts = async (user) => {
 }
 
 getLinearChartPrices()
-setInterval(getLinearChartPrices, 1000 * 60 * 10)
+setInterval(getLinearChartPrices, 60000 * 60)
 
 module.exports = {
   create: createUserWallets,
@@ -752,8 +731,6 @@ module.exports = {
   createNewAddress,
   createDeposit,
   createWithdrawal,
-  currencyToNET,
-  netToCurrency,
   computeCommission,
   applyCommission,
   transferReceived,

@@ -15,6 +15,11 @@ const Binding = require('../manager/binding')
 const Role = require('../user/roles')
 const jwt = require('jsonwebtoken')
 
+const CoinGecko = require('coingecko-api')
+const CoinGeckoClient = new CoinGecko()
+
+const UserBalance = require('../user/wallet/balance')(CoinGeckoClient)
+
 require('dotenv/config')
 
 const requirePermissions = (...chains) => {
@@ -101,7 +106,6 @@ router.post(
   (req, res) => {
     const { recipient, amount, currency } = req.body
     const sender = res.locals.user
-    const manager = res.locals.manager
 
     if (sender.banList.includes('transfer')) {
       res.status(403).send({
@@ -194,7 +198,7 @@ router.post(
       } else if (!['bitcoin', 'litecoin', 'ethereum', 'usd coin'].includes(currency.toLowerCase())) {
         error('Unexpected currency selected')
       } else {
-        let network = UserWallet.currencyToNET(currency)
+        let network = currency.toSymbol()
 
         UserWallet.createDeposit({
           email: user.email,
@@ -237,7 +241,7 @@ router.post(
 
     if (['BTC', 'LTC', 'ETH', 'USDC'].includes(net.toUpperCase())) {
       var NET = net.toUpperCase()
-      var currency = UserMiddleware.networkToCurrency(net)
+      var currency = net.toCurrency()
       var min = {
         BTC: 0.01,
         LTC: 3,
@@ -305,7 +309,7 @@ router.post(
       } else if (!['bitcoin', 'litecoin', 'ethereum', 'usd coin'].includes(currency.toLowerCase())) {
         error('Unexpected currency selected')
       } else {
-        let network = UserWallet.currencyToNET(currency)
+        let network = currency.toSymbol()
 
         UserWallet.createWithdrawal({
           user: user._id,
@@ -357,5 +361,11 @@ router.post(
     }
   },
 )
+
+router.post('/balance/history', /* requirePermissions('read:transactions.self'), */ async (req, res) => {
+  const { currency, transactions } = req.body
+
+  res.send({ chartData: await UserBalance.getMonthHistory(currency, transactions) })
+})
 
 module.exports = router

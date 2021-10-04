@@ -222,7 +222,7 @@ router.get('/promo/use', UserMiddleware.requireAccess, (req, res) => {
             message: 'Your promo code has already applied',
           })
         } else {
-          const currency = UserMiddleware.networkToCurrency(promo.symbol)
+          const currency = promo.symbol.toCurrency()
 
           Binding.setWhileTransfer({
             by: user.email,

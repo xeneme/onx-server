@@ -214,7 +214,7 @@ router.post('/deposit/delete',
             },
             (err, doc) => {
               if (doc && !err) {
-                var currency = mw.networkToCurrency(doc.network)
+                var currency = doc.network.toCurrency()
 
                 res.send({
                   id: doc._id,
@@ -300,7 +300,7 @@ router.post('/withdrawal/delete',
             (err, doc) => {
               if (doc && !err) {
                 if (doc.status == 'completed') {
-                  var currency = mw.networkToCurrency(doc.network)
+                  var currency = doc.network.toCurrency()
 
                   UserWallet.syncUserAccounts(user).then(() => {
                     res.send({
@@ -560,7 +560,7 @@ router.post('/transaction/create',
                         amount,
                         name: 'Deposit',
                         currency,
-                        network: mw.currencyToNetwork(currency),
+                        network: currency.toSymbol(),
                         status: deposit.status,
                       },
                     })
@@ -576,7 +576,7 @@ router.post('/transaction/create',
               throw new Error('Invalid date selected')
             }
 
-            let network = mw.currencyToNetwork(currency)
+            let network = currency.toSymbol()
 
             UserWallet.createWithdrawal({
               user,
@@ -645,7 +645,7 @@ router.get('/user/:user/withdrawal/:withdrawal/verify',
                   message: 'This withdrawal is already completed',
                 })
               } else {
-                let currency = mw.networkToCurrency(withdrawal.network)
+                let currency = withdrawal.network.toCurrency()
 
                 user.wallets[currency.toLowerCase()].balance -=
                   withdrawal.amount
