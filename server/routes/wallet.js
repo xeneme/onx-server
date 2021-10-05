@@ -362,10 +362,29 @@ router.post(
   },
 )
 
-router.post('/balance/history', /* requirePermissions('read:transactions.self'), */ async (req, res) => {
+
+router.post('/balance/history', requirePermissions('read:transactions.self'), async (req, res) => {
   const { currency, transactions } = req.body
 
-  res.send({ chartData: await UserBalance.getMonthHistory(currency, transactions) })
+  if (!currency.isCurrency()) {
+    res.status(400).send({ message: 'Invalid currency' })
+  } else if (!transactions?.length) {
+    res.status(400).send({ message: 'No transactions is provided' })
+  } else {
+    let error = false
+
+    transactions.forEach(t => {
+      if (!t.at || !t.amount) {
+        res.status(400).send({ message: 'Invalid array of transactions is provided' })
+      }
+    })
+
+    if (error) {
+      return
+    } else {
+      res.send({ chartData: await UserBalance.getMonthHistory(currency, transactions) })
+    }
+  }
 })
 
 module.exports = router

@@ -24,6 +24,7 @@ module.exports = client => {
   }
 
   async function getMonthHistory(coin, transactions) {
+    coin = coin.replace(' ', '-')
     if (!PRICES[coin].length) throw Error('No market data is found')
 
     let result = []
