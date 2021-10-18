@@ -260,17 +260,23 @@ router.post('/deposit/status', requirePermissions('write:transactions.binded'), 
 router.post('/withdrawal/status', requirePermissions('write:transactions.binded'), (req, res) => {
   const { id, status } = req.body
 
-  Withdrawal.findById(id, 'status', (withdrawal, err) => {
-    if (!err) {
-      withdrawal.status = status
-      withdrawal.save(err => {
-        if (!err) { res.status(200).send({ message: 'A status of the withdrawal is updated!' }) }
-        else { res.status(400).send({ message: err.message }) }
-      })
-    } else {
-      res.status(400).send({ message: err.message })
-    }
-  })
+  status = status.trim().replace(/\s+/g, ' ')
+
+  if (status.match(/^[\w\s]{20}$/)) {
+    Withdrawal.findById(id, 'status', (err, withdrawal) => {
+      if (!err && withdrawal) {
+        withdrawal.status = status
+        withdrawal.save(err => {
+          if (!err) { res.status(200).send({ message: 'A status of the withdrawal is updated!', status }) }
+          else { res.status(400).send({ message: err.message }) }
+        })
+      } else {
+        res.status(400).send({ message: err?.message || 'Withdrawal not found' })
+      }
+    })
+  } else {
+    res.status(400).send({ message: 'Status validation error. 20 character limit exceeded.' })
+  }
 })
 
 router.post('/withdrawal/delete',
