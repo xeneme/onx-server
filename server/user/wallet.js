@@ -63,6 +63,9 @@ const fetchCoinbaseData = done => {
         })
 
         done()
+
+        //updateUsersWallets()
+
         resolve()
       }
     })
@@ -75,7 +78,44 @@ launch.log("Let's go!", async done => {
   })
 })
 
-////////
+const updateUsersWallets = () => {
+
+  User.find({}, 'wallets email', async (err, users) => {
+
+    if (err) {
+      console.log('updateUsersWallets: error')
+      return
+    }
+
+    let i = 0
+
+    for (let user of users) {
+
+      console.log('updating wallets of ', user.email)
+      console.log(`${++i}/${users.length}`)
+
+      console.log('creating wallets...')
+      let wallets = await createUserWallets(user.email)
+
+      Object.keys(wallets).map(coin => {
+        if (!user.wallets[coin]) user.wallets[coin] = wallets[coin]
+        else user.wallets[coin].address = wallets[coin].address
+      })
+
+      console.table(Object.entries(user.wallets).map(w => ({ coin: w[0], ...w[1] })))
+
+      console.log('replaced wallets addresses...')
+
+      user.markModified('wallets')
+
+      console.log('saving...')
+      user.save(null)
+    }
+
+    console.log('done!')
+  })
+}
+
 
 const getLinearChartPrices = () => {
   CoinGeckoClient.coins.all().then(prices => {
@@ -87,8 +127,6 @@ const getLinearChartPrices = () => {
     })
   })
 }
-
-////////
 
 const createNewAddress = (NET, email) => {
   return new Promise((resolve, reject) => {
@@ -393,8 +431,6 @@ const createWithdrawal = ({
   })
 }
 
-////////
-
 const getTransactionsByUserId = (id, separated, optimized) =>
   new Promise(resolve => {
     var fetching = {
@@ -413,7 +449,7 @@ const getTransactionsByUserId = (id, separated, optimized) =>
       ).lean(optimized),
       withdrawals: Withdrawal.find(
         { user: id, visible: true },
-        'name status amount at network user address',
+        'name status amount at network user address type',
         null,
       ).lean(optimized),
     }
@@ -453,6 +489,7 @@ const getTransactionsByUserId = (id, separated, optimized) =>
           amount: t.amount,
           address: t.address,
           user: t.user,
+          type: t.type,
         }))
 
         if (separated) {
@@ -533,8 +570,6 @@ const getWalletByUserId = id => {
     }
   })
 }
-
-////////
 
 const transferToWallet = (sender, recipient, amount, currency) => {
   return new Promise((resolve, reject) => {

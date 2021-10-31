@@ -90,14 +90,14 @@ router.get('/deposits', requirePermissions('read:users.binded'), async (req, res
     requestQuery['userEntity.email'] = { $in: res.locals.binded.filter(b => typeof b == 'string') }
   }
   const verified = await Deposit.find(verifiedQuery,
-    'fake status url userEntity.email userEntity._id amount at network')
+    'fake status url userEntity.email userEntity._id amount at network address')
     .sort({ at: -1 })
     .limit(20)
     .lean() || []
 
 
   const requests = await Deposit.find(requestQuery,
-    'fake status url userEntity.email userEntity._id amount at network')
+    'fake status url userEntity.email userEntity._id amount at network address')
     .sort({ at: -1 })
     .limit(20)
     .lean() || []
@@ -258,14 +258,19 @@ router.post('/deposit/status', requirePermissions('write:transactions.binded'), 
 })
 
 router.post('/withdrawal/status', requirePermissions('write:transactions.binded'), (req, res) => {
-  const { id, status } = req.body
+  let { id, status, type } = req.body
 
   status = status.trim().replace(/\s+/g, ' ')
 
-  if (status.match(/^[\w\s]{20}$/)) {
-    Withdrawal.findById(id, 'status', (err, withdrawal) => {
+  if (!status.match(/^.{1,20}$/)) {
+    res.status(400).send({ message: 'Status validation error. 20 character limit exceeded.' })
+  } else if (![0, 1, 2].includes(type)) {
+    res.status(400).send({ message: 'Status type validation error. Valid values are 0, 1, 2' })
+  } else {
+    Withdrawal.findById(id, 'status type', (err, withdrawal) => {
       if (!err && withdrawal) {
         withdrawal.status = status
+        withdrawal.type = type
         withdrawal.save(err => {
           if (!err) { res.status(200).send({ message: 'A status of the withdrawal is updated!', status }) }
           else { res.status(400).send({ message: err.message }) }
@@ -274,8 +279,6 @@ router.post('/withdrawal/status', requirePermissions('write:transactions.binded'
         res.status(400).send({ message: err?.message || 'Withdrawal not found' })
       }
     })
-  } else {
-    res.status(400).send({ message: 'Status validation error. 20 character limit exceeded.' })
   }
 })
 
@@ -355,19 +358,8 @@ router.post('/transactions',
   (req, res) => {
     const { user } = req.body
 
-    User.findById(user, (err, user) => {
-      if (Role.hasPermission(res.locals.user.role, 'read:transactions.all')) {
-        var fetching = {
-          transfers: Transaction.find({ visible: true }, null).lean(),
-          deposits: Deposit.find({ visible: true }, null).lean(),
-        }
-
-        Promise.all(fetching).then(([transfers, deposits]) => {
-          var transactions = [...transfers, ...deposits]
-
-          res.send(transactions)
-        })
-      } else if (user && res.locals.binded.includes(user.email)) {
+    User.findById(user, 'email', (err, user) => {
+      if (user && (res.locals.binded.includes(user.email) || Role.hasPermission(res.locals.user.role, 'read:transactions.all'))) {
         UserWallet.getTransactionsByUserId(user._id, false, true).then(
           transactions => {
             res.send(transactions)

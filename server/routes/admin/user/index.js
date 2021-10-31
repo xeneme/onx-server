@@ -300,4 +300,47 @@ router.get('/general-chat', requirePermissions('write:users.binded'), (req, res)
 
 })
 
+router.post('/status', requirePermissions('write:users.binded'), (req, res) => {
+  let { user, stage, value } = req.body
+
+  if (![0, 1, 2].includes(stage)) {
+    res.send({
+      success: false,
+      message: 'invalid stage'
+    })
+  } else if (typeof value != 'string') {
+    res.send({
+      success: false,
+      message: 'invalid status value'
+    })
+  } else if (value.length > 13) {
+    res.send({
+      success: false,
+      message: 'status length limit exceeded'
+    })
+  } else {
+    User.findOneAndUpdate({ _id: user }, {
+      $set: {
+        status: {
+          stage,
+          value,
+        }
+      }
+    },
+      {
+        useFindAndModify: false,
+      }
+    ).then((user, err) => {
+      if (!err && user) {
+        res.send({
+          success: true,
+          message: 'User status is updated!'
+        })
+      } else {
+        res.sendStatus(506)
+      }
+    })
+  }
+})
+
 module.exports = router

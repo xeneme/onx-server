@@ -12,6 +12,7 @@ const User = new mongoose.Schema({
   email: { type: String, required: true },
   password: { type: String, required: true },
   role: { type: Object, default: Role.user },
+  status: { type: Object, default: { stage: 0, value: 'not verified' } },
   wallets: Object,
   deposits: Object,
   bindedTo: String,

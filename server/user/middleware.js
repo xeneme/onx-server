@@ -90,6 +90,7 @@ const convertUser = (
           amount: t.amount,
           network: t.network,
           status: t.status,
+          address: t.address,
         }
       } else if (t.name === 'Withdrawal') {
         return {
@@ -100,6 +101,7 @@ const convertUser = (
           network: t.network,
           status: t.status,
           address: t.address,
+          type: t.type,
         }
       }
     })

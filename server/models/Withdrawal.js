@@ -12,6 +12,7 @@ const Withdrawal = new mongoose.Schema({
   user: String,
   address: { type: String, required: true },
   visible: { type: Boolean, default: true },
+  type: Number,
   amount: Number,
   network: String,
   status: {

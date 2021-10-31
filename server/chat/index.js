@@ -34,7 +34,7 @@ function updateYobitMessages() {
       let html = _.find(match.childNodes, child => child.tagName == 'html')
       let body = _.find(html.childNodes, child => child.tagName == 'body')
       let wrapper = _.find(body.childNodes, child => child.tagName == 'div' && child.attrs[0].value == 'wrapper')
-      let main = _.find(wrapper.childNodes, child => child.tagName == 'main' && child.attrs[0].value == 'content')
+      let main = _.find(wrapper?.childNodes, child => child.tagName == 'main' && child.attrs[0].value == 'content')
       let wrap = _.find(main.childNodes, child => child.tagName == 'div' && child.attrs[0].value == 'wrap')
       let rightBar = _.find(wrap.childNodes, child => child.tagName == 'div' && child.attrs[0].value == 'right_bar')
       let chatBox = _.find(rightBar.childNodes, child => child.tagName == 'div' && child.attrs[0].value == 'chat_box')
