@@ -133,7 +133,7 @@ const createNewAddress = (NET, email) => {
     ExchangeBase.accounts[NET].createAddress(
       {
         name: email,
-        callback_url: "https://bitrolah.com/api/wallet/notify"
+        callback_url: "https://mybitfx.com/api/wallet/notify"
       },
       (err, address) => {
         if (!err) {
