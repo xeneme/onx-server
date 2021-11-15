@@ -43,7 +43,7 @@ async function main() {
     .map(([key, val]) => key + " = " + val)
     .join("\n");
 
-  fs.writeFile(".env", 'PORT = 80\n' + parsed, (e) => {
+  fs.writeFile(".env", 'PORT = 80\n' + parsed, () => {
     console.log("\Сервер готов к запуску.\n");
   });
 }
