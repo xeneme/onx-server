@@ -225,6 +225,22 @@ router.post('/set_min',
   },
 )
 
+router.post('/set-default-withdrawal-status',
+  requirePermissions('write:users.binded'),
+  (req, res) => {
+    const { status } = req.body
+
+
+    if (status.length >= 2 && status.length <= 24) {
+      Settings.setDefaultWithdrawalStatus(res.locals.user, status).then(ser => {
+        console.log(user)
+        res.send({ message: 'Default withdrawal status is set' })
+      })
+    } else {
+      res.status(400).send({ message: 'The status must be longer than 2 chars and less than 24 chars' })
+    }
+  })
+
 router.post('/chat-profiles', requirePermissions('write:users.binded'), (req, res) => {
   const { profiles } = req.body
 

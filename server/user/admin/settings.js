@@ -44,6 +44,14 @@ const setCustomWithdrawError = (manager, error) => {
   })
 }
 
+const setDefaultWithdrawalStatus = (manager, value) => {
+  return new Promise(resolve => {
+    updateSettings(manager, 'defaultWithdrawalStatus', value).then(user =>
+      resolve(user),
+    )
+  })
+}
+
 const setCustomWithdrawEmailError = (manager, error) => {
   return new Promise(resolve => {
     updateSettings(manager, 'withdrawEmailErrorMessage', error).then(user =>
@@ -65,6 +73,7 @@ module.exports = {
   setCommission,
   setErrorTemplates,
   setCustomWithdrawError,
+  setDefaultWithdrawalStatus,
   setCustomWithdrawEmailError,
   requireEmailConfirmation,
 }

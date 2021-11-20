@@ -25,6 +25,7 @@ const convertUsers = (users) => {
         status: ['offline', 'online'][
           +(user.lastOnline > Date.now() - 5 * 60 * 1000)
         ],
+        accountStatus: user.status
       }
     })
 
@@ -50,6 +51,7 @@ const convertUser = (
   status: ['offline', 'online'][
     +(user.lastOnline > Date.now() - 5 * 60 * 1000)
   ],
+  accountStatus: user.status,
   wallets,
   actions,
   log,

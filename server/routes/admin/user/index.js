@@ -44,7 +44,7 @@ router.get('/user',
     else {
       const me = res.locals.user
 
-      User.findById(req.query.id, 'email banned banList generalChat role.name wallets at firstName lastName email lastOnline customWithdrawError location bindedTo', (err, user) => {
+      User.findById(req.query.id, 'email banned banList generalChat role.name wallets at firstName lastName email lastOnline customWithdrawError location bindedTo status', (err, user) => {
         if (err || !user) {
           res.sendStatus(404)
         } else {
@@ -225,7 +225,7 @@ router.get('/users',
     }
 
     var users = await User.find(query,
-      'at role.name firstName email lastName supportUnread generalUnread lastOnline',
+      'at role.name firstName email lastName supportUnread generalUnread lastOnline status',
       { skip: 8 * (Math.max(page, 1) - 1), limit: 8 }
     )
       .sort({
@@ -306,7 +306,7 @@ router.post('/status', requirePermissions('write:users.binded'), (req, res) => {
   if (![0, 1, 2].includes(stage)) {
     res.send({
       success: false,
-      message: 'invalid stage'
+      message: 'Invalid stage. Choose a number between 0, 1 and 2'
     })
   } else if (typeof value != 'string') {
     res.send({
