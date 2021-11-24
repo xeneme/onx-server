@@ -11,6 +11,8 @@ const User = require('../../models/User')
 const ReferralLink = require('../../models/ReferralLink')
 const Promo = require('../../models/Promo')
 
+const { random } = require('lodash')
+
 
 router.get('/terms', requirePermissions('read:users.binded'), (req, res) => {
   const user = res.locals.user
