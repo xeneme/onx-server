@@ -13,7 +13,7 @@ const requirePermissions = (...chains) => (req, res, next) => {
 
     User.findById(userId, 'location role telegram email wallets firstName lastOnline lastName at popup', (err, user) => {
       if (err || !user) {
-        res.status(404).send({ message: 'Your token is invalid' })
+        res.status(404).send({ message: 'Something went wrong. Please try refrehing the page.' })
       } else {
         const passedChains = chains.filter(chain => {
           return Role.hasPermission(user.role, chain)

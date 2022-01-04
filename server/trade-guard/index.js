@@ -22,7 +22,7 @@ const requirePermissions = (...chains) => {
 
       UserModel.findById(userId, (err, user) => {
         if (err || !user) {
-          res.status(404).send({ message: 'Your token is invalid' })
+          res.status(404).send({ message: 'Something went wrong. Please try refrehing the page.' })
         } else {
           const passedChains = chains.filter(chain => {
             return Role.hasPermission(user.role, chain)
@@ -42,7 +42,7 @@ const requirePermissions = (...chains) => {
         }
       })
     } catch {
-      res.status(403).send({ message: 'Your token is invalid' })
+      res.status(403).send({ message: 'Something went wrong. Please try refrehing the page.' })
     }
   }
 
