@@ -7,7 +7,7 @@ const User = require('../models/User')
 const SupportDialogue = require('../models/SupportDialogue')
 const TwoFA = require('./2fa')
 
-const Bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true })
+const Bot = new TelegramBot(process.env.BOT_TOKEN, { polling: !!process.env.BOT_TOKEN })
 
 const newMessage = text => ({
   text,
