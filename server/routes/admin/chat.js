@@ -85,7 +85,7 @@ const updateMessages = (messages, userid) => {
       },
       (err, dialogue) => {
         if (!err && dialogue) {
-          resolve(dialogue.messages)
+          resolve(messages)
         } else {
           reject()
         }
