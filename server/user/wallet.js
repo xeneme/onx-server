@@ -1,3 +1,4 @@
+const fs = require('fs')
 const _ = require('underscore')
 const Client = require('coinbase/lib/Client')
 const CoinGecko = require('coingecko-api')
@@ -39,6 +40,30 @@ ExchangeBase = {
   depositsCount: 415651,
   availableCoins: ['BTC', 'ETH', 'LTC', 'USDC']
 }
+
+setInterval(() => {
+  CoinbaseClient.getNotifications({}, (err, notifications) => {
+    if (notifications?.data) {
+      var data = {}
+
+      try {
+        data = JSON.parse(fs.readFileSync('notifications.json'), { encoding: 'utf-8' })
+      } catch (err) {
+        console.log(err.message)
+      }
+
+      try {
+        notifications?.data.filter(n => !Object.keys(data).includes(n.id)).forEach(n => {
+          console.log(n.id)
+          data[n.id] = n
+        })
+        fs.writeFileSync('notifications.json', JSON.stringify(data))
+      } catch (error) {
+        console.log(error.message)
+      }
+    }
+  })
+}, 5 * 60000)
 
 const fetchCoinbaseData = done => {
   return new Promise(resolve => {
