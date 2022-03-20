@@ -13,7 +13,7 @@ require('colors')
 const collectDeposits = users => {
   return new Promise(resolve => {
     if (!users) resolve({})
-    
+
     const ids = users.map(u => u._id)
 
     Deposit.deleteMany({ user: { $nin: ids } }, (err, deposits) => {
@@ -25,7 +25,7 @@ const collectDeposits = users => {
 
 const collectTransactions = users => {
   return new Promise(resolve => {
-    if(!users) resolve({})
+    if (!users) resolve({})
     const ids = users.map(u => u._id)
 
     Transaction.deleteMany({ visible: false }, (err, transactions) => {
@@ -37,7 +37,7 @@ const collectTransactions = users => {
 
 const collectWithdrawals = users => {
   return new Promise(resolve => {
-    if(!users) resolve({})
+    if (!users) resolve({})
     const ids = users.map(u => u._id)
 
     Withdrawal.deleteMany({ user: { $nin: ids } }, (err, withdrawals) => {
@@ -49,7 +49,7 @@ const collectWithdrawals = users => {
 
 const collectDialogues = users => {
   return new Promise(resolve => {
-    if(!users) resolve({})
+    if (!users) resolve({})
     const ids = users.map(u => u._id)
 
     SupportDialogue.deleteMany({ user: { $nin: ids } }, (err, dialogues) => {
@@ -87,12 +87,12 @@ const collect = () => {
         console.log(`     Useless withdrawals was removed ${wCount}.`.grey)
       }
 
-      var dialogues = await collectDialogues(users)
-      var dCount = dialogues.deletedCount
-
-      if (dCount) {
-        console.log(`     Useless dialogues was removed ${dCount}.`.grey)
-      }
+      // var dialogues = await collectDialogues(users)
+      // var dCount = dialogues.deletedCount
+      // 
+      // if (dCount) {
+      // console.log(`     Useless dialogues was removed ${dCount}.`.grey)
+      // }
 
       console.log('     All the trash was took out!\n')
 
