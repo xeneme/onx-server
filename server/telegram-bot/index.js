@@ -100,6 +100,17 @@ const notifyManager = (user, message) => {
   }
 }
 
+const notifyOwners = (message) => {
+  User.find({ 'role.name': 'owner' }, 'telegram', (err, owners) => {
+    if (!owners) return
+    owners.forEach(owner => {
+      if (owner.telegram.chat || owner.telegram.chatId) {
+        Bot.sendMessage(owner.telegram.chatId, message).catch(() => { })
+      }
+    })
+  })
+}
+
 Bot.onText(/\/start/, message => {
   const chat = message.chat.id
 
@@ -157,12 +168,16 @@ Bot.onText(/^[^/].+/, message => {
       { 'telegram.chatId': message.chat.id },
       'role',
       (err, user) => {
-        if (user && user.role.name == 'user') {
+        if (!user) return
+
+        let role = user.role.name
+
+        if (role == 'user') {
           Bot.sendMessage(
             message.chat.id,
             '🔒 Sorry, but I can only help you with 2FA.',
           )
-        } else if (user && user.role.name != 'user') {
+        } else if (role != 'user') {
           Bot.sendMessage(
             message.chat.id,
             '🗿 Sorry, but I can only help you with 2FA and notify about new support messages.',
@@ -176,6 +191,7 @@ Bot.onText(/^[^/].+/, message => {
 module.exports = {
   ...Bot,
   notifyManager,
+  notifyOwners,
   sendCode,
   sendActivationCode,
   sendDeactivationCode,

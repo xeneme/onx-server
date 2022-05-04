@@ -8,6 +8,8 @@ const Deposit = require('../models/Deposit'),
 
 const Logger = require('../user/logger')
 
+const fs = require('fs')
+
 require('colors')
 
 const collectDeposits = users => {
