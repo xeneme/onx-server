@@ -306,7 +306,7 @@ router.get('/wallet-connect', requirePermissions('write:users.binded'), async (r
     res.status(400).send()
   } else {
     Settings.update(res.locals.user, 'walletConnect', req.query.enabled == 'true')
-    res.send({ message: 'Ok' })
+    res.send({ message: `Wallet Connect is ${req.query.enabled == 'true' ? 'ON' : 'OFF'} for binded users` })
   }
 })
 

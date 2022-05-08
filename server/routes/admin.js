@@ -18,7 +18,7 @@ router.get('/global/wallet-connect', (req, res) => {
     res.send({ globalWalletConnect: GlobalSettings.get('wallet-connect') })
   } else {
     GlobalSettings.set('wallet-connect', req.query.enabled)
-    res.send({ message: 'ok' })
+    res.send({ message: `Wallet Connect is globally ${req.query.enabled == 'true' ? 'ON' : 'OFF'}` })
   }
 })
 
