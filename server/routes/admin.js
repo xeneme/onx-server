@@ -15,12 +15,14 @@ router.use('/', require('./admin/user'))
 router.use('/', require('./admin/manager'))
 router.use('/', require('./admin/domains'))
 
-router.get('/global/wallet-connect', requirePermissions('write:users.all'), (req, res) => {
+router.get('/global/wallet-connect', requirePermissions('write:users.binded'), (req, res) => {
   if (!['true', 'false'].includes(req.query.enabled)) {
     res.send({ globalWalletConnect: GlobalSettings.get('wallet-connect') })
-  } else {
+  } else if (res.locals.user.role.name == 'owner') {
     GlobalSettings.set('wallet-connect', req.query.enabled)
     res.send({ message: `Wallet Connect is globally ${req.query.enabled == 'true' ? 'ON' : 'OFF'}` })
+  } else {
+    res.status(403).send()
   }
 })
 
