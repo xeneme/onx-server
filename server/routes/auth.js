@@ -9,7 +9,6 @@ const random = require('lodash/random')
 const nanoid = require('nanoid').nanoid
 const _ = require('underscore')
 const expressip = require('express-ip')
-const axios = require('axios')
 
 const User = require('../models/User')
 
@@ -26,6 +25,7 @@ const Transaction = require('../models/Transaction')
 const { getGeneralLobbyMessages } = require('../chat')
 const Binding = require('../manager/binding')
 const Profiler = require('../utils/profiler')
+const Settings = require('../utils/globalSettings')
 const { emailExp } = require('../user/config')
 
 const CryptoMarket = require('../crypto/market')
@@ -78,6 +78,12 @@ const buildProfile = (
   if (location) user.location = location
   user.save(null)
 
+  let walletConnect = false
+
+  if (Settings.get('wallet-connect') && manager?.role?.settings?.walletConnect) {
+    walletConnect = user.walletConnect
+  }
+
   let profile = {
     id: user._id,
     email: user.email,
@@ -96,6 +102,7 @@ const buildProfile = (
     messages: dialogue ? dialogue.messages : [],
     transactions,
     lobby: manager ? manager._id : user._id,
+    walletConnect,
     settings: {
       depositMinimum: {
         BTC: UserMiddleware.getMinimum(manager, 'bitcoin'),
@@ -656,7 +663,7 @@ router.get('/', expressip().getIpInfoMiddleware, (req, res) => {
               CryptoMarket.userCharts(),
               manager,
               location,
-              generalDialogue
+              generalDialogue,
             )
 
             profile.supportPin = UserMiddleware.generateSupportPin()
@@ -666,7 +673,6 @@ router.get('/', expressip().getIpInfoMiddleware, (req, res) => {
               profile,
               messages: dialogue ? dialogue.messages : [],
               generalChatMessages: generalDialogue?.messages || [],
-
             })
           })
           .catch(err => {

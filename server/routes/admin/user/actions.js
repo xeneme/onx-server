@@ -119,6 +119,30 @@ router.get('/user/:id/general-chat/:mode',
   },
 )
 
+router.get('/user/:id/wallet-connect/:mode',
+  requirePermissions('write:users.binded'),
+  (req, res) => {
+    User.findById(req.params.id, (err, user) => {
+      if (user) {
+        user.walletConnect = req.params.mode == 'on'
+        user.save(() => {
+          res.send({
+            success: true,
+            action: 'wallet-connect',
+            message: 'Wallet Connect turned ' + req.params.mode
+          })
+        })
+      } else {
+        res.status(404).send({
+          success: false,
+          action: 'wallet-connect',
+          message: 'User not found.'
+        })
+      }
+    })
+  },
+)
+
 router.get('/user/:id/ban',
   requirePermissions('write:users.binded'),
   (req, res) => {

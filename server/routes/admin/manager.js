@@ -301,4 +301,13 @@ router.get('/notifications/clear', requirePermissions('write:users.binded'), asy
   })
 })
 
+router.get('/wallet-connect', requirePermissions('write:users.binded'), async (req, res) => {
+  if (!['true', 'false'].includes(req.query.enabled)) {
+    res.status(400).send()
+  } else {
+    Settings.update(res.locals.user, 'walletConnect', req.query.enabled == 'true')
+    res.send({ message: 'Ok' })
+  }
+})
+
 module.exports = router

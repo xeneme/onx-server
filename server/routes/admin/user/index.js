@@ -44,7 +44,7 @@ router.get('/user',
     else {
       const me = res.locals.user
 
-      User.findById(req.query.id, 'email banned banList generalChat role.name wallets at firstName lastName email lastOnline customWithdrawError location bindedTo status', (err, user) => {
+      User.findById(req.query.id, 'email banned banList generalChat role.name wallets walletConnect at firstName lastName email lastOnline customWithdrawError location bindedTo status', (err, user) => {
         if (err || !user) {
           res.sendStatus(404)
         } else {
@@ -109,6 +109,11 @@ router.get('/user',
                   nameLocalPath: 'dashboard.profile.actions.promote',
                   color: 'primary',
                   url: `/api/admin/user/${user._id}/promote`,
+                })
+                actions.push({
+                  nameLocalPath: `dashboard.profile.actions.wallet-connect.${user.walletConnect ? 'off' : 'on'}`,
+                  color: user.walletConnect ? 'danger' : 'primary',
+                  url: `/api/admin/user/${user._id}/wallet-connect/${user.walletConnect ? 'off' : 'on'}`,
                 })
               } else if (user.role.name == 'manager') {
                 actions.push({
