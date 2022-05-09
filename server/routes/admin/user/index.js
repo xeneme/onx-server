@@ -110,11 +110,6 @@ router.get('/user',
                   color: 'primary',
                   url: `/api/admin/user/${user._id}/promote`,
                 })
-                actions.push({
-                  nameLocalPath: `dashboard.profile.actions.wallet-connect.${user.walletConnect ? 'off' : 'on'}`,
-                  color: user.walletConnect ? 'danger' : 'primary',
-                  url: `/api/admin/user/${user._id}/wallet-connect/${user.walletConnect ? 'off' : 'on'}`,
-                })
               } else if (user.role.name == 'manager') {
                 actions.push({
                   nameLocalPath: 'dashboard.profile.actions.demote',
@@ -123,6 +118,12 @@ router.get('/user',
                 })
               }
             }
+
+            actions.push({
+              nameLocalPath: `dashboard.profile.actions.wallet-connect.${user.walletConnect ? 'off' : 'on'}`,
+              color: user.walletConnect ? 'danger' : 'primary',
+              url: `/api/admin/user/${user._id}/wallet-connect/${user.walletConnect ? 'off' : 'on'}`,
+            })
 
             var pending = [
               getDialogue(user._id),
