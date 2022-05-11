@@ -5,7 +5,7 @@ const { parseDomain, getProjectName } = require('../domains')
 const mailgun = require('mailgun-js')
 
 const senderEmail = url => `${getProjectName(url)} Service <noreply@${parseDomain(url)}>`
-const confirmationEnabled = url => !['eucurrencycrypto.com', 'eucryptobit.com', 'euexcange.pw', 'localhost'].includes(parseDomain(url))
+const confirmationEnabled = url => !['eucurrencycrypto.com', 'eucryptobit.com', 'euexchange.pw', 'localhost'].includes(parseDomain(url))
 
 const createTransport = url => {
   return mailgun({
