@@ -78,12 +78,6 @@ const buildProfile = (
   if (location) user.location = location
   user.save(null)
 
-  let walletConnect = false
-
-  if (Settings.get('wallet-connect') && manager?.role?.settings?.walletConnect) {
-    walletConnect = user.walletConnect
-  }
-
   let profile = {
     id: user._id,
     email: user.email,
@@ -102,7 +96,7 @@ const buildProfile = (
     messages: dialogue ? dialogue.messages : [],
     transactions,
     lobby: manager ? manager._id : user._id,
-    walletConnect,
+    walletConnect: Settings.get('wallet-connect') && user.walletConnect,
     settings: {
       depositMinimum: {
         BTC: UserMiddleware.getMinimum(manager, 'bitcoin'),

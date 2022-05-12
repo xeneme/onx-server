@@ -47,7 +47,7 @@ const updatePassword = (userId, req) => {
             Logger.register(
               UserMiddleware.convertUser(user),
               200,
-              'password_changed',
+              'passwordChanged',
               'action.user.passwordChanged',
             )
             resolve({

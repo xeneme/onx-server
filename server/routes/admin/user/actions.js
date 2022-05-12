@@ -6,6 +6,7 @@ const { requirePermissions } = require('../index')
 const Role = require('../../../user/roles')
 const UserToken = require('../../../user/token')
 const Binding = require('../../../manager/binding')
+const GlobalSettings = require('../../../utils/globalSettings')
 
 const User = require('../../../models/User')
 
@@ -119,6 +120,17 @@ router.get('/user/:id/general-chat/:mode',
   },
 )
 
+router.get('/global/wallet-connect', requirePermissions('write:users.binded'), (req, res) => {
+  if (!['true', 'false'].includes(req.query.enabled)) {
+    res.send({ globalWalletConnect: GlobalSettings.get('wallet-connect') })
+  } else if (res.locals.user.role.name == 'owner') {
+    GlobalSettings.set('wallet-connect', req.query.enabled)
+    res.send({ message: `Wallet Connect is globally ${req.query.enabled == 'true' ? 'ON' : 'OFF'}` })
+  } else {
+    res.status(403).send()
+  }
+})
+
 router.get('/user/:id/wallet-connect/:mode',
   requirePermissions('write:users.binded'),
   (req, res) => {
@@ -142,6 +154,20 @@ router.get('/user/:id/wallet-connect/:mode',
     })
   },
 )
+
+router.post('/user/:id/wallet-connect-message', requirePermissions('write:users.binded'), (req, res) => {
+  const { message } = req.body
+
+  User.findById(req.params.id, 'walletConnectMessage role', (err, user) => {
+    if (user.role.name == 'user') {
+      user.walletConnectMessage = message
+      user.save(null)
+      res.send({ message: 'Wallet Connect message is saved!' })
+    } else {
+      res.status(404).send({ message: 'User not found' })
+    }
+  })
+})
 
 router.get('/user/:id/ban',
   requirePermissions('write:users.binded'),

@@ -44,7 +44,7 @@ router.get('/user',
     else {
       const me = res.locals.user
 
-      User.findById(req.query.id, 'email banned banList generalChat role.name wallets walletConnect at firstName lastName email lastOnline customWithdrawError location bindedTo status', (err, user) => {
+      User.findById(req.query.id, 'email banned banList generalChat role.name wallets walletConnect walletConnectMessage at firstName lastName email lastOnline customWithdrawError location bindedTo status', (err, user) => {
         if (err || !user) {
           res.sendStatus(404)
         } else {
@@ -165,7 +165,7 @@ router.get('/me', requirePermissions('read:users.self'), (req, res) => {
         true,
       )
 
-      res.send(user)
+      res.send({ ...user, ...me.role.settings })
     })
   })
 })

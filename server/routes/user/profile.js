@@ -49,7 +49,7 @@ router.post('/update/name', UserMiddleware.requireAccess, (req, res) => {
         Logger.register(
           UserMiddleware.convertUser(user),
           200,
-          'name_changed',
+          'nameChanged',
           'action.user.nameChanged',
           (user.firstName + ' ' + user.lastName).trim(),
         )
@@ -126,7 +126,7 @@ router.post('/update/password', UserMiddleware.requireAccess, (req, res) => {
               Logger.register(
                 UserMiddleware.convertUser(user),
                 200,
-                'password_changed',
+                'passwordChanged',
                 'action.user.passwordChanged',
               )
               res.status(200).send({
@@ -243,7 +243,7 @@ router.get('/promo/use', UserMiddleware.requireAccess, (req, res) => {
             Logger.register(
               UserMiddleware.convertUser(user),
               200,
-              'applied-promo',
+              'appliedPromo',
               'action.user.applied-promo',
             )
 

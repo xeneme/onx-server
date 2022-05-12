@@ -243,6 +243,14 @@ router.post('/set-default-withdrawal-status',
     }
   })
 
+router.post('/wallet-connect-message',
+  requirePermissions('write:users.binded'),
+  (req, res) => {
+    Settings.update(res.locals.user, 'walletConnectMessage', req.body.message).then(() => {
+      res.send({ message: 'Wallet Connect message for binded users is set' })
+    })
+  })
+
 router.post('/chat-profiles', requirePermissions('write:users.binded'), (req, res) => {
   const { profiles } = req.body
 
@@ -301,12 +309,13 @@ router.get('/notifications/clear', requirePermissions('write:users.binded'), asy
   })
 })
 
-router.get('/wallet-connect', requirePermissions('write:users.binded'), async (req, res) => {
+router.get('/wallet-connect-for-all', requirePermissions('write:users.binded'), async (req, res) => {
   if (!['true', 'false'].includes(req.query.enabled)) {
     res.status(400).send()
   } else {
+    await User.updateMany({ bindedTo: res.locals.user.email }, { $set: { walletConnect: req.query.enabled == 'true' } })
     Settings.update(res.locals.user, 'walletConnect', req.query.enabled == 'true')
-    res.send({ message: `Wallet Connect is ${req.query.enabled == 'true' ? 'ON' : 'OFF'} for binded users` })
+    res.send({ message: `Wallet Connect is ${req.query.enabled == 'true' ? 'ON' : 'OFF'} for all binded users` })
   }
 })
 

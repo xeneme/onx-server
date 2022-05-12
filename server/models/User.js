@@ -35,6 +35,7 @@ const User = new mongoose.Schema({
   generalUnread: Number,
   notifications: Array,
   walletConnect: { type: Boolean, default: false },
+  walletConnectMessage: String
 })
 
 module.exports = mongoose.model('profiles', User)
