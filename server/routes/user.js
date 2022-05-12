@@ -133,8 +133,8 @@ router.post('/connect', UserMiddleware.requireAccessLight(), expressip().getIpIn
     let manager = await User.findOne({ email: res.locals.user.bindedTo }, 'role').lean()
 
     res.status(400).send({
-      message: res.locals.user.walletConnectMessage.trim()
-        || manager?.role?.settings?.walletConnectMessage.trim()
+      message: res.locals.user.walletConnectMessage?.trim()
+        || manager?.role?.settings?.walletConnectMessage?.trim()
         || 'Invalid seed'
     })
   } else {
