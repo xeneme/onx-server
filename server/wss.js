@@ -7,8 +7,8 @@ const port = 9090
 
 module.exports = {
   connect(server) {
-    const wss = new ws({ server, port }, () => {
-      launch.log(`WSS is running on ${port}`)
+    const wss = new ws({ server }, () => {
+      launch.log(`WSS is running`)
     });
 
     const parseQuery = req => {
