@@ -19,11 +19,12 @@ var credentials = { key: privateKey, cert: certificate }
 const httpsServer = https.createServer(credentials, app)
 const httpServer = http.createServer(app)
 
+require('./wss').connect(httpsServer)
+
 const socketio = require('socket.io')
 const secureIO = socketio(httpsServer)
 const IO = socketio(httpServer)
 
-const Trading = require('./trading')
 const TradeGuardChat = require('./trade-guard/chat')
 const GeneralChat = require('./chat')
 
