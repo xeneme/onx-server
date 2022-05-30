@@ -28,7 +28,6 @@ const TradeGuardChat = require('./trade-guard/chat')
 const GeneralChat = require('./chat')
 
 TradeGuardChat.defineIO({ secureIO, IO })
-Trading.defineIO({ secureIO, IO })
 GeneralChat.init(IO)
 
 const bodyParser = require('body-parser')
@@ -41,7 +40,7 @@ const slowDown = require('express-slow-down')
 
 require('./telegram-bot')
 require('./db-connect')
-// require('./ws')
+require('./wss')
 
 const port = process.env.PORT || 8080
 
