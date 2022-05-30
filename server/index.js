@@ -19,15 +19,15 @@ var credentials = { key: privateKey, cert: certificate }
 const httpsServer = https.createServer(credentials, app)
 const httpServer = http.createServer(app)
 
-const socketio = require('socket.io')
-const secureIO = socketio(httpsServer)
-const IO = socketio(httpServer)
+// const socketio = require('socket.io')
+// const secureIO = socketio(httpsServer)
+// const IO = socketio(httpServer)
 
 const TradeGuardChat = require('./trade-guard/chat')
 const GeneralChat = require('./chat')
 
-TradeGuardChat.defineIO({ secureIO, IO })
-GeneralChat.init(IO)
+// TradeGuardChat.defineIO({ IO })
+// GeneralChat.init(IO)
 
 const bodyParser = require('body-parser')
 const User = require('./models/User')
