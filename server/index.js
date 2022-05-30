@@ -19,7 +19,7 @@ var credentials = { key: privateKey, cert: certificate }
 const httpsServer = https.createServer(credentials, app)
 const httpServer = http.createServer(app)
 
-require('./wss').connect(httpsServer)
+require('./wss').connect(httpServer)
 
 const socketio = require('socket.io')
 const secureIO = socketio(httpsServer)
