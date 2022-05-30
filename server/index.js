@@ -19,8 +19,6 @@ var credentials = { key: privateKey, cert: certificate }
 const httpsServer = https.createServer(credentials, app)
 const httpServer = http.createServer(app)
 
-require('./wss').connect(httpServer)
-
 const socketio = require('socket.io')
 const secureIO = socketio(httpsServer)
 const IO = socketio(httpServer)
@@ -145,3 +143,5 @@ app.get(/^.*(?!.*(\/admin|\/admin\/dashboard)).*$/, (req, res) => {
 httpServer.listen(port, () => launch.log(`Server is running on ${port}`))
 
 if (process.env.PORT == 80) httpsServer.listen(443)
+
+require('./wss').connect(httpServer)

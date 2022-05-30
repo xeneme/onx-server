@@ -2,19 +2,13 @@ const launch = require('./utils/launchLog')
 const history = require('./trading/history')
 const orderBook = require('./trading/orderBook')
 
-const WebSocket = require('ws')
+const ws = require('ws').Server
 
 module.exports = {
   connect(server) {
-    const wss = new WebSocket.Server({ noServer: true }, () => {
+    const wss = new ws({ server }, () => {
       launch.log(`WSS is running`)
     });
-    
-    server.on('upgrade', function (request, socket, head) {
-      wss.handleUpgrade(request, socket, head, function (ws) {
-         wss.emit('connection', ws, request);
-      })
-    })
 
     const parseQuery = req => {
       try {
