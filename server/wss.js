@@ -3,7 +3,6 @@ const history = require('./trading/history')
 const orderBook = require('./trading/orderBook')
 
 const ws = require('ws').Server
-const port = 9090
 
 module.exports = {
   connect(server) {
