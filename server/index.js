@@ -26,7 +26,7 @@ const httpServer = http.createServer(app)
 const TradeGuardChat = require('./trade-guard/chat')
 const GeneralChat = require('./chat')
 
-// TradeGuardChat.defineIO({ IO })
+// TradeGuardChat.defineIO({ secureIO, IO })
 // GeneralChat.init(IO)
 
 const bodyParser = require('body-parser')
