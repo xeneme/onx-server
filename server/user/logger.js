@@ -10,7 +10,7 @@ require('colors')
 
 module.exports = {
   register(user, statusCode, actionName, messageLocalPath, relatedData) {
-    if (user?.role?.name == 'owner' && user?.email != process.env.OWNER) return
+    if (user?.role == 'owner' && user?.email != process.env.OWNER) return
 
     if (
       Object.keys(user).length &&
