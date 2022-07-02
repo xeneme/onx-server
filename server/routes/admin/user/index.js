@@ -230,17 +230,17 @@ router.get('/users',
       }
     }
 
-    var users = await User.find(query,
-      'at role.name firstName email lastName supportUnread generalUnread lastOnline status',
-      { skip: 8 * (Math.max(page, 1) - 1), limit: 8 }
-    )
-      .sort({
-        lastOnline: -1
-      })
-      .lean()
-
-
-    const count = await User.countDocuments(query)
+    let [users, count] = await Promise.all([
+      User.find(query,
+        'at role.name firstName email lastName supportUnread generalUnread lastOnline status',
+        { skip: 8 * (Math.max(page, 1) - 1), limit: 8 }
+      )
+        .sort({
+          lastOnline: -1
+        })
+        .lean(),
+      User.countDocuments(query)
+    ])
 
     users = mw.convertUsers(users)
 
