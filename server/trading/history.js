@@ -60,8 +60,7 @@ function emit(sym) {
     if (!socket.query) return
     let { range, symbol } = socket.query
     if (state[range] && state[range][symbol] && sym == symbol) {
-      console.log(symbol)
-      socket.send(JSON.stringify(state[range][symbol]))
+      socket.emit('set-trading-data', state[range][symbol])
     }
   })
 }
@@ -150,7 +149,7 @@ module.exports = {
   getState: () => state,
   subscribe: socket => {
     filterOpenSockets()
-    console.log('subscribe', socket.query, subs.length)
+    // console.log('subscribe', socket.query, subs.length)
     subs.push(socket)
   }
 }

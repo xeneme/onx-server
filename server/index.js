@@ -19,15 +19,17 @@ var credentials = { key: privateKey, cert: certificate }
 const httpsServer = https.createServer(credentials, app)
 const httpServer = http.createServer(app)
 
-// const socketio = require('socket.io')
-// const secureIO = socketio(httpsServer)
-// const IO = socketio(httpServer)
+const socketio = require('socket.io')
+const secureIO = socketio(httpsServer)
+const IO = socketio(httpServer)
 
 const TradeGuardChat = require('./trade-guard/chat')
 const GeneralChat = require('./chat')
+const TradingWSS = require('./trading/wss')
 
-// TradeGuardChat.defineIO({ secureIO, IO })
-// GeneralChat.init(IO)
+TradeGuardChat.defineIO({ secureIO, IO })
+GeneralChat.init(IO)
+TradingWSS.init(IO)
 
 const bodyParser = require('body-parser')
 const User = require('./models/User')
@@ -144,4 +146,4 @@ httpServer.listen(port, () => launch.log(`Server is running on ${port}`))
 
 if (process.env.PORT == 80) httpsServer.listen(443)
 
-require('./wss').connect(httpServer)
+// require('./wss').connect(httpServer)

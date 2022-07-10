@@ -67,7 +67,7 @@ function main() {
   })
 
   subs.forEach(socket => {
-    socket.send(JSON.stringify({ orders: orders[socket.query.symbol] }))
+    socket.emit('set-orders', { orders: orders[socket.query.symbol] })
   })
 
   setTimeout(main, Math.random() * 850 + 150)

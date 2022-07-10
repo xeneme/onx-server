@@ -52,7 +52,7 @@ const convertUser = (
     +(user.lastOnline > Date.now() - 5 * 60 * 1000)
   ],
   accountStatus: user.status,
-  walletConnectMessage: user.walletConnectMessage,
+  walletConnectMessage: user.walletConnectMessage || "",
   wallets,
   actions,
   log,
