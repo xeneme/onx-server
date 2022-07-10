@@ -28,8 +28,8 @@ const GeneralChat = require('./chat')
 const TradingWSS = require('./trading/wss')
 
 TradeGuardChat.defineIO({ secureIO, IO })
-GeneralChat.init(IO)
-TradingWSS.init(IO)
+GeneralChat.init(process.env.PORT == 80 ? secureIO : IO)
+TradingWSS.init(process.env.PORT == 80 ? secureIO : IO)
 
 const bodyParser = require('body-parser')
 const User = require('./models/User')
