@@ -3,10 +3,10 @@ const history = require('../trading/history')
 const orderBook = require('../trading/orderBook')
 
 module.exports = {
-  init(IO) {
+  init({ secureIO, IO }) {
     launch.log('Trading WS is running')
 
-    IO.on('connection', socket => {
+    const onConnect = socket => {
       socket.query = socket.handshake.query
 
       if (!socket.handshake.query) return
@@ -17,6 +17,9 @@ module.exports = {
       }
       history.subscribe(socket)
       orderBook.subscribe(socket)
-    })
+    }
+
+    secureIO.on('connection', onConnect)
+    IO.on('connection', onConnect)
   },
 }

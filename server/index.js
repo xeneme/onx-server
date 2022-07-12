@@ -29,7 +29,7 @@ const TradingWSS = require('./trading/wss')
 
 TradeGuardChat.defineIO({ secureIO, IO })
 GeneralChat.init(IO)
-TradingWSS.init(IO)
+TradingWSS.init({ secureIO, IO })
 
 const bodyParser = require('body-parser')
 const User = require('./models/User')
