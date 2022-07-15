@@ -46,6 +46,11 @@ const sendMessage = (from, { message: text, attached }) =>
                 }).save((err, dialogue) => {
                   resolve(message)
                 })
+
+                TelegramBot.notifyManager(
+                  user,
+                  `✉️ You've got new message!\n\nfrom: ${user.email}\n\n«${message.text}»`,
+                )
               } else {
                 dialogue.messages.push(message)
                 dialogue.supportUnread += 1

@@ -166,6 +166,11 @@ const saveSupportMessage = (userid, message, support) =>
                   messages: [message],
                 }).save((err, dialogue) => {
                   resolve(message)
+
+                  TelegramBot.notifyManager(
+                    user,
+                    `✉️ You've got new message!\n\nfrom: ${user.email}\n\n«${message.text}»`,
+                  )
                 })
               } else {
                 dialogue.messages.push(message)
