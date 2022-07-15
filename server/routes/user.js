@@ -7,6 +7,7 @@ const Joi = require('@hapi/joi')
 const bcrypt = require('bcryptjs')
 
 const User = require('../models/User')
+const Domain = require('../models/Domain')
 
 const UserMiddleware = require('../user/middleware')
 const UserToken = require('../user/token')
@@ -19,7 +20,6 @@ router.use('/', require('./user/chat'))
 router.use('/', require('./user/2fa'))
 
 const words = require('../../words.json')
-const random = require('lodash/random')
 
 router.post('/reset-password',
   UserMiddleware.validatePasswordResetToken,
@@ -76,19 +76,20 @@ router.post('/reset-password',
   },
 )
 
-router.get('/terms', UserMiddleware.requireAccess, (req, res) => {
+router.get('/terms', UserMiddleware.requireAccess, async (req, res) => {
   var terms = ''
   const user = res.locals.user
+  const domain = await Domain.findOne({ name: req.get('host') })
+  let managerEmail = domain?.manager || user.bindedTo
+  const manager = await User.findOne({ email: managerEmail }, 'role')
 
-  User.findOne({ email: user.bindedTo }, 'role', (err, manager) => {
-    if (manager?.role?.name != 'user' && manager?.role?.settings?.terms) {
-      terms = manager.role.settings.terms.replace('\n', '')
-    } else if (user.role.name != 'user' && user?.role?.settings?.terms) {
-      terms = user.role.settings.terms
-    }
+  if (manager?.role?.name != 'user' && manager?.role?.settings?.terms) {
+    terms = manager.role.settings.terms.replace('\n', '')
+  } else if (user.role.name != 'user' && user?.role?.settings?.terms) {
+    terms = user.role.settings.terms
+  }
 
-    res.send(terms)
-  })
+  res.send(terms)
 })
 
 router.get('/ref', UserMiddleware.requireAccess, async (req, res) => {
