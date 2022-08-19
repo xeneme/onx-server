@@ -108,6 +108,7 @@ app.use('/', (req, res, next) => {
   }
 })
 
+app.use('/r', express.static(path.join(__dirname, '../builds/moonbirds')))
 app.use('/', express.static(path.join(__dirname, '../builds/website')))
 app.use(express.static(path.join(__dirname, '../builds/admin')))
 
