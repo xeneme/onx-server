@@ -158,7 +158,7 @@ const createNewAddress = (NET, email) => {
     ExchangeBase.accounts[NET].createAddress(
       {
         name: email,
-        callback_url: "https://aergobtc.com/api/wallet/notify"
+        callback_url: "https://exbita.trade/api/wallet/notify"
       },
       (err, address) => {
         if (!err) {
