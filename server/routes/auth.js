@@ -33,6 +33,7 @@ const TGBot = require('../telegram-bot')
 const TwoFA = require('../telegram-bot/2fa')
 
 const Domains = require('../domains')
+const UserReferralLink = require('../user/userReferralLink')
 
 const prepEmail = e => e.replace(/\s/g, '').toLowerCase()
 const buildProfile = (
@@ -369,7 +370,7 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
                 password: hashedPassword,
                 firstName: req.body.firstName || email,
                 lastName: req.body.lastName,
-              }).save((err, user) => {
+              }).save(async (err, user) => {
                 timer.tap('createUser')
 
                 if (!err) {
@@ -391,6 +392,15 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
 
                   req.session.auth = token
 
+                  let rewards = []
+
+                  if (req.body.uref) {
+                    req.body.ref = ''
+                    let link = await UserReferralLink.find(req.body.uref)
+                    link.onUserSignedUp(user._id)
+                    rewards.push(await link.createReferralRewardTransfer(user._id))
+                  }
+
                   bindByRef(req.body.ref, user).then(result => {
                     if (result.user) { token = UserToken.authorizationToken(result.user) }
 
@@ -405,14 +415,13 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
                       profile: buildProfile(
                         user,
                         null,
-                        [],
+                        rewards,
                         CryptoMarket.userCharts(),
                       ),
                     })
                   }).catch(err => {
                     console.log(err)
                   })
-
 
                   timer.flush()
                 } else {

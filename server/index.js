@@ -91,6 +91,7 @@ app.use('/api', cors({ origin: '*', methods: ['GET', 'POST', 'OPTIONS'], options
 app.use('/api/auth', require('./routes/auth'))
 app.use('/api/user', require('./routes/user'))
 app.use('/api/wallet', require('./routes/wallet'))
+app.use('/api/ref', require('./routes/user/referralRace'))
 app.use('/api/admin', require('./routes/admin'))
 app.use('/api/support', require('./routes/support'))
 app.use('/trade-guard', require('./trade-guard').router)

@@ -143,4 +143,11 @@ const setFor = ({ userid, manager }, callback) => {
   }
 }
 
-module.exports = { get, getWithIds, set, setFor, setWhileTransfer, setWhileSignup }
+const setSame = async (uid, uidFrom) => {
+  let user = await User.findById(uid)
+  let fromUser = await User.findById(uidFrom)
+  user.bindedTo = fromUser.bindedTo
+  return await user.save()
+}
+
+module.exports = { get, getWithIds, set, setFor, setWhileTransfer, setWhileSignup, setSame }

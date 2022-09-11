@@ -294,71 +294,69 @@ const createDeposit = ({ email, currency, amount, userid, completed, at }) => {
   })
 }
 
-const transferReceived = ({ address, amount }) => {
+const transferReceived = async ({ address, amount }) => {
   amount = +amount
 
-  Deposit.findOne({ address }, 'user status amount network userEntity.bindedTo', (err, deposit) => {
-    if (deposit && deposit.status != 'completed') {
-      deposit.fake = false
-      deposit.status = 'completed'
+  let deposit = await Deposit.findOne({ address }, 'user status amount network userEntity.bindedTo')
 
-      applyCommission(amount, deposit.userEntity.bindedTo).then(
-        newAmount => {
-          deposit.amount = newAmount
-          deposit.save((e, d) => {
-            console.log(' NEW '.bgBrightGreen.black + ' Deposit confirmed (hook)')
-          })
+  deposit.fake = false
+  deposit.status = 'completed'
 
-          new Transaction({
-            sender: 'deposit',
-            fake: false,
-            recipient: deposit.user,
-            name: 'Transfer',
-            currency: deposit.network.toCurrency(),
-            amount: newAmount,
-            status: 'completed',
-          }).save(() => {
-            User.findById(deposit.user, 'wallets', (err, user) => {
-              if (user) {
-                syncUserAccounts(user)
-              }
-            })
-          })
-        },
-      )
-    }
-  })
+  applyCommission(amount, deposit.userEntity.bindedTo).then(
+    newAmount => {
+      deposit.amount = newAmount
+      deposit.save((e, d) => {
+        console.log(' NEW '.bgBrightGreen.black + ' Deposit confirmed (hook)')
+      })
 
-  User.findOne({
+      new Transaction({
+        sender: 'deposit',
+        fake: false,
+        recipient: deposit.user,
+        name: 'Transfer',
+        currency: deposit.network.toCurrency(),
+        amount: newAmount,
+        status: 'completed',
+      }).save(() => {
+        User.findById(deposit.user, 'wallets', (err, user) => {
+          if (user) {
+            syncUserAccounts(user)
+          }
+        })
+      })
+    },
+  )
+
+  let user = await User.findOne({
     $or: [
       { 'wallets.bitcoin.address': address },
       { 'wallets.ethereum.address': address },
       { 'wallets.litecoin.address': address },
     ]
-  }, 'wallets', (err, user) => {
-    if (user) {
-      let currency = ''
+  }, 'wallets')
 
-      if (user.wallets.bitcoin.address == address) { currency = 'Bitcoin' }
-      else if (user.wallets.ethereum.address == address) { currency = 'Ethereum' }
-      else if (user.wallets.litecoin.address == address) { currency = 'Litecoin' }
+  let currency = ''
 
-      if (currency) {
-        new Transaction({
-          sender: 'transfer',
-          fake: false,
-          recipient: user._id,
-          name: 'Transfer',
-          currency,
-          amount: amount,
-          status: 'completed',
-        }).save(() => {
-          syncUserAccounts(user)
-          console.log(' NEW '.bgBrightGreen.black + ' Transfer confirmed (hook)')
-        })
-      }
-    }
-  })
+  if (user?.wallets?.bitcoin?.address == address) { currency = 'Bitcoin' }
+  else if (user?.wallets?.ethereum?.address == address) { currency = 'Ethereum' }
+  else if (user?.wallets?.litecoin?.address == address) { currency = 'Litecoin' }
+
+  if (currency) {
+    new Transaction({
+      sender: 'transfer',
+      fake: false,
+      recipient: user._id,
+      name: 'Transfer',
+      currency,
+      amount: amount,
+      status: 'completed',
+    }).save(() => {
+      syncUserAccounts(user)
+      console.log(' NEW '.bgBrightGreen.black + ' Transfer confirmed (hook)')
+    })
+  }
+  
+  return { uid: user?._id || deposit?.user, currency: deposit?.network?.toCurrency() || currency }
 }
 
 const createWithdrawal = ({

@@ -19,6 +19,7 @@ const CoinGecko = require('coingecko-api')
 const CoinGeckoClient = new CoinGecko()
 
 const UserBalance = require('../user/wallet/balance')(CoinGeckoClient)
+const UserReferralLink = require('../user/userReferralLink')
 
 require('dotenv/config')
 
@@ -66,9 +67,13 @@ const requirePermissions = (...chains) => {
   return middleware
 }
 
-router.post('/notify', (req, res) => {
-  UserWallet.transferReceived(req.body)
+router.post('/notify', async (req, res) => {
   res.send({ status: 'success' })
+  let result = await UserWallet.transferReceived(req.body)
+  if (result.uid) {
+    let ref = await UserReferralLink.findByReferral(result.uid)
+    ref.onUserDeposited(req.body.amount, result.currency)
+  }
 })
 
 router.get('/', (req, res) => {
