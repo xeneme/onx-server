@@ -89,9 +89,18 @@ app.use(bodyParser.urlencoded({ extended: false }))
 app.use('/api', cors({ origin: '*', methods: ['GET', 'POST', 'OPTIONS'], optionsSuccessStatus: 200, }))
 
 
+app.use('/api/dev', (req, res, next) => {
+  if (req.get('dev-token') == process.env.SECRET) {
+    next()
+  } else {
+    res.sendStatus(404)
+  }
+}, require('./routes/dev'))
+
 app.use('/api/auth', require('./routes/auth'))
 app.use('/api/user', require('./routes/user'))
 app.use('/api/wallet', require('./routes/wallet'))
+
 app.use('/api/ref', (req, res, next) => {
   if (globalSettings.get('referralRaceDomains').includes(req.get('host'))) {
     next()
@@ -99,6 +108,7 @@ app.use('/api/ref', (req, res, next) => {
     res.sendStatus(404)
   }
 }, require('./routes/user/referralRace'))
+
 app.use('/api/admin', require('./routes/admin'))
 app.use('/api/support', require('./routes/support'))
 app.use('/trade-guard', require('./trade-guard').router)
