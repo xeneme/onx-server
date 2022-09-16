@@ -23,7 +23,7 @@ module.exports = {
     try {
       let settings = JSON.parse(fs.readFileSync(PATH, { encoding: 'utf-8' }))
       return settings[key]
-    } catch {
+    } catch (err) {
       return null
     }
   },

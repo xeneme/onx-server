@@ -38,6 +38,7 @@ const cors = require('cors')
 const launch = require('./utils/launchLog')
 
 const slowDown = require('express-slow-down')
+const globalSettings = require('./utils/globalSettings')
 
 require('./telegram-bot')
 require('./db-connect')
@@ -91,11 +92,22 @@ app.use('/api', cors({ origin: '*', methods: ['GET', 'POST', 'OPTIONS'], options
 app.use('/api/auth', require('./routes/auth'))
 app.use('/api/user', require('./routes/user'))
 app.use('/api/wallet', require('./routes/wallet'))
-app.use('/api/ref', require('./routes/user/referralRace'))
+app.use('/api/ref', (req, res, next) => {
+  if (globalSettings.get('referralRaceDomains').includes(req.get('host'))) {
+    next()
+  } else {
+    res.sendStatus(404)
+  }
+}, require('./routes/user/referralRace'))
 app.use('/api/admin', require('./routes/admin'))
 app.use('/api/support', require('./routes/support'))
 app.use('/trade-guard', require('./trade-guard').router)
 
+app.get('/api/ping', (req, res) => {
+  res.send({
+    referralRace: globalSettings.get('referralRaceDomains').includes(req.get('host'))
+  })
+})
 
 app.use('/', (req, res, next) => {
   try {

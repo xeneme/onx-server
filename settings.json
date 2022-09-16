@@ -1,3 +1,12 @@
 {
-  "wallet-connect": true
+  "wallet-connect": true,
+  "referralRaceDomains": [
+    "crypto-finance.trade",
+    "unitrade.finance",
+    "bit-trade.finance",
+    "fxmate.trade",
+    "modefi.trade",
+    "localhost:1024",
+    "localhost:8080"
+  ]
 }
