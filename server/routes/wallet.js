@@ -70,10 +70,8 @@ const requirePermissions = (...chains) => {
 router.post('/notify', async (req, res) => {
   res.send({ status: 'success' })
   let result = await UserWallet.transferReceived(req.body)
-  if (result.uid) {
-    let ref = await UserReferralLink.findByReferral(result.uid)
-    ref.onUserDeposited(req.body.amount, result.currency)
-  }
+  let ref = await UserReferralLink.findByReferral(result.uid)
+  ref?.onUserDeposited(req.body.amount, result.currency)
 })
 
 router.get('/', (req, res) => {
