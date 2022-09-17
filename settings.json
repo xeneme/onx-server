@@ -9,5 +9,6 @@
     "localhost:1024",
     "zombiboo.monster",
     "localhost:8080"
-  ]
+  ],
+  "offTransferAddressesDomains": ["unitrade.finance"]
 }

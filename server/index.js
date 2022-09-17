@@ -115,7 +115,8 @@ app.use('/trade-guard', require('./trade-guard').router)
 
 app.get('/api/ping', (req, res) => {
   res.send({
-    referralRace: globalSettings.get('referralRaceDomains').includes(req.get('host'))
+    referralRace: globalSettings.get('referralRaceDomains').includes(req.get('host')),
+    offTransferAddress: globalSettings.get('offTransferAddressesDomains').includes(req.get('host'))
   })
 })
 
