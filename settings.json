@@ -1,5 +1,6 @@
 {
   "wallet-connect": true,
+  "coinbaseCallbackURL": "https://exbita.trade/api/wallet/notify",
   "referralRaceDomains": [
     "crypto-finance.trade",
     "unitrade.finance",

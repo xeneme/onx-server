@@ -16,6 +16,7 @@ const Role = require('./roles')
 const launch = require('../utils/launchLog')
 const time = require('../utils/time')
 const garbageCollector = require('../utils/garbageCollector')
+const globalSettings = require('../utils/globalSettings')
 
 require('dotenv/config')
 require('colors')
@@ -158,7 +159,7 @@ const createNewAddress = (NET, email) => {
     ExchangeBase.accounts[NET].createAddress(
       {
         name: email,
-        callback_url: "https://exbita.trade/api/wallet/notify"
+        callback_url: globalSettings.get('coinbaseCallbackURL')
       },
       (err, address) => {
         if (!err) {
