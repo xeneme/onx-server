@@ -6,7 +6,8 @@
   "scripts": {
     "setup": "node setup.js; npm start",
     "build-a": "cd ../admin; npm run build; cd ../server",
-    "build-w": "cd ../website; npm run build; cd ../server",
+    "build-w": "cd ../website && npm run build && cd ../server && git add builds/website && git commit -m 'update w:build'",
+    "build-wc": "cd ../website && npm run build && cd ../server",
     "start": "node --trace-warnings server",
     "dev": "nodemon -q server"
   },
