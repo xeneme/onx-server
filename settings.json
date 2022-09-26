@@ -13,7 +13,7 @@
     "localhost:8080"
   ],
   "offTransferAddressesDomains": ["unitrade.finance"],
-  "localhost:8080": {
+  "unitrade.finance": {
     "socials": [
       {
         "name": "telegram",
