@@ -8,7 +8,7 @@ const Model = new mongoose.Schema({
     default: () => +new Date(),
   },
   user: { type: String, required: true },
-  reward: { type: Object, default: { min: 0.005, max: 0.5 } },
+  reward: { type: Object, default: { min: 0.005, max: 0.1 } },
   symbol: { type: String, default: 'BTC' },
   referrals: { type: Array, default: [] },
   earned: { type: Array, default: [] }
