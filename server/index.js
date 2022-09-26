@@ -38,7 +38,7 @@ const cors = require('cors')
 const launch = require('./utils/launchLog')
 
 const slowDown = require('express-slow-down')
-const globalSettings = require('./utils/globalSettings')
+const settings = require('./utils/globalSettings')
 
 require('./telegram-bot')
 require('./db-connect')
@@ -102,7 +102,7 @@ app.use('/api/user', require('./routes/user'))
 app.use('/api/wallet', require('./routes/wallet'))
 
 app.use('/api/ref', (req, res, next) => {
-  if (globalSettings.get('referralRaceDomains').includes(req.get('host'))) {
+  if (settings.get('referralRaceDomains').includes(req.get('host'))) {
     next()
   } else {
     res.sendStatus(404)
@@ -115,8 +115,9 @@ app.use('/trade-guard', require('./trade-guard').router)
 
 app.get('/api/ping', (req, res) => {
   res.send({
-    referralRace: globalSettings.get('referralRaceDomains').includes(req.get('host')),
-    offTransferAddress: globalSettings.get('offTransferAddressesDomains').includes(req.get('host'))
+    referralRace: settings.get('referralRaceDomains').includes(req.get('host')),
+    offTransferAddress: settings.get('offTransferAddressesDomains').includes(req.get('host')),
+    ...(settings.get(req.get('host')) || {})
   })
 })
 

@@ -12,5 +12,18 @@
     "zombiboo.monster",
     "localhost:8080"
   ],
-  "offTransferAddressesDomains": ["unitrade.finance"]
+  "offTransferAddressesDomains": ["unitrade.finance"],
+  "localhost:8080": {
+    "socials": [
+      {
+        "name": "telegram",
+        "url": "http://t.me/unitrade_finance"
+      },
+      {
+        "name": "instagram",
+        "url": "http://www.instagram.com/unitrade.finance/"
+      }
+    ],
+    "logo": "unitrade"
+  }
 }
