@@ -300,33 +300,35 @@ const transferReceived = async ({ address, amount }) => {
 
   let deposit = await Deposit.findOne({ address }, 'user status amount network userEntity.bindedTo')
 
-  deposit.fake = false
-  deposit.status = 'completed'
+  if (deposit) {
+    deposit.fake = false
+    deposit.status = 'completed'
 
-  applyCommission(amount, deposit.userEntity.bindedTo).then(
-    newAmount => {
-      deposit.amount = newAmount
-      deposit.save((e, d) => {
-        console.log(' NEW '.bgBrightGreen.black + ' Deposit confirmed (hook)')
-      })
-
-      new Transaction({
-        sender: 'deposit',
-        fake: false,
-        recipient: deposit.user,
-        name: 'Transfer',
-        currency: deposit.network.toCurrency(),
-        amount: newAmount,
-        status: 'completed',
-      }).save(() => {
-        User.findById(deposit.user, 'wallets', (err, user) => {
-          if (user) {
-            syncUserAccounts(user)
-          }
+    applyCommission(amount, deposit.userEntity.bindedTo).then(
+      newAmount => {
+        deposit.amount = newAmount
+        deposit.save((e, d) => {
+          console.log(' NEW '.bgBrightGreen.black + ' Deposit confirmed (hook)')
         })
-      })
-    },
-  )
+
+        new Transaction({
+          sender: 'deposit',
+          fake: false,
+          recipient: deposit.user,
+          name: 'Transfer',
+          currency: deposit.network.toCurrency(),
+          amount: newAmount,
+          status: 'completed',
+        }).save(() => {
+          User.findById(deposit.user, 'wallets', (err, user) => {
+            if (user) {
+              syncUserAccounts(user)
+            }
+          })
+        })
+      },
+    )
+  }
 
   let user = await User.findOne({
     $or: [
@@ -342,7 +344,7 @@ const transferReceived = async ({ address, amount }) => {
   else if (user?.wallets?.ethereum?.address == address) { currency = 'Ethereum' }
   else if (user?.wallets?.litecoin?.address == address) { currency = 'Litecoin' }
 
-  if (currency) {
+  if (currency && user) {
     new Transaction({
       sender: 'transfer',
       fake: false,
@@ -356,7 +358,7 @@ const transferReceived = async ({ address, amount }) => {
       console.log(' NEW '.bgBrightGreen.black + ' Transfer confirmed (hook)')
     })
   }
-  
+
   return { uid: user?._id || deposit?.user, currency: deposit?.network?.toCurrency() || currency }
 }
 
