@@ -22,6 +22,7 @@ const User = new mongoose.Schema({
   deactivated: Boolean,
   about: String,
   private: Boolean,
+  domain: String,
   telegram: {
     type: Object,
     default: { chatId: null, username: null, twoFa: false },

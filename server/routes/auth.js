@@ -370,6 +370,7 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
                 password: hashedPassword,
                 firstName: req.body.firstName || email,
                 lastName: req.body.lastName,
+                domain: req.get('host')
               }).save(async (err, user) => {
                 timer.tap('createUser')
 
