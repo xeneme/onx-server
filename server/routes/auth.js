@@ -487,6 +487,11 @@ router.post('/signin', UserMiddleware.validateSignin, (req, res) => {
             const generalDialogue = getGeneralLobbyMessages(user._id)
             const transactions = UserWallet.getTransactionsByUserId(user._id, false, true)
 
+            if (!user.domain) {
+              user.domain = req.get('host')
+              use.save(null)
+            }
+
             Promise.all([manager, dialogue, generalDialogue, transactions]).then(([manager, dialogue, generalDialogue, transactions]) => {
               timer.tap('additional')
 
