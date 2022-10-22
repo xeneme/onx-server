@@ -52,6 +52,7 @@ const convertUser = (
     +(user.lastOnline > Date.now() - 5 * 60 * 1000)
   ],
   accountStatus: user.status,
+  domain: user.domain,
   walletConnectMessage: user.walletConnectMessage || "",
   wallets,
   actions,
@@ -151,7 +152,7 @@ module.exports = {
       res.sendStatus(403)
     }
   },
-  requireAccessLight: (props = '') => (req, res, next) => {
+  requireAccessLight: (props = '', notRequire = false) => (req, res, next) => {
     try {
       const token = req.header('Authorization').split(' ')[1]
       const userId = jwt.verify(token, process.env.SECRET).user
@@ -161,11 +162,13 @@ module.exports = {
           res.locals.user = match
           next()
         } else {
-          res.sendStatus(404)
+          if (notRequire) next()
+          else res.sendStatus(404)
         }
       }).lean()
     } catch (err) {
-      res.sendStatus(403)
+      if (notRequire) next()
+      else res.sendStatus(403)
     }
   },
   validatePasswordResetToken: (req, res, next) => {

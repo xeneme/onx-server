@@ -76,16 +76,17 @@ router.post('/reset-password',
   },
 )
 
-router.get('/terms', UserMiddleware.requireAccess, async (req, res) => {
+router.get('/terms', UserMiddleware.requireAccessLight('', true), async (req, res) => {
   var terms = ''
   const user = res.locals.user
-  const domain = await Domain.findOne({ name: req.get('host') })
-  let managerEmail = domain?.manager || user.bindedTo
+  const domainName = req.get('host')
+  const domain = await Domain.findOne({ name: domainName })
+  let managerEmail = domain?.manager || user?.bindedTo
   const manager = await User.findOne({ email: managerEmail }, 'role')
 
   if (manager?.role?.name != 'user' && manager?.role?.settings?.terms) {
     terms = manager.role.settings.terms.replace('\n', '')
-  } else if (user.role.name != 'user' && user?.role?.settings?.terms) {
+  } else if (user?.role.name != 'user' && user?.role?.settings?.terms) {
     terms = user.role.settings.terms
   }
 
