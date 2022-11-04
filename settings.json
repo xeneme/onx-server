@@ -10,7 +10,8 @@
     "zombiboo.monster",
     "localhost:1024",
     "zombiboo.monster",
-    "localhost:8080"
+    "localhost:8080",
+    "tradebitxg.com"
   ],
   "offTransferAddressesDomains": ["unitrade.finance"],
   "unitrade.finance": {
