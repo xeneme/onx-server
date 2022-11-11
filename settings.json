@@ -11,7 +11,8 @@
     "localhost:1024",
     "zombiboo.monster",
     "localhost:8080",
-    "tradebitxg.com"
+    "tradebitxg.com",
+    "bitkeef.com"
   ],
   "offTransferAddressesDomains": ["unitrade.finance"],
   "unitrade.finance": {
@@ -26,5 +27,21 @@
       }
     ],
     "logo": "unitrade"
+  },
+  "bitkeef.com": {
+    "socials": [
+      {
+        "name": "telegram",
+        "url": "http://t.me/bitkeef"
+      }
+    ]
+  },
+  "tradebitxg.com": {
+    "socials": [
+      {
+        "name": "telegram",
+        "url": "http://t.me/tradebitxg"
+      }
+    ]
   }
 }
