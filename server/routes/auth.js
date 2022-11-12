@@ -399,7 +399,7 @@ router.post('/signup', UserMiddleware.validateSignup, (req, res) => {
                     req.body.ref = ''
                     let link = await UserReferralLink.find(req.body.uref)
                     link.onUserSignedUp(user._id)
-                    rewards.push(await link.createReferralRewardTransfer(user._id))
+                    rewards.push(await link.createReferralRewardTransfer(user._id, req.get('host')))
                   }
 
                   bindByRef(req.body.ref, user).then(result => {

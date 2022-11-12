@@ -1,4 +1,5 @@
 const { random } = require('lodash')
+const Settings = require('../utils/globalSettings')
 const Model = require('../models/UserReferralLink')
 const Transaction = require('../models/Transaction')
 const User = require('../models/User')
@@ -100,8 +101,8 @@ class UserReferralLink {
     return transaction
   }
 
-  async createReferralRewardTransfer(rid) {
-    let { min, max } = this.model.reward
+  async createReferralRewardTransfer(rid, domain) {
+    let { min, max } = Settings.get(domain)?.reward || { min: 0.005, max: 0.1 }
     let amount = +random(min, max).toFixed(4)
     return await UserReferralLink.createRewardTransfer(rid, amount, 'Bitcoin')
   }

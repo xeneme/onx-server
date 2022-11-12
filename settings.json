@@ -29,6 +29,10 @@
     "logo": "unitrade"
   },
   "bitkeef.com": {
+    "reward": {
+      "min": 0.009,
+      "max": 0.025
+    },
     "socials": [
       {
         "name": "telegram",
